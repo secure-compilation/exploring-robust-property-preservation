@@ -7,7 +7,7 @@ Record Topology {X : Set} :=
   {
     open : (X -> Prop) -> Prop;
     empty : open (fun x : X => False);
-    full  : open (fun x : X => False);
+    full  : open (fun x : X => True);
 
     arbitrary_union :
       forall (F : (X -> Prop) -> Prop),
