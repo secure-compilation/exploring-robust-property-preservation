@@ -1,0 +1,8 @@
+-arg "-w -parsing"
+-R . RHP
+
+ClassicalExtras.v
+Events.v
+CommonST.v
+TraceModel.v
+Properties.v
