@@ -100,6 +100,10 @@ Proof.
   now rewrite <- H.           
 Qed.
 
+Lemma closure_includes {X : Set} (S: X -> Prop) (τ : @Topology X) :
+  forall x, (S x -> (closure S τ) x).
+Proof. unfold closure. now auto. Qed. 
+
 Lemma closure_smallest {X : Set} (S : X -> Prop) (τ : @Topology X) :
   forall C, (closed τ) C ->
        (forall x, S x -> C x) ->
@@ -114,56 +118,88 @@ Definition dense {X : Set} (τ : @Topology X) :
                (exists a, A a) ->
                (exists d, A d /\ D d)).  
 
-Lemma a_special_dense {X : Set} (S : X -> Prop) (τ : @Topology X) :
-  (dense τ) (fun x => ~ (closure S τ) x /\ ~ S x).
-Admitted. 
+Lemma not_dense {X : Set} (τ : @Topology X) :
+  forall B, ~ (dense τ) B <-> exists A a, A a /\ (open τ) A /\ (forall t, A t -> ~ B t).
+Proof.
+  unfold dense. intros B. split.
+  + rewrite not_forall_ex_not. intros [H h].
+    rewrite not_imp in h. destruct h as [h1 h2].
+    rewrite not_imp in h2. destruct h2 as [[a Ha] h2].
+    rewrite not_ex_forall_not in h2.
+    exists H, a. repeat (split; try now auto). 
+    intros t ht. now firstorder.
+  + rewrite not_forall_ex_not. intros [A [a [H1 [H2 H3]]]].
+    exists A. intros ff. destruct (ff H2); try now auto.
+    now exists a. apply (H3 x); try now auto.
+Qed. 
+
+Lemma full_closed_and_dense {X : Set} (τ : @Topology X) :
+  closed τ (fun x => True) /\
+  dense τ (fun x => True). 
+Proof.
+  split.
+  - unfold closed.
+    assert ((fun x : X => ~ True) = (fun x : X => False)). 
+    { apply functional_extensionality. intros x.
+      apply prop_ext. tauto. } rewrite H.  
+    apply (empty τ).
+  - unfold dense. intros A Hop [a Ha].
+    now exists a.
+Qed. 
   
-
-
-(*************************************************************************)
-Lemma empty_observable : Observable (fun t => False).
-Proof. easy. Qed.
-
-Lemma full_observable : Observable  (fun t => True). 
+Theorem only_full_closed_and_dense {X : Set} (τ : @Topology X) :
+  forall S, (closed τ S /\ dense τ S) <-> (forall x, S x).
 Proof.
-  unfold Observable. intros t ff.
-  now exists ftbd.
+  intros S. split.
+  - intros [Hc Hd]. apply NNPP. rewrite not_forall_ex_not.
+    intros [a H].
+    assert (open τ (fun x => ~ S x)). now apply Hc.
+    destruct (Hd (fun x => ~ S x)); try now auto. now exists a.
+  - intros Hfull. assert (S = fun x => True). { apply functional_extensionality.
+    intros x. now apply prop_ext. } rewrite H.                                                    
+    now apply full_closed_and_dense.
+Qed. 
+
+Lemma s_dense {X : Set} (S : X -> Prop) (τ : @Topology X) :
+  (dense τ) (fun x => ~ ((closure S τ) x /\ ~ S x)).
+Proof.
+  apply NNPP. rewrite not_dense. intros [A [a [Ha [Hop H]]]].
+  assert (Hincl1 : forall t, A t -> closure S τ t /\ ~ S t).
+  { intros t H0. apply NNPP. now auto. }
+  assert (Hincl2 : forall t, S t -> (closure S τ t /\ ~ A t)).
+  { intros t H0. split.
+    + now apply closure_includes.
+    + intros ff. specialize (Hincl1 t ff). specialize (H t ff).
+      now auto. } 
+  assert (contr : ~ (forall C, (closed τ C) -> (forall b, S b -> C b) ->
+                          (forall t, (closure S τ) t -> C t))).
+  { intros ff.
+    assert (A = fun x => ~ ~ A x).
+    { apply functional_extensionality. intros x.
+      apply prop_ext. now rewrite <- dne. }
+    assert (closed τ (fun x => ~ A x)). 
+    { unfold closed. now rewrite <- H0. } 
+    assert (forall b, S b -> (fun x => ~ A x) b) by now firstorder.
+    specialize (ff (fun x => ~ A x) H1 H2).
+    simpl in *. destruct (Hincl1 a Ha) as [k1 k2]. 
+    now apply (ff a k1). } 
+    apply contr. now apply closure_smallest.
 Qed.
 
-Lemma union_observable : forall H : hprop,
-    (forall A, H A -> Observable A) ->
-    Observable (fun t => exists A, H A /\ A t).
+Theorem decomposition_theorem {X : Set} (τ : @Topology X) :
+  forall S, (exists C D, closed τ C /\ dense τ D /\
+               (forall x, S x <-> (C x  /\ D x))).
 Proof.
-  unfold Observable. intros H h t [A [ha At]].
-  destruct (h A ha t At) as [m [h1 h2]].
-  exists m. split; try now auto. 
-  intros t' pmt'. specialize (h2 t' pmt'). now exists A.
-Qed.
-
-Lemma intersection_observable : forall A1 A2,
-    Observable A1 -> Observable A2 ->
-    Observable (fun t => A1 t /\ A2 t).
-Proof.
-  unfold Observable. intros A1 A2 h1 h2 t [at1 at2].
-  destruct (h1 t at1) as [m1 [h11 h12]].
-  destruct (h2 t at2) as [m2 [h21 h22]].
-  assert (sh : fpr m1 m2 \/ fpr m2 m1)
-    by now apply (same_ext m1 m2 t).
-  destruct sh; [exists m2| exists m1 ]; split; auto; intros t' K;  
-  [ specialize (h12 t' (fpr_pref_pref m1 m2 t' H K)) 
-  | specialize (h22 t' (fpr_pref_pref m2 m1 t' H K))]; now auto.
-Qed.
-
-Definition trace_topology := Build_Topology trace
-                                      Observable
-                                      empty_observable
-                                      full_observable
-                                      union_observable
-                                      intersection_observable.
-
-
-Check trace_topology.
-
-Lemma safety_closed : forall π, Safety π <-> (closed trace_topology) π.
-Proof. easy. Qed.
+  intros S. exists (closure S τ), (fun x => ~ ((closure S τ) x /\ ~ S x)). 
+  split.
+  - now apply closure_is_closed.
+  - split.
+    + now apply  s_dense.
+    + intros x. split.
+      ++ intros Hs. split.
+         * now apply closure_includes. 
+         * now firstorder.
+      ++ intros [Hc Hconj]. rewrite de_morgan1 in Hconj. 
+         destruct Hconj; try now auto. now rewrite dne.
+Qed. 
 
