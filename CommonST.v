@@ -39,8 +39,8 @@ Definition rsat {K : level}
 
 
 Lemma neg_rsat {K : level} :
-    forall P π, ~ rsat P π <->
-           exists C t, sem K (C [ P ]) t /\ ~ π t.
+    forall P π, (~ rsat P π <->
+           (exists C t, sem K (C [ P ]) t /\ ~ π t)).
 Proof.
    unfold rsat. unfold sat. split.
   - intros r. rewrite not_forall_ex_not in r.
@@ -53,3 +53,24 @@ Proof.
 Qed.
 
 
+Definition beh {K : level} (P : prg K) : prop :=
+  fun b => sem K P b.
+
+Definition hsat {K : level}
+                (P : prg K)
+                (H : hprop) : Prop :=
+  H (beh P).
+
+Definition rhsat {K : level}
+                 (P : prg K)
+                 (H : hprop) : Prop :=
+  forall C, hsat ( C [ P ] ) H.
+
+Lemma neg_rhsat {K : level} :
+  forall P H,  (~ rhsat P H <-> ( exists (C : ctx K), ~ H (beh ( C [ P ] )))).
+Proof.
+  intros P H. split; unfold rhsat; intro H0;
+  [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
+Qed.   
+
+    
