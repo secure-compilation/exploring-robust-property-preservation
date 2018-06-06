@@ -94,38 +94,6 @@ Proof.
   unfold Liveness. intros ta m. pose proof many_continuations. now eauto.
 Qed.
 
-(* some notes about observable *)
-
-(* Definition trace_eq (t1 t2 : trace) : Prop := *)
-(*   forall m, (prefix m t1 -> prefix m t2). *)
-
-(* Lemma ref : forall t, trace_eq t t. *)
-(* Proof. easy. Qed. *)
-
-(* Lemma sym : forall t1 t2, trace_eq t1 t2 -> trace_eq t2 t1. *)
-(* Admitted.  *)
-
-(* Lemma trans : forall t1 t2 t3, trace_eq t1 t2 -> trace_eq t2 t3 -> trace_eq t1 t3. *)
-(* Admitted. *)
-(* (* Proof. *) *)
-(* (*   intros t1 t2 t3 H1 H2 m. split; intros hm. *) *)
-(* (*   + rewrite <- (H2 m). now apply H1. *) *)
-(* (*   + rewrite (H1 m). now apply H2. *) *)
-(* (* Qed.  *) *)
-
-(* Add Parametric Relation : trace trace_eq  *)
-(*                           reflexivity   proved by ref *)
-(*                           symmetry      proved by sym  *)
-(*                           transitivity  proved by trans *)
-(*     as finitely_eq. *)
-
-Lemma obs_lemma : forall t, Observable (fun b => exists m, prefix m b /\ ~ prefix m t).
-Proof.
-  unfold Observable. intros t t0 H.
-  destruct H as [m [H1 H2]]. exists m. split; try now auto. 
-  intros t' H'. now exists m. 
-Qed.    
-
 
 (*******************************************************)
 

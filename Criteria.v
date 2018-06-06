@@ -139,7 +139,30 @@ Proof.
     now exists C.
 Qed.
 
+(* CA: this condition is trace equality 
+       if one of the two traces is finite then 
+       also the other one is finite. 
+ *)
+Lemma rewriting_lemma : forall t1 t2,
+    (forall m, prefix m t1 -> prefix m t2) ->
+    (forall π, π t1 -> π t2).
+Admitted.
 
 Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) ->
                     (forall P π, RP P π).
-Admitted.
+Proof.
+  intros hr P π. rewrite contra_RP.
+  intros [C' [t [hsem ht]]].
+  specialize (hr P (fun b => exists m, prefix m b /\ ~ prefix m t)). 
+  assert (Observable (fun b => exists m, prefix m b /\ ~ prefix m t)).
+  { unfold Observable. intros t0 [m [h1 h2]].
+    exists m. split; try now auto.
+    intros t' h'. now exists m. }
+  rewrite contra_RP in hr. destruct (hr H) as [C [t' [k1 k2]]]; clear H. 
+  exists C',t. split; try now auto. intros [m [hc1 hc2]]. now auto. 
+  exists C, t'. split; try now auto.
+  intros ff. apply ht.
+  apply (rewriting_lemma t' t). intros m hm.
+  rewrite not_ex_forall_not in k2. specialize (k2 m). rewrite <- not_imp in k2.
+  apply NNPP in k2. now auto. assumption.
+Qed. 
