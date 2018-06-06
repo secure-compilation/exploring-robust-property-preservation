@@ -155,9 +155,10 @@ Lemma rewriting_lemma : forall t1 t2,
     (forall π, π t1 -> π t2).
 Admitted.
 
-Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) ->
+Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) <->
                     (forall P π, RP P π).
 Proof.
+  split; try now firstorder.
   intros hr P π. rewrite contra_RP.
   intros [C' [t [hsem ht]]].
   specialize (hr P (fun b => exists m, prefix m b /\ ~ prefix m t)). 
@@ -173,6 +174,9 @@ Proof.
   rewrite not_ex_forall_not in k2. specialize (k2 m). rewrite <- not_imp in k2.
   apply NNPP in k2. now auto. assumption.
 Qed. 
+
+Theorem RobsP_RC : (forall P π, Observable π -> RP P π) <-> RC.
+Proof. now rewrite RobsP_RPP, RC_RPP. Qed. 
 
 (******************************************************************************)
 
