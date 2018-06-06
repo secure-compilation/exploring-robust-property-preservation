@@ -226,13 +226,6 @@ Proof.
          unfold lifting, "<<" in ff. now apply ((h2 t hmt) (ff t ht)).
 Qed.
 
-Lemma inclusion_lemma : forall T T',
-    spref (fun m => exists t, T t /\ prefix m t) T' ->
-    (forall t m, T t -> prefix m t -> (exists t', T' t' /\ prefix m t')).
-Proof.
-  intros T T' hspref t m ht hm. apply (hspref m). now exists t.
-Qed.
-     
 
 (** *HyperLiveness *)
 Definition HLiv (H : hprop) : Prop :=

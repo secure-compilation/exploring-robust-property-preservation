@@ -5,7 +5,7 @@ Require Import Properties.
 Require Import FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalFacts.
 
-Hypothesis prop_ext : prop_extensionality.
+Axiom prop_ext : prop_extensionality.
 
 Record Topology {X : Set} :=
   {

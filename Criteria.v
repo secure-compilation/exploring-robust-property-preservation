@@ -5,12 +5,13 @@ Require Import CommonST.
 Require Import TraceModel.
 Require Import Robustdef.
 Require Import Properties.
+Require Import Topology.
 
 (** *property free criteria *)
 
 
 (*********************************************************)
-(* RPP <-> RC                                            *)
+(* Criterium for all Properties Preservation             *)
 (*********************************************************)
 
 Definition RC : Prop :=
@@ -54,7 +55,7 @@ Qed.
 
 
 (*********************************************************)
-(* RSP <-> RSC                                           *)
+(* Criterium for Safety Properties Preservation          *)
 (*********************************************************)
 
 Definition RSC : Prop :=
@@ -96,7 +97,7 @@ Qed.
 (* The reverse direction doesn't hold *)
 
 (*********************************************************)
-(* RLP <-> RLC                                           *)
+(* Criterium for Liveness Properties Preservation        *)
 (*********************************************************)
 Definition Liveness (π : prop) : Prop :=
   forall m : finpref, exists t : trace,
@@ -139,6 +140,12 @@ Proof.
     now exists C.
 Qed.
 
+(*********************************************************)
+(* Criterium for Observable Properties Preservation  
+    it's the same as all Properties Preservation         *)
+(*********************************************************)
+
+
 (* CA: this condition is trace equality 
        if one of the two traces is finite then 
        also the other one is finite. 
@@ -166,3 +173,148 @@ Proof.
   rewrite not_ex_forall_not in k2. specialize (k2 m). rewrite <- not_imp in k2.
   apply NNPP in k2. now auto. assumption.
 Qed. 
+
+(******************************************************************************)
+
+(** *hyperproperty free criteria *)
+
+Require Import FunctionalExtensionality.
+Require Import Logic.ClassicalFacts.
+
+
+(*********************************************************)
+(* Criterium for all HyperProperties Preservation        *)
+(*********************************************************)
+Definition HRC : Prop :=
+  forall P C',
+    (exists C, (forall t,  sem tgt ( C' [ P ↓ ]) t  <->  sem src ( C [ P ]) t)).
+
+Lemma Hequiv_lemma : forall (π1 π2 : prop) (H : hprop),
+     (forall t, π1 t <-> π2 t) ->
+     (H π1 <-> H π2).
+Proof.
+  intros π1 π2 H H0. assert (π1 = π2).
+  { apply functional_extensionality.
+    intros t. specialize (H0 t). now apply prop_ext. }
+  now subst.
+Qed.  
+
+Theorem HRC_RHP : HRC <-> forall P H, RHP P H.
+Proof.
+  split.
+  - intros H0 P H. rewrite contra_RHP. intros [C' H1].
+    specialize (H0 P C'). destruct H0 as [C H0].
+    exists C. intros ff. eapply Hequiv_lemma in ff.
+    apply (H1 ff). now auto.
+  - unfold HRC. intros hrp P C'.
+    specialize (hrp P (fun π => π <>  (sem tgt ( C' [ P ↓ ])))).
+    rewrite contra_RHP in hrp. destruct hrp as [C H0].
+    exists C'. rewrite <- dne. now auto.
+    rewrite <- dne in H0. exists C. intros t.
+    now  rewrite <- H0. 
+Qed.
+
+(*********************************************************)
+(* Criterium for SSC HyperProperties Preservation        *)
+(*********************************************************)
+
+Definition ssc_cr : Prop :=
+  forall P C', 
+  exists C, forall b,  sem tgt ( C' [ P ↓ ]) b ->  sem src ( C [ P ]) b.
+
+Lemma SSC_criterium :
+  (forall P H, SSC H -> RHP P H) <-> ssc_cr.
+Proof.
+  split.
+  - unfold ssc_cr. intros h0 P C'.
+    assert  (s : SSC (fun π => ~(forall b,  sem tgt ( C' [ P ↓ ]) b -> π b))).
+    { unfold SSC. intros π h1 k Hk ff.
+      assert (foo : forall b,  sem tgt ( C' [ P ↓ ]) b -> π b) by now auto.
+      now apply (h1 foo). }   
+    specialize (h0 P (fun π => ~(forall b,  sem tgt ( C' [ P ↓ ]) b -> π b)) s).
+    rewrite contra_RHP in h0.
+    destruct h0 as [C h1]. exists C'. 
+    now rewrite <- dne. rewrite <- dne in h1.
+    now exists C.
+  - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
+    destruct (ssc P C') as [C h0]. exists C. now firstorder.
+Qed.
+
+(*********************************************************)
+(* Criterium for HyperSafety Preservation                *)
+(*********************************************************)
+
+Definition HSRC : Prop :=
+  forall P C' M, Observations M ->
+            spref M (sem tgt ( C' [ P ↓ ]))  ->
+            exists C, spref M (sem src ( C [ P])).
+
+Theorem RHSP_HSRC : (forall P H, HSafe H -> RHP P H) <-> HSRC.
+Proof.
+  split.
+  - unfold HSRC. intros h P C' M h0 h1.
+    assert (hs : HSafe (fun π => ~ spref M π)).
+    { unfold HSafe. intros T hm. rewrite <- dne in hm.
+      exists M. split; now auto. }
+    specialize (h P (fun π => ~ spref M π) hs). rewrite contra_RHP in h.
+    destruct h as [C hh]. now exists C'. exists C. now apply NNPP. 
+  - intros hsrc P H hs. rewrite contra_RHP. intros [C' h0].
+    destruct (hs (fun b : trace => sem tgt ( C' [ P ↓ ]) b)) as [M [hm0 [hm1 hm2]]].
+    assumption. destruct (hsrc P C' M) as [C hh]; auto. 
+    exists C. now apply hm2.
+Qed.
+
+
+(*********************************************************)
+(* Criterium for HyperLiveness Preservation      
+   is the same as the one for 
+   all Hyperproperties Preservation                      *)
+(*********************************************************)
+
+Definition Embedding (M : finpref -> Prop) : prop :=
+  fun t => exists m, M m /\ t = embedding m.
+
+Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (constant_trace an_event).
+Proof.
+  intros M hf. inversion hf. destruct H as [h1 h2].
+  assert (inf (constant_trace an_event)) by now apply inf_constant_trace.
+  assert (fin (embedding x)) by now apply embed_fin.
+  rewrite <- h2 in H0.  now apply (H H0).
+Qed.  
+
+Lemma bad_HyperLiv : forall C' P,
+    HLiv (fun π : prop => π <> (sem tgt ( C' [ P ↓ ] ))).
+Proof.
+  unfold HLiv. intros C' P M obsM.
+  assert (sem tgt (C' [P ↓]) = Embedding M \/  sem tgt (C' [P ↓]) <> Embedding M)
+    by now apply classic.
+  destruct H.
+  + rewrite H; clear H. exists (fun t => (exists m, M m /\ t = embedding m) \/ t = constant_trace an_event).
+    split.
+    ++ unfold spref. intros m hm. exists (embedding m).
+       split.
+       +++ left. now exists m. 
+       +++ now apply embed_pref.
+     ++ intros hf. apply (infinite_trace_not_in_embed M). 
+        rewrite <- hf. now right.
+  + exists (Embedding M). split; try now auto.
+    unfold spref, Embedding. intros m hm.
+    exists (embedding m). split.
+    ++ now exists m.
+    ++ now apply embed_pref. 
+Qed. 
+
+Theorem RHLP_RHP : 
+    (forall P H, HLiv H -> RHP P H) <-> (forall P H, RHP P H).
+Proof.
+ split; try now firstorder.
+ intros rhlp P H. rewrite contra_RHP. intros [C' K].
+ specialize (rhlp P (fun π : prop => π <> sem tgt (C' [ P ↓]) ) (bad_HyperLiv C' P)).
+ rewrite contra_RHP in rhlp.
+ destruct rhlp as [C KK]. exists C'. now rewrite <- dne. apply NNPP in KK.
+ exists C. now rewrite KK.
+Qed.
+
+Theorem RHLP_HRC : 
+    (forall P H, HLiv H -> RHP P H) <-> HRC.
+Proof. now rewrite (RHLP_RHP), (HRC_RHP). Qed. 
