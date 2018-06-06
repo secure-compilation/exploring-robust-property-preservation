@@ -24,6 +24,111 @@ Definition Liveness (π : prop) : Prop :=
 
 (*******************************************************)
 
+(* some notes about safety *)
+
+(* Safety a la Deepak *)
+Definition Safety' (π : prop) : Prop:=
+  exists π': finpref -> Prop,
+  forall t:trace, ~(π t) <-> (exists m, prefix m t /\ π' m).
+
+Lemma safety_safety' : forall π, Safety π <-> Safety' π.
+Proof.
+   unfold Safety, Safety'. intro π. split; intro H.
+  - exists (fun m => forall t, prefix m t -> ~π t).
+    intros t. split; intro H'.
+    + specialize (H t H'). destruct H as [m [H1 H2]].
+      exists m. split. assumption. intros t' H. apply H2. assumption.
+    + destruct H' as [m [H1 H2]]. apply H2. assumption.
+  - intros t H0. destruct H as [π' H].
+    rewrite H in H0. destruct H0 as [m [H1 H2]].
+    exists m. split; try now auto. 
+    intros. rewrite H. now exists m. 
+Qed.
+
+Lemma safety_bad_finite_prefix : forall π, Safety π ->
+  forall t:trace, ~(π t) -> (exists m:finpref, prefix m t /\ ~(π (embedding m))).
+Proof.
+  unfold Safety. intros π H t H0.
+  specialize (H t H0). destruct H as [m [H1 H2]].
+  exists m. split. assumption.
+  apply H2. now apply embed_pref.
+Qed.
+
+(* some notes about liveness *)
+
+(* In this model a property is Liveness iff it includes all finite traces *)
+(* - intuition: can always turn finpref into finite trace by adding fstop *)
+Lemma all_fin_in_all_liv :
+  forall π, Liveness π <->
+   (forall t, fin t -> π t).
+Proof.
+  unfold Liveness. intros π. split.
+  - intros Hl t Hfin.
+    destruct (single_cont_consequence _ Hfin) as [m H].
+    destruct (Hl m) as [t' [H1 H2]]. erewrite H; eauto.
+  - intros H m. exists (embedding m). split.
+    + now apply embed_pref.
+    + apply H. now apply embed_fin.
+Qed.
+
+(* or equivalently if it excludes only infinite traces *)
+Lemma not_in_liv_inf :
+  forall π, Liveness π <->
+       (forall t, ~ π t -> inf t).
+Proof.
+  intros π. unfold Liveness, inf. split.
+  - intros Hl t nt Hfin. apply nt.
+    now apply all_fin_in_all_liv.
+  - intros H m. exists (embedding m). split.
+    + now apply embed_pref.
+    + apply NNPP. intros ff. specialize (H (embedding m) ff).
+      apply H. now apply embed_fin.
+Qed.
+
+(* an example: the property excluding one single infinite trace
+   is Liveness
+ *)
+Lemma inf_excluded_is_liv :
+  forall ta, inf ta -> Liveness (fun b => b <> ta).
+Proof.
+  unfold Liveness. intros ta m. pose proof many_continuations. now eauto.
+Qed.
+
+(* some notes about observable *)
+
+(* Definition trace_eq (t1 t2 : trace) : Prop := *)
+(*   forall m, (prefix m t1 -> prefix m t2). *)
+
+(* Lemma ref : forall t, trace_eq t t. *)
+(* Proof. easy. Qed. *)
+
+(* Lemma sym : forall t1 t2, trace_eq t1 t2 -> trace_eq t2 t1. *)
+(* Admitted.  *)
+
+(* Lemma trans : forall t1 t2 t3, trace_eq t1 t2 -> trace_eq t2 t3 -> trace_eq t1 t3. *)
+(* Admitted. *)
+(* (* Proof. *) *)
+(* (*   intros t1 t2 t3 H1 H2 m. split; intros hm. *) *)
+(* (*   + rewrite <- (H2 m). now apply H1. *) *)
+(* (*   + rewrite (H1 m). now apply H2. *) *)
+(* (* Qed.  *) *)
+
+(* Add Parametric Relation : trace trace_eq  *)
+(*                           reflexivity   proved by ref *)
+(*                           symmetry      proved by sym  *)
+(*                           transitivity  proved by trans *)
+(*     as finitely_eq. *)
+
+Lemma obs_lemma : forall t, Observable (fun b => exists m, prefix m b /\ ~ prefix m t).
+Proof.
+  unfold Observable. intros t t0 H.
+  destruct H as [m [H1 H2]]. exists m. split; try now auto. 
+  intros t' H'. now exists m. 
+Qed.    
+
+
+(*******************************************************)
+
 Definition hprop := prop -> Prop.
 
 (* Set of finite prefixes *)
@@ -52,7 +157,7 @@ Qed.
 
 
 (*********************************************************)
-(** SubSetClosed                                        *)
+(** SubSetClosed                                         *)
 (*********************************************************)
 
 Definition subset (π1 π2 : prop) : Prop :=
@@ -152,6 +257,14 @@ Proof.
          destruct (h' m) as [t [ht hmt]]. now right.
          unfold lifting, "<<" in ff. now apply ((h2 t hmt) (ff t ht)).
 Qed.
+
+Lemma inclusion_lemma : forall T T',
+    spref (fun m => exists t, T t /\ prefix m t) T' ->
+    (forall t m, T t -> prefix m t -> (exists t', T' t' /\ prefix m t')).
+Proof.
+  intros T T' hspref t m ht hm. apply (hspref m). now exists t.
+Qed.
+     
 
 (** *HyperLiveness *)
 Definition HLiv (H : hprop) : Prop :=
