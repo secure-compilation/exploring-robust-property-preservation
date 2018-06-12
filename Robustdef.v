@@ -82,7 +82,7 @@ Proof.
     now auto.
 Qed.                               
 
-(** *RObust Preservation of a class of properties*)
+(** *Robust Preservation of a class of HyperProperties*)
 Definition RHclassP (class : hprop -> Prop) (P : prg src) (H : hprop) : Prop :=
   class H -> RHP P H.
 
@@ -103,4 +103,55 @@ Proof.
   rewrite contra_RHP in Hrxp.
   destruct Hrxp as [C Hdif]; try now exists C'.
   apply NNPP in Hdif. exists C. now rewrite Hdif.  
+Qed.
+
+
+(** *Relational *)
+
+Definition r2RPP : Prop :=  forall P1 P2 (r : rel_prop),
+    rsat2 P1 P2 r -> rsat2 (P1 ↓) (P2 ↓) r .
+
+Lemma r2RPP' :
+  r2RPP <->
+  (forall P1 P2 r,
+  forall Ct t1 t2, sem tgt ( Ct [P1 ↓] )  t1 ->
+              sem tgt ( Ct [P2 ↓] )  t2 ->
+               ~ (r t1 t2) ->
+  exists Cs t1' t2', sem src (Cs [ P1 ]) t1' /\
+                sem src (Cs [ P2 ]) t2' /\ ~ (r t1' t2')).
+Proof.
+  unfold r2RPP, rsat2, sat2. split.
+  - intros H P1 P2 r Ct t1 t2 H0 H1 H2. specialize (H P1 P2 r).
+    rewrite imp_equiv in H. destruct H as [H | H].
+    + rewrite not_forall_ex_not in H. destruct H as [Cs H].
+      rewrite not_forall_ex_not in H. destruct H as [tt1 H].
+      rewrite not_forall_ex_not in H. destruct H as [tt2 H].
+      rewrite not_imp in H. destruct H as [k1 k2].
+      rewrite not_imp in k2. destruct k2 as [k2 k3].
+      now exists Cs, tt1, tt2.
+   + exfalso. now apply (H2 (H Ct t1 t2 H0 H1)).
+  - intros H P1 P2 r H0 C t1 t2 H1 H2. apply NNPP. intros ff.
+    specialize (H P1 P2 r C t1 t2 H1 H2 ff); destruct H as [Cs [tt1 [tt2 [h0 [h1 h2]]]]].
+    now apply (h2 (H0 Cs tt1 tt2 h0 h1)).
+Qed.
+
+
+Definition teq_preservation : Prop :=
+  forall P1 P2, (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
+           (forall Ct t, sem tgt (Ct [P1 ↓]) t <-> sem tgt (Ct [P2 ↓]) t).
+
+Lemma teq' : teq_preservation <-> (forall P1 P2, 
+ (exists Ct t, ~ (sem tgt (Ct [P1 ↓]) t  <-> sem tgt (Ct [P2 ↓]) t)) ->
+ (exists Cs t', ~ (sem src (Cs [P1]) t'  <-> sem src (Cs [P2]) t'))).
+Proof.
+  unfold teq_preservation. split.
+  - intros He P1 P2. specialize (He P1 P2). rewrite imp_equiv in He.
+    destruct He as [He | He]; intros [Ct [t Hdiff]].
+    + rewrite not_forall_ex_not in He. destruct He as [Cs Hd].
+      rewrite not_forall_ex_not in Hd. destruct Hd as [t' Hd].
+      now exists Cs,t'.
+    + exfalso. apply Hdiff. now apply He.
+  - intros H P1 P2 Hsrc Ct t. apply NNPP. intros Hf.
+    destruct (H P1 P2) as [Cs [t' Hc]].
+    now exists Ct, t. apply Hc. now apply Hsrc.
 Qed.

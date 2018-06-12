@@ -321,4 +321,58 @@ Qed.
 
 Theorem RHLP_HRC : 
     (forall P H, HLiv H -> RHP P H) <-> HRC.
-Proof. now rewrite (RHLP_RHP), (HRC_RHP). Qed. 
+Proof. now rewrite (RHLP_RHP), (HRC_RHP). Qed.
+
+
+(*************************************************************************)
+(** *Relational                                                          *)
+(*************************************************************************)
+
+Definition r2RC := forall Ct P1 P2 t1 t2,
+  sem tgt (Ct [P1 ↓]) t1 ->
+  sem tgt (Ct [P2 ↓]) t2 ->
+  exists Cs, sem src (Cs [P1]) t1 /\ sem src (Cs [P2]) t2.
+
+Lemma r2RPP_r2RC : r2RPP <-> r2RC.
+Proof.
+  rewrite r2RPP'. unfold r2RPP, r2RC. split.
+  - intros H Ct P1 P2 t1 t2 H1 H2.
+    specialize (H P1 P2 (fun t1' t2' => t1' <> t1 \/ t2' <> t2)).
+    assert(Htriv: ~ (t1 <> t1 \/ t2 <> t2)) by tauto.
+    simpl in H. specialize (H Ct t1 t2 H1 H2 Htriv).
+    destruct H as [Cs [t1' [t2' [H1' [H2' Heq]]]]].
+    exists Cs. rewrite de_morgan2 in Heq. destruct Heq as [Heq1 Heq2].
+    apply NNPP in Heq1. apply NNPP in Heq2. subst. tauto.
+  - intros H P1 P2 r Ct t1 t2 H1 H2 Hr.
+    specialize (H Ct P1 P2 t1 t2 H1 H2).
+    destruct H as [Cs [G1 G2]]. now exists Cs, t1, t2.
+Qed.
+
+(* Robust Preservation of relations over properties =>
+   Robust Property Preservation 
+*)
+Lemma r2RPP_RPP : r2RPP -> forall P π, RP P π.
+Proof.
+  unfold r2RPP, RP, rsat, rsat2, sat, sat2.
+  intros H P π Hpi Ct t H'. specialize (H P P (fun t1 _ => π t1)).
+  simpl in H.
+  assert(Hpi1 : forall C t1 t2 ,
+                 sem src (C [P]) t1 -> sem src (C [P]) t2 -> π t1) by eauto.
+  specialize (H Hpi1 Ct t t). tauto.
+Qed.
+
+
+Definition two_rRSC : Prop :=
+  forall P1 P2 (r : finpref -> finpref -> Prop),
+    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
+                  psem (Cs [P2]) m2 ->
+                  r m1 m2) ->
+     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
+                  psem (Ct [P2 ↓]) m2 ->
+                  r m1 m2)).
+
+
+(*************************************************************************)
+(*                                                                       *)
+(*************************************************************************)
+

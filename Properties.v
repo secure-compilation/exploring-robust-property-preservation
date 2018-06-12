@@ -2,7 +2,7 @@ Require Import Events.
 Require Import TraceModel. 
 Require Import ClassicalExtras.
 
-(* CA: in this file all and only defn of prop, Hprop,
+(* CA: in this file all and only defn of prop, Hprop, relation on prop
        and main classes of these *)
 (*******************************************************)
 
@@ -231,4 +231,8 @@ Qed.
 Definition HLiv (H : hprop) : Prop :=
   forall M, Observations M ->
        (exists T, spref M T /\ H T).
+
+(*******************************************************)
+
+Definition rel_prop := trace -> trace -> Prop.
 

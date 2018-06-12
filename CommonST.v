@@ -73,4 +73,25 @@ Proof.
   [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
 Qed.   
 
-    
+Definition sat2 {K : level} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
+  forall t1 t2, sem K P1 t1 -> sem K P2 t2 -> r t1 t2.
+
+Lemma neg_sat2 {K : level} : forall P1 P2 r,
+    ~ sat2 P1 P2 r <-> (exists t1 t2, sem K P1 t1 /\ sem K P2 t2 /\ ~ r t1 t2).
+Proof.
+  unfold sat2. intros P1 P2 r. split.
+  +  intros H. rewrite not_forall_ex_not in H.
+    destruct H as [t1 H]. rewrite not_forall_ex_not in H.
+    destruct H as [t2 H]. rewrite not_imp in H. destruct H as [H1 H2].
+    rewrite not_imp in H2. destruct H2 as [H2 H3].
+    now exists t1, t2.
+  + intros [t1 [t2  [H1 [H2 H3]]]]. rewrite not_forall_ex_not.
+    exists t1. rewrite not_forall_ex_not. exists t2.
+    rewrite not_imp. split.
+    ++ assumption.
+    ++ rewrite not_imp. now auto.
+Qed. 
+
+
+Definition rsat2 {K : level} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
+  forall C, sat2 (C [ P1 ]) (C [ P2 ]) r.  
