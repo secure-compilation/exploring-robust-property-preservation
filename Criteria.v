@@ -371,8 +371,46 @@ Definition two_rRSC : Prop :=
                   psem (Ct [P2 ↓]) m2 ->
                   r m1 m2)).
 
+(*************************************************************************)
+(* Robust 2-rel HyperProperty Pres => trace equivalence pres             *)
+(*************************************************************************)
+
+Definition r2HRP : Prop :=
+  forall P1 P2 r, (hrsat2 P1 P2 r) -> (hrsat2 (P1 ↓) (P2 ↓) r).
+
+Lemma r2HRP_teq : r2HRP -> teq_preservation.
+Proof.
+  unfold r2HRP, hrsat2, hsat2, teq_preservation. intros Hr P1 P2 Hsrc Ct t.
+  specialize (Hr P1 P2 (fun π1 π2 => forall t,  π1 t <-> π2 t)).
+  simpl in Hr. specialize (Hr Hsrc). now apply (Hr Ct t).
+Qed.
+
+(** *TODO: Criterium?*)
 
 (*************************************************************************)
-(*                                                                       *)
+(* If the source language is deterministic than
+    r2RC =>  trace equivalence preservation                          *)
 (*************************************************************************)
+
+
+Section source_determinism.
+
+  Hypothesis src_det : forall P t1 t2, sem src P t1 -> sem src P t2 -> t1 = t2.
+
+  Theorem two_RSC_teq_preservation : r2RC -> teq_preservation.
+  Proof.
+    unfold r2RC. rewrite teq'. intros H P1 P2 [Ct [t' H']].   
+    rewrite not_iff in H'. destruct H' as [[H1' nH2'] | [nH1' H2']].
+    - destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2']. 
+      destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
+      exists Cs, t2. intros Hf. rewrite <- Hf in H2.
+      specialize (src_det (Cs [P1] ) t' t2 H1 H2). now subst. 
+    - destruct (non_empty_sem tgt (Ct [P1 ↓])) as [t1 H1']. 
+      destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
+      exists Cs, t'. intros Hf. rewrite <- Hf in H2. 
+      specialize (src_det (Cs [P1] ) t1 t' H1 H2). now subst.
+   Qed.
+  
+End source_determinism.
+
 

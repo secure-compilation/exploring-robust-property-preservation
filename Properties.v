@@ -235,4 +235,4 @@ Definition HLiv (H : hprop) : Prop :=
 (*******************************************************)
 
 Definition rel_prop := trace -> trace -> Prop.
-
+Definition rel_hprop:= prop  -> prop -> Prop.

@@ -94,4 +94,12 @@ Qed.
 
 
 Definition rsat2 {K : level} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
-  forall C, sat2 (C [ P1 ]) (C [ P2 ]) r.  
+  forall C, sat2 (C [ P1 ]) (C [ P2 ]) r.
+
+
+Definition hsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
+   r (sem K P1) (sem K P2).
+
+Definition hrsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
+  forall C, r (sem K (C [P1])) (sem K (C [P2])).
+
