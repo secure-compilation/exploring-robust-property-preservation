@@ -1,3 +1,4 @@
+
 (*CA: In this file all and only definitions and lemmas about traces *)
 
 Require Import Events.
@@ -454,6 +455,20 @@ Proof.
     now exists e.
 Qed.
 
+Lemma fpr_stop_equal : forall m1 m2,
+    fpr m1 m2 ->
+    fstopped m1 = true ->
+    m1 = m2.
+Proof.
+  intros m1. induction m1; intros m2 Hpref Hstop.
+  + now destruct m2. 
+  + inversion Hstop.
+  + destruct m2; try now auto.
+    inversion Hpref. subst. simpl in Hstop.
+    now rewrite (IHm1 m2 H0 Hstop).
+Qed.
+
+
 (**********************************************************************)
 
 (** *m[fstop/ftbd] *)
@@ -470,6 +485,14 @@ Notation "m [fstop/ftbd]" := (same_events_with_stop m)
 Lemma with_stop_fstopped : forall m,
     fstopped (m[fstop/ftbd]) = true.
 Proof. now induction m. Qed.
+
+Lemma if_fstopped_equal : forall m,
+    fstopped m = true ->
+    m = m[fstop/ftbd].
+Proof.
+  intros m Hstop. induction m; try now auto.
+  simpl in Hstop. simpl. now rewrite <- (IHm Hstop).
+Qed. 
 
 Lemma embedding_is_the_same : forall m,
     embedding m =
@@ -507,7 +530,7 @@ Proof.
   induction m0; intros mm Hfpr Hstop; try now auto.
   simpl in Hstop. destruct mm; try now auto.
   inversion Hfpr. subst. simpl. split; now auto. 
-Qed. 
+Qed.
 
 (*******************************************************************************)
 
