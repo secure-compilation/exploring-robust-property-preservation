@@ -3,9 +3,9 @@
 
 ClassicalExtras.v
 Events.v
-CommonST.v
 TraceModel.v
 Properties.v
+CommonST.v
 Topology.v
 TopologyTrace.v
 Robustdef.v

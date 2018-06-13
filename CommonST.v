@@ -103,3 +103,20 @@ Definition hsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
 Definition hrsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
   forall C, r (sem K (C [P1])) (sem K (C [P2])).
 
+(**************************************************************************)
+
+Definition input_totality {K : level} : Prop :=
+  forall (P : prg K) m e1 e2,
+    is_input e1  -> is_input e2 -> fstopped m = false ->
+    psem P (fsnoc m e1) -> psem P (fsnoc m e2). 
+
+
+Definition determinacy {K : level} : Prop :=
+  forall (P : prg K) t1 t2,
+    sem K P t1 -> sem K P t2 -> traces_match t1 t2.
+
+Definition semantic_safety_like {K : level} : Prop :=
+  forall t P,
+    ~ sem K P t -> inf t ->
+    (exists m ebad, psem P m /\ prefix (fsnoc m ebad) t /\ ~ psem P (fsnoc m ebad)).
+

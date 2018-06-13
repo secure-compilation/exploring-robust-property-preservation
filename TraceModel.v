@@ -509,3 +509,14 @@ Proof.
   inversion Hfpr. subst. simpl. split; now auto. 
 Qed. 
 
+(*******************************************************************************)
+
+Axiom is_input : event -> Prop.
+
+Definition traces_match (t1 t2 : trace) : Prop := 
+ t1 = t2 \/
+                                          
+(exists (m : finpref) (e1 e2 : event),
+   is_input e1 /\ is_input e2 /\  e1 <> e2 /\
+   fstopped m = false /\ prefix (fsnoc m e1) t1 /\ prefix (fsnoc m e2) t2).
+   
