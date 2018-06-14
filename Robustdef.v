@@ -105,6 +105,37 @@ Proof.
   apply NNPP in Hdif. exists C. now rewrite Hdif.  
 Qed.
 
+Definition class_lift (H : prop -> Prop) : hprop -> Prop :=
+  fun (h : hprop) => exists π, H π /\ h = lifting π.
+
+(* RXP <=> R[X]P *)
+Lemma robust_lift_lemma : forall (prop_class : prop -> Prop),
+    (forall P π, prop_class π -> RP P π) <->
+    (forall P h, (class_lift prop_class) h -> RHP P h).
+Proof.
+  intros class. unfold RP, rhsat, rsat, hsat, sat. split.
+  + intros Hrp P h [π [Hclass Heq]] Hpremise Ct. 
+    specialize (Hrp P π Hclass). unfold lifting, "<<" in *. 
+     rewrite Heq in *.
+    now firstorder.
+  + intros Hrp P π Hclass premise.
+    assert (class_lift class (lifting π)) by now exists π.
+    specialize (Hrp P (lifting π) H).    
+    unfold RHP, rhsat, hsat, lifting, "<<" in *. 
+    now firstorder.
+Qed.
+  
+(* Robust Preservation of SSC => RPP *)
+Lemma RSSCP_RPP : (forall P H, SSC H -> RHP P H) -> (forall P π, RP P π).
+Proof.
+  assert ((forall P π, RP P π) <-> (forall P π, (fun _ => True) π -> RP P π)) by firstorder.
+  rewrite H. rewrite robust_lift_lemma. intros Hssc P h [π [foo Heq]].
+  assert (SSC h).
+  { apply SSC_iff. exists (fun μ => (forall t, μ t <-> π t)). 
+    intros μ. rewrite Heq. unfold lifting, "<<" in *.
+    now firstorder. }
+  now apply Hssc.
+Qed. 
 
 (** *Relational *)
 

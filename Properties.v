@@ -200,11 +200,11 @@ Qed.
 
 (** *HyperSafety *)
 
-(* CA: TODO try to prove the viceversa *)
 Definition HSafe (H : hprop) : Prop :=
   forall T, ~ H T -> (exists M, Observations M /\ spref M T /\
                      (forall T', spref M T' -> ~ H T')).
 
+(* CA: TODO try to prove the viceversa *)
 Lemma safety_lifting : forall π, Safety π -> HSafe (lifting π).
 Proof.
   intros π. unfold Safety, HSafe.

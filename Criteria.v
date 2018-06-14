@@ -99,10 +99,6 @@ Qed.
 (*********************************************************)
 (* Criterium for Liveness Properties Preservation        *)
 (*********************************************************)
-Definition Liveness (π : prop) : Prop :=
-  forall m : finpref, exists t : trace,
-      (prefix m t /\ π t).
-
 
 (* Robust liveness compilation criterium *)
 Definition RLC : Prop :=
@@ -203,6 +199,7 @@ Proof.
   now subst.
 Qed.  
 
+
 Theorem HRC_RHP : HRC <-> forall P H, RHP P H.
 Proof.
   split.
@@ -243,6 +240,7 @@ Proof.
   - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
     destruct (ssc P C') as [C h0]. exists C. now firstorder.
 Qed.
+
 
 (*********************************************************)
 (* Criterium for HyperSafety Preservation                *)
