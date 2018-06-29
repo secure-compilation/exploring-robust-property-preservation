@@ -412,3 +412,81 @@ Section source_determinism.
 End source_determinism.
 
 
+
+(*************************************************************************)
+(* Robust Relational Hyperproperty Preservation                          *)
+(*************************************************************************)
+
+(** *Robust Relational Hyperproperty Preservation*)
+Definition rRHP : Prop :=
+  forall R : (prg src  ->  prop) -> Prop, 
+    (forall Cs, R (fun P  => sem src (Cs [ P] ) )) ->
+    (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )). 
+
+(** *Relational Hyperproperty Robust Compilation *)
+Definition rRHC : Prop :=
+  forall Ct, exists Cs,  (forall P, sem src (Cs [P]) = sem tgt (Ct [P ↓])).
+
+Theorem rRHP_rRHC : rRHP <-> rRHC.
+Proof.
+  unfold rRHP, rRHC. split.
+  - intros hrrhp Ct. apply NNPP. intros ff.
+    rewrite not_ex_forall_not in ff.  
+    specialize (hrrhp (fun f => exists Cs, forall P, f P = sem src (Cs [ P ]) )). 
+    simpl in *. 
+    assert (hh : (forall Cs, exists Cs0, forall P, sem src (Cs [P]) = sem src (Cs0 [ P ]))).    
+    { intros Cs. now exists Cs. }   
+    specialize (hrrhp hh); clear hh.  
+    destruct (hrrhp Ct) as [Cs h]. 
+    specialize (ff Cs). now apply ff.        
+  - intros h R hcs Ct. destruct (h Ct) as [Cs h0]; clear h.
+    specialize (hcs Cs).
+    assert (hh :  (fun P : prg src => sem src (Cs [P])) =
+                  (fun P : prg src => sem tgt (Ct [P ↓])) ).
+    { apply functional_extensionality.
+      intros P. specialize (h0 P). now auto. }
+    now rewrite <- hh.
+Qed.
+
+(*************************************************************************)
+(* Robust Relational Safety Preservation                                 *)
+(*************************************************************************)
+
+(** *Robust Relational Safety Preservation*)
+Definition rRSP : Prop :=
+  forall R : (prg src -> (finpref -> Prop)) -> Prop,
+     (forall Cs f, (forall P, spref (f P) (sem src (Cs [P]))) -> R f) ->
+     (forall Ct f, (forall P, spref (f P) (sem tgt (Ct [P↓]))) -> R f).
+
+(** *Relational Safety Robust Compilation *)
+Definition rRSC : Prop :=
+  forall Ct (f : prg src -> (finpref -> Prop)), 
+   (forall P, spref (f P) (sem tgt (Ct [P↓]))) ->
+   exists Cs,
+     (forall P, spref (f P) (sem src (Cs [P]))).
+
+Theorem rRSP_rRSC : rRSP <-> rRSC.
+Proof.
+  unfold rRSP, rRSC. split.
+  - intros h Ct f h0. apply NNPP. intros ff. 
+    rewrite not_ex_forall_not in ff. 
+    specialize (h (fun g => exists Cs, forall P, spref (g P) (sem src (Cs [P])))).
+    simpl in *.
+    assert(hh :  (forall (Cs : ctx src) (f : prg src -> fprop),
+       (forall P : prg src, spref (f P) (sem src (Cs [P]))) ->
+       exists Cs0 : ctx src,
+         forall P : prg src, spref (f P) (sem src (Cs0 [P])))).
+    { intros Cs f0 hhh. now exists Cs. }
+    destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
+    specialize (ff Cs). now auto.     
+  - intros h R h0 Ct f h1. specialize (h Ct f h1).
+    destruct h as [Cs h]. now apply (h0 Cs f h).
+Qed.
+
+
+
+
+  
+
+    
+    
