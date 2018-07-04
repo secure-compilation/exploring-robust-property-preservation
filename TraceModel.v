@@ -41,6 +41,7 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
 
 (* a finite prefix has at least two possible continuations
    as we have at least two distinct events
+   CH: this doesn't seem to use different_events though!
 *)
 Lemma many_continuations :
   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta.
