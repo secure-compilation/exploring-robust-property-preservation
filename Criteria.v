@@ -377,9 +377,6 @@ Definition safety2 r := forall (t1 t2 : trace),
     exists (m1 m2 : finpref), prefix m1 t1 /\ prefix m2 t2 /\
                          (forall (t1' t2' : trace), prefix m1 t1' -> prefix m2 t2' -> ~(r t1' t2')).
 
-(* Definition r2RPP : Prop :=  forall P1 P2 (r : rel_prop), *)
-(*     rsat2 P1 P2 r -> rsat2 (P1 ↓) (P2 ↓) r . *)
-
 Definition r2RSP := forall P1 P2 r,
     safety2 r ->
     rsat2 P1 P2 r ->
