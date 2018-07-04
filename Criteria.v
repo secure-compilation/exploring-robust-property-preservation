@@ -370,6 +370,93 @@ Definition two_rRSC : Prop :=
                   r m1 m2)).
 
 (*************************************************************************)
+(* Robust 2-rel Safety Pres              *)
+(*************************************************************************)
+Definition safety2 r := forall (t1 t2 : trace),
+    ~ (r t1 t2) ->
+    exists (m1 m2 : finpref), prefix m1 t1 /\ prefix m2 t2 /\
+                         (forall (t1' t2' : trace), prefix m1 t1' -> prefix m2 t2' -> ~(r t1' t2')).
+
+(* Definition r2RPP : Prop :=  forall P1 P2 (r : rel_prop), *)
+(*     rsat2 P1 P2 r -> rsat2 (P1 ↓) (P2 ↓) r . *)
+
+Definition r2RSP := forall P1 P2 r,
+    safety2 r ->
+    rsat2 P1 P2 r ->
+    rsat2 (compile P1) (compile P2) r.
+
+
+Lemma r2RSP' : r2RSP <-> (forall P1 P2 r,
+                           safety2 r ->
+                           forall Ct t1 t2, sem _ (plug _ (compile P1) Ct) t1 ->
+                                       sem _ (plug _ (compile P2) Ct) t2 -> ~(r t1 t2) ->
+                                       exists Cs t1' t2', sem _ (plug _ P1 Cs) t1' /\
+                                                     sem _ (plug _ P2 Cs) t2' /\ ~(r t1' t2')).
+Proof.
+  unfold r2RSP, rsat2, sat2. split.
+  - intros H P1 P2 r Hsafety Ct t1 t2 H0 H1 H2. specialize (H P1 P2 r Hsafety).
+    rewrite imp_equiv in H. destruct H as [H | H].
+    + rewrite not_forall_ex_not in H. destruct H as [Cs H].
+      rewrite not_forall_ex_not in H. destruct H as [tt1 H].
+      rewrite not_forall_ex_not in H. destruct H as [tt2 H].
+      rewrite not_imp in H. destruct H as [k1 k2].
+      rewrite not_imp in k2. destruct k2 as [k2 k3].
+      now exists Cs, tt1, tt2.
+    + exfalso. now apply (H2 (H Ct t1 t2 H0 H1)).
+  - intros H P1 P2 r Hsafety H0 C t1 t2 H1 H2. apply NNPP. intros ff.
+    specialize (H P1 P2 r Hsafety C t1 t2 H1 H2 ff); destruct H as [Cs [tt1 [tt2 [h0 [h1 h2]]]]].
+    now apply (h2 (H0 Cs tt1 tt2 h0 h1)).
+Qed.
+
+Definition r2RSC := forall Ct P1 P2 m1 m2,
+  psem (plug _ (compile P1) Ct) m1 ->
+  psem (plug _ (compile P2) Ct) m2 ->
+  exists Cs, psem (plug _ P1 Cs) m1 /\ psem (plug _ P2 Cs) m2.
+
+Theorem r2RSP_r2RSC : r2RSP <-> r2RSC.
+Proof.
+  rewrite r2RSP'.
+  unfold r2RSP, r2RSC. split.  
+  - intros H Ct P1 P2 m1 m2 H1 H2.
+    specialize (H P1 P2 (fun t1' t2' => ~ (prefix m1 t1') \/ ~(prefix m2 t2'))).
+    assert (Hsafety : safety2 (fun t1' t2' => ~ (prefix m1 t1') \/ ~(prefix m2 t2'))).
+    { clear. unfold safety2.
+      intros t1 t2 Ht. apply not_or_and in Ht. destruct Ht as [Ht1 Ht2].
+      apply NNPP in Ht1. apply NNPP in Ht2.
+      exists m1. exists m2. firstorder. }
+    unfold psem in H1, H2. destruct H1 as [t1 [H1 H1']]. destruct H2 as [t2 [H2 H2']].
+    specialize (H Hsafety Ct t1 t2 H1' H2').
+    assert (Htriv : ~ (fun t1' t2' : trace => ~ prefix m1 t1' \/ ~ prefix m2 t2') t1 t2).
+    { apply and_not_or. split; firstorder. }
+    specialize (H Htriv).
+    destruct H as [Cs [t1' [t2' [Ht1' [Ht2' H]]]]].
+    exists Cs. 
+    assert (Htriv' : ~ (fun t1' t2' : trace => ~ prefix m1 t1' \/ ~ prefix m2 t2') t1' t2').
+    { apply and_not_or. split; firstorder. }
+    simpl in Htriv'. apply not_or_and in Htriv'. destruct Htriv' as [Htriv1' Htriv2'].
+    apply NNPP in Htriv1'. apply NNPP in Htriv2'.
+    split; unfold psem.
+    exists t1'; auto. exists t2'; auto.
+  - intros H P1 P2 r Hsafety Ct t1 t2 H1 H2 Hr.
+    specialize (H Ct P1 P2).
+    unfold safety2 in Hsafety. specialize (Hsafety t1 t2 Hr).
+    destruct Hsafety as [m1 [m2 [Hm1 [Hm2 Hs]]]].
+    specialize (H m1 m2). unfold psem in H.
+    assert (Hex1 : (exists t : trace, prefix m1 t /\ sem _ (plug _ (compile P1) Ct) t)).
+    { exists t1; auto. }
+    assert (Hex2 : (exists t : trace, prefix m2 t /\ sem _ (plug _ (compile P2) Ct) t)).
+    { exists t2; auto. }
+    specialize (H Hex1 Hex2). destruct H as [Cs [HCs1 HCs2]].
+    unfold psem in HCs1. unfold psem in HCs2. destruct HCs1 as [t1' [Hpref1' Hsem1']].
+    destruct HCs2 as [t2' [Hpref2' Hsem2']].
+    exists Cs, t1', t2'. auto.
+Qed.
+
+
+
+
+
+(*************************************************************************)
 (* Robust 2-rel HyperProperty Pres => trace equivalence pres             *)
 (*************************************************************************)
 
