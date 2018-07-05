@@ -6,6 +6,7 @@ Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
+Require Import ZArith. 
 
 CoInductive t_eq : trace -> trace -> Prop :=
 | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2).
@@ -55,6 +56,12 @@ Fixpoint length (m : finpref) : nat :=
   | fcons x xs => S (length xs)
   end.
 
+Lemma stop_same_lenght: forall m, length m = length (m[fstop/ftbd]). 
+Proof.
+  induction m; try now auto.
+  simpl. now rewrite IHm.
+Qed. 
+
 Fixpoint take_n (t : trace) (n : nat) : trace :=
   match n, t with
   | 0, _ | _ ,tstop => tstop
@@ -96,31 +103,22 @@ Definition ϕ_sem : ϕ_prg -> prop :=
   (fun t : trace =>
      exists m, t = embedding m /\ psem (snd P) m /\ length m <= (fst P)).
 
-Lemma z_min : forall n, 0 <= n. 
-Proof.
-  induction n; try now auto.
-Qed.
-
-Lemma succ_leq : forall n m, n <= m -> S n <= S m.
-Admitted.
-
-Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
-Admitted.
+Lemma omega_fact : forall n m, n <= m -> (S n) <= (S m).
+Proof. intros n m h. omega. Qed. 
 
 Lemma length_take_n : forall n t,
     length (take_nth_pref t n) <= n.
 Proof.
   intros n. induction n; intros t; try now auto.
-  destruct t; try now auto.
-  + simpl. now apply z_min.
-  + simpl. apply succ_leq. now apply IHn.
+  destruct t; simpl; try now auto.
+  + omega.  
+  + apply omega_fact. now apply IHn.
 Qed. 
   
 Lemma length_smaller : forall P t,
     sem L (snd P) t -> length (take_nth_pref t (fst P)) <= fst P.  
 Proof.
-  intros P t hsem.
-  now apply length_take_n.
+  intros P t hsem. now apply length_take_n.
 Qed. 
 
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
@@ -134,17 +132,23 @@ Qed.
 
 Lemma fpr_shorter: forall m1 m2, fpr m1 m2 -> length m1 <= length m2.
 Proof.
-  induction m1; intros m2 hpref; simpl; 
-  try now apply z_min.
+  induction m1; intros m2 hpref; simpl; try omega. 
   + destruct m2; try now auto. inversion hpref; subst.
-    simpl. apply succ_leq. now apply IHm1.
+    simpl. apply omega_fact.  now apply IHm1.
 Qed.     
+  
+(*TODO : move to Tracemdel.v *)         
+Lemma prefix_embeding_fpr : forall m1 m2,
+    prefix m1 (embedding m2) -> fpr m1 (m2[fstop/ftbd]).
+Proof.
+  induction m1; intros m2 hpref; try now auto.
+  + now destruct m2.
+  + destruct m2; try now auto. inversion hpref. subst.
+    simpl. split; try now auto.
+Qed. 
 
-(*TODO : move to Tracemdel.v *)
-Lemma prefix_embed_fpr : forall t m mm,
-    prefix m t -> embedding mm = t ->
-    fpr m mm.
-Admitted.
+Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
+Proof. intros n1 n2 n3 h1 h2. omega. Qed. 
 
 (* intuition there in t in sem longer than m *)
 Lemma psem_consequence : forall C P t m,
@@ -152,10 +156,12 @@ Lemma psem_consequence : forall C P t m,
     prefix m t ->  
     length m <= fst C.
 Proof.
-  intros C P t m [mm [hem [h1 h2]]] hpref. simpl in *. 
-  assert (fpr m mm) by now apply (prefix_embed_fpr t m mm).    
-  apply (leq_trans (length m) (length mm) (fst C)); try now auto. 
-  now apply fpr_shorter. 
+  intros C P t m [mm [hem [h1 h2]]] hpref. simpl in *.
+  rewrite stop_same_lenght in h2. 
+  apply (leq_trans (length m) (length(mm[fstop/ftbd])) (fst C)); try now auto.
+  apply fpr_shorter; try now auto. 
+  rewrite embedding_is_the_same in hem. rewrite hem in hpref.
+  apply prefix_embeding_fpr. now rewrite embedding_is_the_same.
 Qed. 
     
 Definition ϕ := Build_level ϕ_plug
@@ -182,39 +188,36 @@ Proof.
   destruct hh as [h1 h2]. destruct (Hsafety t h2) as [m [hpref hwit]]. 
   exists (length m, C). intros ff. simpl in ff. 
   specialize (hwit (take_n t (length m))). apply hwit.
-  now apply pref_take_pref. apply ff. 
-  
-  
-  (* two cases : + |m| <= snd P 
-                                    
-
-                 + |m| >= than snd P 
-   *)
-  
-  (* specialize (hwit (take_n t (snd P))).  *)
-  (* apply hwit. now apply (pref_take_pref m t).    *)
-  (* apply ff. simpl. unfold ϕ_sem, ϕ_plug. exists m. repeat (split; simpl; try now auto). *)
-  (* now apply take_embedding. now exists t.   *)
-  (* apply (psem_consequence C P (take_n t (snd P)) ). unfold ϕ_sem, ϕ_plug; try now auto.   *)
-  (* exists m. repeat (split; simpl; try now auto). *)
-  (* now apply take_embedding. now exists t.  *)
-                                  
+  now apply pref_take_pref. apply ff. unfold ϕ_sem, ϕ_plug.
+  exists m. repeat (split; simpl; try now auto).
+  now apply take_embedding. now exists t.
 Qed.
 
-CoFixpoint an_omega := tcons an_event an_omega. 
-CoFixpoint another_omega := tcons an_event another_omega.
+
+Definition an_omega := constant_trace (an_event).  
+Definition another_omega := constant_trace (another_event). 
 
 Axiom an_omega_produced : exists P, forall C, sem L (plug L P C) an_omega.
 Axiom another_omega_produced : exists P, forall C, sem L (plug L P C) another_omega.
 
 Lemma not_equal: ~ t_eq an_omega another_omega.
-Admitted.
+Proof.
+  rewrite neq_finitely_refutable.
+  exists (fcons an_event ftbd), (fcons another_event ftbd). 
+  repeat (split; try now auto). 
+  intros [f1 f2]. inversion f1. now apply different_events.  
+Qed.
 
 Definition my_pi := fun t => fin t \/ t_eq t an_omega.
 
 Lemma another_omega_not_in_my_pi : ~ my_pi another_omega.
-Admitted. 
-
+Proof.
+ intros [K1 | K2]. 
+ + assert (inf another_omega) by now apply inf_constant_trace.
+   now auto. 
+ + apply t_eq_symm in K2. now apply not_equal. 
+Qed. 
+   
 Lemma cut_lemma : forall C P t, sem ϕ (plug ϕ P C) t -> fin t.
 Proof.
   intros C P t H. simpl in*.
@@ -229,9 +232,9 @@ Proof.
   split.
   + now apply C_robustly_safety.
   + intros ff. destruct another_omega_produced as [P H]. 
-    specialize (ff (P, 42) my_pi). unfold c_RPP, rsat, sat in ff.
+    specialize (ff (42, P) my_pi). unfold c_RPP, rsat, sat in ff.
     simpl in ff. 
-    assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug (P, 42) C) t -> my_pi t)).
+    assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug (42, P) C) t -> my_pi t)).
     { intros C t H0. simpl in H0. unfold ϕ_sem, ϕ_plug in H0.
       destruct H0 as [m [hm H0]]. left. rewrite hm. 
       now apply embed_fin. } 
@@ -239,4 +242,4 @@ Proof.
     assert (sem L (some_ctx_L [P]) another_omega) by now apply (H some_ctx_L).
     specialize (ff H0). now apply another_omega_not_in_my_pi. 
 Qed.     
-    
+
