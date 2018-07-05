@@ -210,6 +210,12 @@ Qed.
 
 Definition my_pi := fun t => fin t \/ t_eq t an_omega.
 
+Lemma my_pi_liveness : Liveness my_pi.
+Proof.
+  apply all_fin_in_all_liv. unfold my_pi.
+  now auto.
+Qed.          
+
 Lemma another_omega_not_in_my_pi : ~ my_pi another_omega.
 Proof.
  intros [K1 | K2]. 
@@ -225,9 +231,12 @@ Proof.
   now apply embed_fin.
 Qed.
 
-Axiom some_ctx_L : ctx L. 
+Axiom some_ctx_L : ctx L.
 
-Theorem separation_RSP_RPP : (forall P π, Safety π -> c_RPP P π) /\ ~  (forall P π, c_RPP P π).
+
+Theorem separation_RSP_RLP :
+  (forall P π, Safety π -> c_RPP P π) /\
+  ~  (forall P π, Liveness π -> c_RPP P π).
 Proof.
   split.
   + now apply C_robustly_safety.
@@ -238,8 +247,84 @@ Proof.
     { intros C t H0. simpl in H0. unfold ϕ_sem, ϕ_plug in H0.
       destruct H0 as [m [hm H0]]. left. rewrite hm. 
       now apply embed_fin. } 
-    specialize (ff  hh).  specialize (ff some_ctx_L another_omega).
+    specialize (ff my_pi_liveness hh).  specialize (ff some_ctx_L another_omega).
     assert (sem L (some_ctx_L [P]) another_omega) by now apply (H some_ctx_L).
     specialize (ff H0). now apply another_omega_not_in_my_pi. 
 Qed.     
 
+Theorem separation_RSP_RPP : (forall P π, Safety π -> c_RPP P π) /\ ~  (forall P π, c_RPP P π).
+Proof.
+  split.
+  + now apply C_robustly_safety.
+  + intros ff. destruct another_omega_produced as [P H].
+    destruct separation_RSP_RLP as [K1 K2].
+    now apply K2.  
+Qed.     
+
+(**********************************************************)
+(* RLP =/=> RPP                                           *) 
+(**********************************************************)
+
+Definition c2 : prg L -> prg ϕ :=
+  fun P => (42, P).
+
+Definition c2_RPP (P : prg L) (π : prop) : Prop :=
+  rsat P π -> rsat (c2 P) π.
+
+Lemma c2_robustly_liveness: forall P π, Liveness π -> c2_RPP P π.
+Proof.
+  intros P π hl. unfold c2_RPP, rsat, sat.
+  intros h0 [n C] t hsem.
+  simpl in hsem.
+  unfold ϕ_sem, ϕ_plug in hsem. 
+  destruct hsem as [m [hembed [hpsem hlen]]].
+  subst. apply all_fin_in_all_liv; try now auto.
+  now apply embed_fin.
+Qed.
+
+Definition my_pi2 : prop :=
+  fun t => t_eq t an_omega.
+
+Lemma my_pi2_safety : Safety my_pi2.
+Proof.
+  unfold Safety, my_pi2. intros t hneq.
+  rewrite neq_finitely_refutable in hneq.
+  destruct hneq as [m1 [m2 [h1 [h2 h3]]]].
+  exists m1. split; try now auto.
+  intros tt hh. rewrite neq_finitely_refutable.
+  rewrite de_morgan1 in h3. destruct h3 as [k | k].
+  + exists m1, m2. repeat (split; try now auto).  
+  + admit.
+Admitted.
+
+
+Theorem separation_RLP_RSP :
+  (forall P π, Liveness π -> c2_RPP P π) /\
+  ~  (forall P π, Safety π -> c2_RPP P π).
+Proof.
+  split.
+  + now apply c2_robustly_liveness.
+  + intros ff. destruct an_omega_produced as [P h]. 
+    specialize (ff P my_pi2 my_pi2_safety).
+    unfold c2_RPP, rsat, sat in ff.
+    assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
+    { intros C t hsem. admit. (* here we need generalized rewriting! *) }
+    specialize (ff H). specialize (ff (0, some_ctx_L) tstop).
+    assert  (sem ϕ ((0, some_ctx_L) [c2 P]) tstop).
+    simpl. unfold ϕ_sem, ϕ_plug. exists ftbd. 
+    repeat (split; try now auto). simpl. exists an_omega.
+    split; try now auto. specialize (ff H0).
+    unfold my_pi2 in ff. inversion ff. 
+Admitted. 
+
+
+Theorem  separation_RLP_RPP :
+   (forall P π, Liveness π -> c2_RPP P π) /\
+   ~  (forall P π, c2_RPP P π).
+Proof.
+  split.
+  + now apply c2_robustly_liveness.
+  + destruct separation_RLP_RSP as [K1 K2]. now auto.
+Qed. 
+
+  
