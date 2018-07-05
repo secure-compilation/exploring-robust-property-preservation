@@ -11,7 +11,7 @@ CoInductive t_eq : trace -> trace -> Prop :=
 | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2).
 
 Lemma t_eq_symm : forall t1 t2, t_eq t1 t2 -> t_eq t2 t1.
-Proof. Admitted.
+Admitted.
 
 Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2.
 Proof.
@@ -44,10 +44,10 @@ Admitted.
 
 Axiom L : level. 
 
-Definition ϕ_prg := prod (prg L) nat.
-Definition ϕ_ctx  := ctx L. 
+Definition ϕ_prg := prod nat (prg L). 
+Definition ϕ_ctx  := prod nat (ctx L). 
 Definition ϕ_plug : ϕ_prg -> ϕ_ctx -> ϕ_prg :=
-  fun P C =>  ( plug L (fst P) C, snd P).
+  fun P C =>  (fst C , plug L (snd P) (snd C)).
 
 Fixpoint length (m : finpref) : nat :=
   match m with
@@ -68,43 +68,95 @@ Fixpoint take_nth_pref (t : trace) (n : nat) : finpref :=
  end.                               
 
 Lemma nth_pref_pref : forall t n, prefix (take_nth_pref t n) t.
-Admitted.
+Proof.
+  intros t n. generalize dependent t. induction n; intros t; try now auto.
+  destruct t; try now auto.
+Qed. 
 
 Lemma pref_take_pref : forall m t,
     prefix m t ->
     prefix m (take_n t (length m)).
-Admitted.
+Proof.
+  intros m t. generalize dependent t. induction m; intros t hpref; try now auto.
+  + destruct t; try now auto. 
+    simpl in *. destruct hpref as [h1 h2]. split; try now auto.
+Qed.   
 
 Lemma take_embedding : forall t m,
     prefix m t -> 
     (take_n t (length m)) = embedding m.
-Admitted.
+Proof.
+  intros t m. generalize dependent t. induction m; intros t hpref; try now auto.
+  destruct t; try now auto. simpl in *. destruct hpref as [h1 h2].
+  subst. now rewrite (IHm t).
+Qed. 
 
 Definition ϕ_sem : ϕ_prg -> prop :=
   fun P => 
   (fun t : trace =>
-     exists m, t = embedding m /\ psem (fst P) m /\ length m <= (snd P)).
+     exists m, t = embedding m /\ psem (snd P) m /\ length m <= (fst P)).
 
-Lemma length_smaller : forall P t,
-    sem L (fst P) t -> length (take_nth_pref t (snd P)) <= snd P.  
+Lemma z_min : forall n, 0 <= n. 
+Proof.
+  induction n; try now auto.
+Qed.
+
+Lemma succ_leq : forall n m, n <= m -> S n <= S m.
 Admitted.
 
+Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
+Admitted.
+
+Lemma length_take_n : forall n t,
+    length (take_nth_pref t n) <= n.
+Proof.
+  intros n. induction n; intros t; try now auto.
+  destruct t; try now auto.
+  + simpl. now apply z_min.
+  + simpl. apply succ_leq. now apply IHn.
+Qed. 
+  
+Lemma length_smaller : forall P t,
+    sem L (snd P) t -> length (take_nth_pref t (fst P)) <= fst P.  
+Proof.
+  intros P t hsem.
+  now apply length_take_n.
+Qed. 
 
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
 Proof.
-  intros P. destruct (non_empty_sem L (fst P)) as [t h].
-  exists (embedding (take_nth_pref t (snd P))). unfold ϕ_sem.
-  exists (take_nth_pref t (snd P)). repeat (split; try now auto).
+  intros P. destruct (non_empty_sem L (snd P)) as [t h].
+  exists (embedding (take_nth_pref t (fst P))). unfold ϕ_sem.
+  exists (take_nth_pref t (fst P)). repeat (split; try now auto).
   + unfold psem. exists t. split; try now auto. now apply nth_pref_pref.
   + now apply length_smaller.  
 Qed.
 
+Lemma fpr_shorter: forall m1 m2, fpr m1 m2 -> length m1 <= length m2.
+Proof.
+  induction m1; intros m2 hpref; simpl; 
+  try now apply z_min.
+  + destruct m2; try now auto. inversion hpref; subst.
+    simpl. apply succ_leq. now apply IHm1.
+Qed.     
+
+(*TODO : move to Tracemdel.v *)
+Lemma prefix_embed_fpr : forall t m mm,
+    prefix m t -> embedding mm = t ->
+    fpr m mm.
+Admitted.
+
 (* intuition there in t in sem longer than m *)
 Lemma psem_consequence : forall C P t m,
-    sem L (plug L (fst P) C) t ->
+    ϕ_sem (ϕ_plug P C) t ->
     prefix m t ->  
-    length m <= snd P.
-Admitted.
+    length m <= fst C.
+Proof.
+  intros C P t m [mm [hem [h1 h2]]] hpref. simpl in *. 
+  assert (fpr m mm) by now apply (prefix_embed_fpr t m mm).    
+  apply (leq_trans (length m) (length mm) (fst C)); try now auto. 
+  now apply fpr_shorter. 
+Qed. 
     
 Definition ϕ := Build_level ϕ_plug
                             ϕ_sem
@@ -116,7 +168,7 @@ Definition ϕ := Build_level ϕ_plug
 (**********************************************************)
 
 Definition c : prg ϕ -> prg L :=
-  fun Pn => fst Pn.
+  fun Pn => snd Pn.
 
 Definition c_RPP (P : prg ϕ) (π : prop) : Prop :=
   rsat P π -> rsat (c P) π.
@@ -127,12 +179,26 @@ Proof.
   unfold rsat. repeat rewrite not_forall_ex_not.   
   intros [C hC]. unfold sat in *. rewrite not_forall_ex_not in *.
   destruct hC as [t hh]. rewrite not_imp in hh.
-  destruct hh as [h1 h2]. destruct (Hsafety t h2) as [m [hpref hwit]].
-  exists C. intros ff. specialize (hwit (take_n t (length m))).
-  apply hwit. now apply (pref_take_pref m t).   
-  apply ff. simpl. unfold ϕ_sem, ϕ_plug. exists m. repeat (split; simpl; try now auto).
-  now apply take_embedding. now exists t.
-  now apply (psem_consequence C P t m).  
+  destruct hh as [h1 h2]. destruct (Hsafety t h2) as [m [hpref hwit]]. 
+  exists (length m, C). intros ff. simpl in ff. 
+  specialize (hwit (take_n t (length m))). apply hwit.
+  now apply pref_take_pref. apply ff. 
+  
+  
+  (* two cases : + |m| <= snd P 
+                                    
+
+                 + |m| >= than snd P 
+   *)
+  
+  (* specialize (hwit (take_n t (snd P))).  *)
+  (* apply hwit. now apply (pref_take_pref m t).    *)
+  (* apply ff. simpl. unfold ϕ_sem, ϕ_plug. exists m. repeat (split; simpl; try now auto). *)
+  (* now apply take_embedding. now exists t.   *)
+  (* apply (psem_consequence C P (take_n t (snd P)) ). unfold ϕ_sem, ϕ_plug; try now auto.   *)
+  (* exists m. repeat (split; simpl; try now auto). *)
+  (* now apply take_embedding. now exists t.  *)
+                                  
 Qed.
 
 CoFixpoint an_omega := tcons an_event an_omega. 
