@@ -16,13 +16,12 @@ Definition two_rRSC : Prop :=
                   psem (Ct [P2 ↓]) m2 ->
                   r m1 m2)).
 
-Print teq_preservation.
 
 (** *our assumptions *)
 (**********************************************************)
-Hypothesis input_totality_tgt : @input_totality tgt.
-Hypothesis determinacy_src    : @determinacy src.
-Hypothesis tgt_sem            : @semantic_safety_like tgt.
+Hypothesis input_totality_tgt : input_totality tgt.
+Hypothesis determinacy_src    : determinacy src.
+Hypothesis tgt_sem            : semantics_safety_like tgt.
 (**********************************************************)
 
 Definition myr ( m1 m2 : finpref) : Prop :=
