@@ -45,7 +45,7 @@ Admitted.
 
 Axiom L : level. 
 
-Definition ϕ_prg := prod nat (prg L). 
+Definition ϕ_prg := prod nat (prg L). (* CH: So why does the program have a bound if it's just ignored? Can it be removed? *)
 Definition ϕ_ctx  := prod nat (ctx L). 
 Definition ϕ_plug : ϕ_prg -> ϕ_ctx -> ϕ_prg :=
   fun P C =>  (fst C , plug L (snd P) (snd C)).
