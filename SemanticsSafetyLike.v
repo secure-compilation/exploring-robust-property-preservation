@@ -106,6 +106,22 @@ Proof.
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
 Admitted.
 
+Lemma sem'_prefix : forall m c0 t,
+  sem' c0 t ->
+  prefix m t ->
+  fstopped m = false ->
+  exists c, steps c0 m c.
+Proof.
+  induction m; intros c0 t Hsem Hpref Hnot_stopped.
+  - now inversion Hnot_stopped.
+  - exists c0. apply SSTbd.
+  - destruct t as [|e' t']. now inversion Hpref.
+    simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
+    inversion Hsem. subst. simpl in Hnot_stopped.
+    destruct (IHm c' t' H3 Hpref Hnot_stopped) as [c'' HH].
+    exists c''. eapply SSCons; eassumption.
+Qed.
+
 Lemma sem_prefix : forall m P t,
   sem P t ->
   prefix m t ->
@@ -114,15 +130,7 @@ Lemma sem_prefix : forall m P t,
 (* /\ exists t', t_eq t (tapp m t') /\ sem' c t' *)
 (* A better way to state this might be to avoid t_eq and use
    an operation to remove m from t -- for now removed that part since not needed *)
-Proof.
-  induction m; intros P t Hsem Hpref Hnot_stopped.
-  - now inversion Hnot_stopped.
-  - exists (init P). apply SSTbd.
-  - destruct t as [|e' t']. now inversion Hpref.
-    simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
-    inversion Hsem. subst. exists c'. eapply SSCons. eassumption.
-    (* eapply IHm. -- need to generalize the induction hypothesis *)
-Admitted.
+Proof. intros m P. now apply (sem'_prefix m (init P)). Qed.
 
 Definition semantics_safety_like' : forall t P m,
   sem P t ->
