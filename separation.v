@@ -45,10 +45,11 @@ Admitted.
 
 Axiom L : level. 
 
-Definition ϕ_prg := prod nat (prg L). (* CH: So why does the program have a bound if it's just ignored? Can it be removed? *)
+Definition ϕ_par := par L.
+Definition ϕ_prg := prod nat (prg L). 
 Definition ϕ_ctx  := prod nat (ctx L). 
-Definition ϕ_plug : ϕ_prg -> ϕ_ctx -> ϕ_prg :=
-  fun P C =>  (fst C , plug L (snd P) (snd C)).
+Definition ϕ_plug : ϕ_par -> ϕ_ctx -> ϕ_prg :=
+  fun P C =>  (fst C , plug L P (snd C)).
 
 Fixpoint length (m : finpref) : nat :=
   match m with
@@ -173,10 +174,10 @@ Definition ϕ := Build_level ϕ_plug
 (* RSP =/=> RPP                                           *) 
 (**********************************************************)
 
-Definition c : prg ϕ -> prg L :=
-  fun Pn => snd Pn.
+Definition c : par ϕ -> par L := 
+  fun P => P.
 
-Definition c_RPP (P : prg ϕ) (π : prop) : Prop :=
+Definition c_RPP (P : par ϕ) (π : prop) : Prop :=
   rsat P π -> rsat (c P) π.
 
 Lemma C_robustly_safety : forall P S, Safety S -> c_RPP P S. 
@@ -193,11 +194,15 @@ Proof.
   now apply take_embedding. now exists t.
 Qed.
 
-
+(* 
+  WHILE true 
+   an_envet; 
+  END.
+ *)
 Definition an_omega := constant_trace (an_event).  
 Definition another_omega := constant_trace (another_event). 
 
-Axiom an_omega_produced : exists P, forall C, sem L (plug L P C) an_omega.
+Axiom an_omega_produced : exists P, forall C, sem L (plug L P C) an_omega. 
 Axiom another_omega_produced : exists P, forall C, sem L (plug L P C) another_omega.
 
 Lemma not_equal: ~ t_eq an_omega another_omega.
@@ -233,7 +238,6 @@ Qed.
 
 Axiom some_ctx_L : ctx L.
 
-
 Theorem separation_RSP_RLP :
   (forall P π, Safety π -> c_RPP P π) /\
   ~  (forall P π, Liveness π -> c_RPP P π).
@@ -241,9 +245,9 @@ Proof.
   split.
   + now apply C_robustly_safety.
   + intros ff. destruct another_omega_produced as [P H]. 
-    specialize (ff (42, P) my_pi). unfold c_RPP, rsat, sat in ff.
+    specialize (ff P my_pi). unfold c_RPP, rsat, sat in ff.
     simpl in ff. 
-    assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug (42, P) C) t -> my_pi t)).
+    assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug P C) t -> my_pi t)).
     { intros C t H0. simpl in H0. unfold ϕ_sem, ϕ_plug in H0.
       destruct H0 as [m [hm H0]]. left. rewrite hm. 
       now apply embed_fin. } 
@@ -265,10 +269,14 @@ Qed.
 (* RLP =/=> RPP                                           *) 
 (**********************************************************)
 
-Definition c2 : prg L -> prg ϕ :=
-  fun P => (42, P).
+Axiom only_an_omega_produced : exists P, forall C,
+      (sem L (plug L P C) an_omega /\
+      (forall t, sem L (plug L P C) t -> t_eq t an_omega)). 
 
-Definition c2_RPP (P : prg L) (π : prop) : Prop :=
+Definition c2 : par L -> par ϕ :=
+  fun P => P.
+
+Definition c2_RPP (P : par L) (π : prop) : Prop :=
   rsat P π -> rsat (c2 P) π.
 
 Lemma c2_robustly_liveness: forall P π, Liveness π -> c2_RPP P π.
@@ -290,13 +298,12 @@ Proof.
   unfold Safety, my_pi2. intros t hneq.
   rewrite neq_finitely_refutable in hneq.
   destruct hneq as [m1 [m2 [h1 [h2 h3]]]].
-  exists m1. split; try now auto.
-  intros tt hh. rewrite neq_finitely_refutable.
-  rewrite de_morgan1 in h3. destruct h3 as [k | k].
-  + exists m1, m2. repeat (split; try now auto).  
+  rewrite de_morgan1 in h3. destruct h3 as [k | k]. 
+  +  exists m1. split; try now auto. 
+     intros tt htt. rewrite neq_finitely_refutable.
+     exists m1, m2. repeat (split; try now auto).
   + admit.
-Admitted.
-
+Admitted.           
 
 Theorem separation_RLP_RSP :
   (forall P π, Liveness π -> c2_RPP P π) /\
@@ -304,19 +311,19 @@ Theorem separation_RLP_RSP :
 Proof.
   split.
   + now apply c2_robustly_liveness.
-  + intros ff. destruct an_omega_produced as [P h]. 
+  + intros ff. destruct only_an_omega_produced as [P h]. 
     specialize (ff P my_pi2 my_pi2_safety).
-    unfold c2_RPP, rsat, sat in ff.
+    unfold c2_RPP, rsat, sat in ff. 
     assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
-    { intros C t hsem. admit. (* here we need generalized rewriting! *) }
-    specialize (ff H). specialize (ff (0, some_ctx_L) tstop).
+    { intros C t hsem. specialize (h C). destruct h as [h1 h2]. 
+      now apply h2. }  
+    specialize (ff H (0, some_ctx_L) tstop). 
     assert  (sem ϕ ((0, some_ctx_L) [c2 P]) tstop).
     simpl. unfold ϕ_sem, ϕ_plug. exists ftbd. 
     repeat (split; try now auto). simpl. exists an_omega.
-    split; try now auto. specialize (ff H0).
-    unfold my_pi2 in ff. inversion ff. 
-Admitted. 
-
+    split; try now auto. now apply (h some_ctx_L). 
+    specialize (ff H0). unfold my_pi2 in ff. inversion ff. 
+Qed.
 
 Theorem  separation_RLP_RPP :
    (forall P π, Liveness π -> c2_RPP P π) /\
