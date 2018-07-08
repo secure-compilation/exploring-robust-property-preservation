@@ -6,20 +6,23 @@ Set Implicit Arguments.
 
 Record level :=
   {
-    prg  : Set;
-    ctx  : Set;   
-    plug : prg -> ctx -> prg;
+    par  : Set;  (* partial programs *)
+    prg  : Set;  (* whole programs *)
+    ctx  : Set;  (* context *)
+    plug : par -> ctx -> prg;
     sem  : prg -> prop;
-    non_empty_sem : forall P, exists t, sem P t
+    non_empty_sem : forall W, exists t, sem W t
   }.
 
   
 Axiom src : level.
 Axiom tgt : level.
-Axiom compile : (prg src) -> (prg tgt).
+Axiom compile_par : (par src) -> (par tgt).
+Axiom compile_ctx : (ctx src) -> (ctx tgt).
+Axiom compile_prg : (prg src) -> (ctx tgt). 
 
 Notation "C [ P ]" := (plug _ P C) (at level 50).
-Notation "P ↓" := (compile P) (at level 50). 
+Notation "P ↓" := (compile_par P) (at level 50). 
 
 
 Definition psem {K : level}
@@ -33,7 +36,7 @@ Definition sat {K : level}
   forall t, sem K P t -> π t.
 
 Definition rsat {K : level}
-                (P : prg K)
+                (P : par K)
                 (π : prop) : Prop :=
   forall C, sat (C [ P ] ) π. 
 
@@ -62,7 +65,7 @@ Definition hsat {K : level}
   H (beh P).
 
 Definition rhsat {K : level}
-                 (P : prg K)
+                 (P : par K)
                  (H : hprop) : Prop :=
   forall C, hsat ( C [ P ] ) H.
 
@@ -93,14 +96,14 @@ Proof.
 Qed. 
 
 
-Definition rsat2 {K : level} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
+Definition rsat2 {K : level} (P1 P2 : @par K) (r : rel_prop) : Prop :=
   forall C, sat2 (C [ P1 ]) (C [ P2 ]) r.
 
 
 Definition hsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
    r (sem K P1) (sem K P2).
 
-Definition hrsat2 {K : level} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
+Definition hrsat2 {K : level} (P1 P2 : @par K) (r : rel_hprop) : Prop :=
   forall C, r (sem K (C [P1])) (sem K (C [P2])).
 
 (**************************************************************************)

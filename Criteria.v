@@ -380,13 +380,13 @@ Definition safety2 r := forall (t1 t2 : trace),
 Definition r2RSP := forall P1 P2 r,
     safety2 r ->
     rsat2 P1 P2 r ->
-    rsat2 (compile P1) (compile P2) r.
+    rsat2 (P1 ↓) (P2 ↓) r.
 
 
 Lemma r2RSP' : r2RSP <-> (forall P1 P2 r,
                            safety2 r ->
-                           forall Ct t1 t2, sem _ (plug _ (compile P1) Ct) t1 ->
-                                       sem _ (plug _ (compile P2) Ct) t2 -> ~(r t1 t2) ->
+                           forall Ct t1 t2, sem _ (plug _ (P1 ↓) Ct) t1 ->
+                                       sem _ (plug _ (P2 ↓) Ct) t2 -> ~(r t1 t2) ->
                                        exists Cs t1' t2', sem _ (plug _ P1 Cs) t1' /\
                                                      sem _ (plug _ P2 Cs) t2' /\ ~(r t1' t2')).
 Proof.
@@ -406,8 +406,8 @@ Proof.
 Qed.
 
 Definition r2RSC := forall Ct P1 P2 m1 m2,
-  psem (plug _ (compile P1) Ct) m1 ->
-  psem (plug _ (compile P2) Ct) m2 ->
+  psem (plug _ (P1 ↓) Ct) m1 ->
+  psem (plug _ (P2 ↓) Ct) m2 ->
   exists Cs, psem (plug _ P1 Cs) m1 /\ psem (plug _ P2 Cs) m2.
 
 Theorem r2RSP_r2RSC : r2RSP <-> r2RSC.
@@ -439,18 +439,15 @@ Proof.
     unfold safety2 in Hsafety. specialize (Hsafety t1 t2 Hr).
     destruct Hsafety as [m1 [m2 [Hm1 [Hm2 Hs]]]].
     specialize (H m1 m2). unfold psem in H.
-    assert (Hex1 : (exists t : trace, prefix m1 t /\ sem _ (plug _ (compile P1) Ct) t)).
+    assert (Hex1 : (exists t : trace, prefix m1 t /\ sem _ (plug _ (P1 ↓) Ct) t)).
     { exists t1; auto. }
-    assert (Hex2 : (exists t : trace, prefix m2 t /\ sem _ (plug _ (compile P2) Ct) t)).
+    assert (Hex2 : (exists t : trace, prefix m2 t /\ sem _ (plug _ (P2 ↓) Ct) t)).
     { exists t2; auto. }
     specialize (H Hex1 Hex2). destruct H as [Cs [HCs1 HCs2]].
     unfold psem in HCs1. unfold psem in HCs2. destruct HCs1 as [t1' [Hpref1' Hsem1']].
     destruct HCs2 as [t2' [Hpref2' Hsem2']].
     exists Cs, t1', t2'. auto.
 Qed.
-
-
-
 
 
 (*************************************************************************)
@@ -503,7 +500,7 @@ End source_determinism.
 
 (** *Robust Relational Hyperproperty Preservation*)
 Definition rRHP : Prop :=
-  forall R : (prg src  ->  prop) -> Prop, 
+  forall R : (par src  ->  prop) -> Prop, 
     (forall Cs, R (fun P  => sem src (Cs [ P] ) )) ->
     (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )). 
 
@@ -525,8 +522,8 @@ Proof.
     specialize (ff Cs). now apply ff.        
   - intros h R hcs Ct. destruct (h Ct) as [Cs h0]; clear h.
     specialize (hcs Cs).
-    assert (hh :  (fun P : prg src => sem src (Cs [P])) =
-                  (fun P : prg src => sem tgt (Ct [P ↓])) ).
+    assert (hh :  (fun P : par src => sem src (Cs [P])) =
+                  (fun P : par src => sem tgt (Ct [P ↓])) ).
     { apply functional_extensionality.
       intros P. specialize (h0 P). now auto. }
     now rewrite <- hh.
@@ -538,13 +535,13 @@ Qed.
 
 (** *Robust Relational Safety Preservation*)
 Definition rRSP : Prop :=
-  forall R : (prg src -> (finpref -> Prop)) -> Prop,
+  forall R : (par src -> (finpref -> Prop)) -> Prop,
      (forall Cs f, (forall P, spref (f P) (sem src (Cs [P]))) -> R f) ->
      (forall Ct f, (forall P, spref (f P) (sem tgt (Ct [P↓]))) -> R f).
 
 (** *Relational Safety Robust Compilation *)
 Definition rRSC : Prop :=
-  forall Ct (f : prg src -> (finpref -> Prop)), 
+  forall Ct (f : par src -> (finpref -> Prop)), 
    (forall P, spref (f P) (sem tgt (Ct [P↓]))) ->
    exists Cs,
      (forall P, spref (f P) (sem src (Cs [P]))).
@@ -556,10 +553,10 @@ Proof.
     rewrite not_ex_forall_not in ff. 
     specialize (h (fun g => exists Cs, forall P, spref (g P) (sem src (Cs [P])))).
     simpl in *.
-    assert(hh :  (forall (Cs : ctx src) (f : prg src -> fprop),
-       (forall P : prg src, spref (f P) (sem src (Cs [P]))) ->
+    assert(hh :  (forall (Cs : ctx src) (f : par src -> fprop),
+       (forall P : par src, spref (f P) (sem src (Cs [P]))) ->
        exists Cs0 : ctx src,
-         forall P : prg src, spref (f P) (sem src (Cs0 [P])))).
+         forall P : par src, spref (f P) (sem src (Cs0 [P])))).
     { intros Cs f0 hhh. now exists Cs. }
     destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
     specialize (ff Cs). now auto.     

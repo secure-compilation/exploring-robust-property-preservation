@@ -6,10 +6,10 @@ Require Import ClassicalExtras.
 Require Import FunctionalExtensionality.
 
 (** *Robust Preservation of π *)
-Definition RP (P : prg src) (π : prop) : Prop :=
+Definition RP (P : par src) (π : prop) : Prop :=
   rsat P π -> rsat (P ↓) π.
 
-Lemma contra_RP (P : prg src) (π : prop) :
+Lemma contra_RP (P : par src) (π : prop) :
      RP P π <->
      ((exists C' t', sem tgt (C' [ P ↓ ]) t'  /\ ~ π t') ->
       (exists C t ,  sem src (C [ P ]) t /\ ~ π t)).
@@ -22,7 +22,7 @@ Proof.
 Qed.  
 
 (** *RObust Preservation of a class of properties*)
-Definition RclassP (class : prop -> Prop) (P : prg src) (π : prop) : Prop :=
+Definition RclassP (class : prop -> Prop) (P : par src) (π : prop) : Prop :=
   class π -> RP P π.
 
 (* RP can be regarded as a monotonic function *)
@@ -66,10 +66,10 @@ Qed.
 
 (** *Robust Preservation of H: hprop *)
 
-Definition RHP (P : prg src) (H : hprop) : Prop :=
-  rhsat P H -> rhsat (compile P) H.
+Definition RHP (P : par src) (H : hprop) : Prop :=
+  rhsat P H -> rhsat (P ↓) H.
 
-Lemma contra_RHP (P : prg src) (H : hprop) :
+Lemma contra_RHP (P : par src) (H : hprop) :
       RHP P H <->
       ((exists C' : ctx tgt, ~ H (beh (C' [ P ↓ ]))) ->
        (exists C  : ctx src, ~ H (beh (C [ P ])))).
@@ -83,7 +83,7 @@ Proof.
 Qed.                               
 
 (** *Robust Preservation of a class of HyperProperties*)
-Definition RHclassP (class : hprop -> Prop) (P : prg src) (H : hprop) : Prop :=
+Definition RHclassP (class : hprop -> Prop) (P : par src) (H : hprop) : Prop :=
   class H -> RHP P H.
 
 Lemma RHP_monotonic : forall (X Y : hprop -> Prop),
