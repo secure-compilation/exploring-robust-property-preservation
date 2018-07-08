@@ -70,6 +70,11 @@ CoFixpoint sem'_trace_of (c:cfg) : sem' c (trace_of c).
   rewrite trace_of_eta. destruct (classicT (stuck c)) as [H | H].
   - now eapply SStop.
   - unfold stuck in H. (* rewrite not_forall_ex_not in H. -- strange error *)
+    assert (exists (e : event), ~ (forall (c' : cfg), ~ step c e c'))
+      as [e H1] by now apply not_forall_ex_not.
+    assert (exists c', ~ ~ step c e c') as [c' H2] by now apply not_forall_ex_not.
+    clear H1.
+    apply NNPP in H2.
 Admitted.
 
 Lemma non_empty_sem : forall W, exists t, sem W t.
