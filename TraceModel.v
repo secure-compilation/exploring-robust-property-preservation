@@ -535,12 +535,46 @@ Qed.
 
 (*******************************************************************************)
 
+CoInductive t_eq : trace -> trace -> Prop :=
+| etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2).
+
+Lemma t_eq_symm : forall t1 t2, t_eq t1 t2 -> t_eq t2 t1.
+Admitted.
+
+Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2.
+Proof.
+  intros m. induction m; intros t1 t2 hpref heq; try now auto.
+  + now destruct t1, t2. 
+  + destruct t1, t2; try now auto. inversion hpref. subst.   
+    inversion heq. subst. simpl. split; try now auto.
+    now apply (IHm t1 t2). 
+Qed.
+
+Lemma same_finite_prefixes : forall t1 t2, t_eq t1 t2 ->
+                             forall m, (prefix m t1) <-> prefix m t2.
+Proof.
+  intros t1 t2 heq m. split; intros H;
+  [now apply (prefix_preserved m t1 t2)
+  |apply (prefix_preserved m t2 t1); try now auto].
+  now apply t_eq_symm. 
+Qed. 
+
+Lemma neq_finitely_refutable : forall t1 t2,
+    ~ (t_eq t1 t2) <-> (exists m1 m2, prefix m1 t1 /\ prefix m2 t2 /\ ~ (prefix m1 t2 /\ prefix m2 t1)).
+Proof.
+  intros t1 t2. split.
+  - admit.
+  - intros [m1 [m2 [h1 [h2 hn]]]] hf. apply hn. split.
+    + now apply (same_finite_prefixes t1 t2).
+    + apply t_eq_symm in hf. now apply (same_finite_prefixes t2 t1).
+Admitted.
+
+(*******************************************************************************)
+
 Axiom is_input : event -> Prop.
 
 Definition traces_match (t1 t2 : trace) : Prop := 
  t1 = t2 \/
-                                          
-(exists (m : finpref) (e1 e2 : event),
+ (exists (m : finpref) (e1 e2 : event),
    is_input e1 /\ is_input e2 /\  e1 <> e2 /\
    fstopped m = false /\ prefix (fsnoc m e1) t1 /\ prefix (fsnoc m e2) t2).
-   
