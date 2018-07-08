@@ -36,8 +36,8 @@ CoFixpoint trace_of (c:cfg) : trace.
   apply NNPP in H. eapply (tcons e). apply (trace_of c').
 Defined.
 
-(* The usual hack to unfold fixpoints, but it ain't pretty and
-   it doesn't compute because of all the axioms *)
+(* The usual hack to unfold CoFixpoints, but it ain't pretty and
+   it still doesn't compute because of all the axioms *)
 Lemma trace_of_eta : forall c,
   trace_of c =
         match classicT (stuck c) with
@@ -127,12 +127,18 @@ Admitted.
 Definition semantics_safety_like' : forall t P m,
   sem P t ->
   prefix m t ->
-  fstopped m = false ->
   @psem lang P m.
 Proof.
-  intros t P m Hsem Hpref Hnot_stopped.
-  destruct (sem_prefix m P t Hsem Hpref Hnot_stopped) as [c Hsteps].
-  eapply steps_psem. eassumption.
+  intros t P m Hsem Hpref.
+  remember (fstopped m) as b. symmetry in Heqb. destruct b.
+  - pose proof Heqb as H'.
+    apply embed_eq in H'. unfold psem. exists (embedding m). simpl.
+    split. apply embed_pref.
+    assert (t = embedding m).
+      eapply stop_sngle_continuation; eauto. apply embed_pref.
+    subst t. assumption.
+  - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
+    eapply steps_psem. eassumption.
 Qed.
 
 Lemma tgt_sem : semantics_safety_like lang.
