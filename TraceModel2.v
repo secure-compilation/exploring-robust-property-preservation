@@ -448,19 +448,19 @@ Proof.
        now subst.
 Qed.
 
-Lemma proper_prefix : forall m t,
-    prefix m t -> 
-    embedding m <> t ->
-    fstopped m = false ->
-    (exists e, prefix (fsnoc m e) t).
-Proof.
-  induction m; intros t Hpref Hembed Hstop; try now auto.
-  + destruct t. try now auto. now exists e.
-  + destruct t; try now auto.
-    inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto. 
-    intros ff. apply Hembed. simpl. now apply embed_cons.
-    now exists e.
-Qed.
+(* Lemma proper_prefix : forall m t, *)
+(*     prefix m t ->  *)
+(*     embedding m <> t -> *)
+(*     fstopped m = false -> *)
+(*     (exists e, prefix (fsnoc m e) t). *)
+(* Proof. *)
+(*   induction m; intros t Hpref Hembed Hstop; try now auto. *)
+(*   + destruct t. try now auto. admit. now exists e. *)
+(*   + destruct t; try now auto. *)
+(*     inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto.  *)
+(*     intros ff. apply Hembed. simpl. now apply embed_cons. *)
+(*     now exists e. *)
+(* Qed. *)
 
 Lemma fpr_stop_equal : forall m1 m2,
     fpr m1 m2 ->
@@ -545,7 +545,13 @@ CoInductive t_eq : trace -> trace -> Prop :=
 | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2).
 
 Lemma t_eq_symm : forall t1 t2, t_eq t1 t2 -> t_eq t2 t1.
-Admitted.
+Proof.
+  cofix CH.
+  intros t1 t2 Heq.
+  inversion Heq; subst.
+  constructor.
+  now apply CH.
+Qed.
 
 Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2.
 Proof.
