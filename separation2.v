@@ -1,8 +1,8 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
-Require Import Robustdef.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
+Require Import Robustdef2.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
@@ -31,12 +31,13 @@ Qed.
 Fixpoint take_n (t : trace) (n : nat) : trace :=
   match n, t with
   | 0, _ | _ ,tstop => tstop
+  | _, tsilent => tsilent
   | S m, tcons x xs => tcons x (take_n xs m)
  end.                               
 
 Fixpoint take_nth_pref (t : trace) (n : nat) : finpref :=
   match n, t with
-  | 0, _ | _ ,tstop => ftbd
+  | 0, _ | _ ,tstop | _, tsilent => ftbd
   | S m, tcons x xs => fcons x (take_nth_pref xs m)
  end.                               
 
@@ -77,7 +78,8 @@ Lemma length_take_n : forall n t,
 Proof.
   intros n. induction n; intros t; try now auto.
   destruct t; simpl; try now auto.
-  + omega.  
+  + omega.
+  + omega.
   + apply omega_fact. now apply IHn.
 Qed. 
   
