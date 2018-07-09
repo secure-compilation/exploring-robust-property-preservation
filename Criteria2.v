@@ -122,7 +122,7 @@ Proof.
     + exists some_ctx. intros H. exfalso. apply (k H).
 Qed.
 
-(* TODO: Restore proof: here, missing lemma from Properties. *)
+(* TODO: TM#2 *)
 (* Theorem RLC_RLP : RLC <-> (forall P π, Liveness π -> RP P π). *)
 (* Proof. *)
 (*   rewrite RLC'. split. *)

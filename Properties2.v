@@ -88,6 +88,7 @@ Qed.
 (* an example: the property excluding one single infinite trace
    is Liveness
  *)
+(* TODO: TM#2 *)
 (* Lemma inf_excluded_is_liv : *)
 (*   forall ta, inf ta -> Liveness (fun b => b <> ta). *)
 (* Proof. *)

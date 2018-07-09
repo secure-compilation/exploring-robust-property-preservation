@@ -47,6 +47,7 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
    as we have at least two distinct events
    CH: this doesn't seem to use different_events though!
 *)
+(* TODO: TM#2 *)
 (* Lemma many_continuations : *)
 (*   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta. *)
 (* Proof. *)
@@ -448,6 +449,7 @@ Proof.
        now subst.
 Qed.
 
+(* TODO: TM#2 *)
 (* Lemma proper_prefix : forall m t, *)
 (*     prefix m t ->  *)
 (*     embedding m <> t -> *)
