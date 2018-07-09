@@ -14,22 +14,23 @@ CoInductive trace : Set :=
 (** *finite prefixes *)
 Inductive finpref : Set :=
   | fstop : finpref
-  | fsilent : finpref (* Instead of ftbd, for single_cont. *)
   | ftbd : finpref 
   | fcons : event -> finpref -> finpref.
 
 (** *prefix relation *)
 Fixpoint prefix m t : Prop :=
   match m, t with
-  | fstop, tstop | fsilent, tsilent | ftbd, _ => True
+  | fstop, tstop | ftbd, _ => True
   | fcons e1 m1, tcons e2 t2 => e1 = e2 /\ prefix m1 t2
   | _, _ => False
   end.
 
 (** *finite trace*)
+
+(* fin and inf now refer to *executions*, not traces!
+   Eventually they may be given more memorable names than term/nonterm. *)
 Inductive fin : trace -> Prop :=
   | fin_stop : fin tstop
-  | fin_silent : fin tsilent
   | fin_cons : forall e t, fin t -> fin (tcons e t).
 
 Definition inf (t : trace) : Prop := ~(fin t).
@@ -46,30 +47,27 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
    as we have at least two distinct events
    CH: this doesn't seem to use different_events though!
 *)
-Lemma many_continuations :
-  forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta.
-Proof.
-   induction m as [| | | e m' IH]; intros ta Hita.
-  - exists tstop. split; try now auto.
-    intro Hc. subst. apply Hita. now constructor.
-  - exists tsilent. split; try now auto.
-    intro Hc. subst. apply Hita. now constructor.
-  - exists tstop. split; try now auto. 
-    intro Hc. subst. apply Hita. now constructor. 
-  - destruct ta as [| | e' ta'].
-    + exfalso. apply Hita. now constructor.
-    + exfalso. apply Hita. now constructor.
-    + apply inf_tcons in Hita. specialize (IH ta' Hita). 
-      destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t').
-      split; try now auto.
-      ++ intro Hc. inversion Hc. now subst. 
-Qed.
+(* Lemma many_continuations : *)
+(*   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta. *)
+(* Proof. *)
+(*    induction m as [| | e m' IH]; intros ta Hita. *)
+(*   - exists tstop. split; try now auto. *)
+(*     intro Hc. subst. apply Hita. now constructor. *)
+(*   - exists tstop. split; try now auto. *)
+(*     intro Hc. subst. apply Hita. now constructor. *)
+(*   - destruct ta as [| | e' ta']. *)
+(*     + exfalso. apply Hita. now constructor. *)
+(*     + admit. *)
+(*     + apply inf_tcons in Hita. specialize (IH ta' Hita). *)
+(*       destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t'). *)
+(*       split; try now auto. *)
+(*       ++ intro Hc. inversion Hc. now subst. *)
+(* Qed. *)
 
 (* we try to identify a finite trace and the fpref made of the same events *)
 Fixpoint equal (m : finpref) (t : trace) : Prop :=
   match m, t with
   | fstop, tstop  => True
-  | fsilent, tsilent => True
   | fcons e2 ms, tcons e1 ts => e1 = e2 /\ equal ms ts
   | _ , _ => False
   end.
@@ -83,13 +81,11 @@ Qed.
 Lemma fin_equal : forall t, fin t <-> exists m : finpref, equal m t.
 Proof.
   intro t. split.
-  - intro H. induction H as [| | e t H [m IH]];
+  - intro H. induction H as [| e t H [m IH]];
     [ now exists fstop
-    | now exists fsilent
     | now exists (fcons e m)]. 
   - intros [m Heq]. generalize dependent t.
-    induction m as [| | | e m' IH]; intros t Heq; try now auto.
-    + destruct t; try now auto. now constructor.
+    induction m as [| | e m' IH]; intros t Heq; try now auto.
     + destruct t; try now auto. now constructor.
     + destruct t as [| | e' t']; inversion Heq.
       constructor. now apply IH.
@@ -113,7 +109,6 @@ Qed.
 Fixpoint fstopped (m : finpref) : bool:=
   match m with
   | fstop => true
-  | fsilent => true (* Not technically stopped, but preserve equal_stopped. *)
   | ftbd  => false
   | fcons x xs => fstopped xs
   end. 
@@ -197,7 +192,6 @@ Qed.
 Fixpoint embedding (m : finpref) : trace :=
   match m with
   | fstop | ftbd => tstop
-  | fsilent => tsilent (* Does it make more sense to embed ftbd into tsilent? *)
   | fcons e xs => tcons e (embedding xs)
   end.
 
@@ -234,7 +228,7 @@ Qed.
 (* CA: we can define a prefix relation among finite prefixes *)
 Fixpoint fpr (m1 m2 : finpref) : Prop :=
   match m1, m2 with
-  | ftbd, _ | fstop, fstop | fsilent, fsilent => True
+  | ftbd, _ | fstop, fstop => True
   | (fcons x xs), (fcons y ys) => x = y /\ fpr xs ys
   | _, _ => False
   end.
@@ -315,7 +309,6 @@ Qed.
 Fixpoint fsnoc (m:finpref) (e:event) : finpref :=
   match m with
   | fstop => fstop
-  | fsilent => fsilent
   | ftbd => fcons e ftbd
   | fcons m ms => fcons m (fsnoc ms e)
   end.
@@ -417,7 +410,6 @@ Lemma snoc_lemma : forall m,
 Proof.
   intros m. induction m; try now auto.
   + right. now exists fstop, an_event.
-  + right. now exists fsilent, an_event.
   + destruct IHm as [Hftbd | [m' [e' H]]]; right; subst.  
     ++ now exists ftbd, e. 
     ++ now exists (fcons e m'), e'. 
