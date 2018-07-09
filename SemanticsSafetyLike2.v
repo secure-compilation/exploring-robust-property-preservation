@@ -1,7 +1,7 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
 
 Section Main.
 
@@ -120,7 +120,7 @@ Proof.
   induction m; intros c0 t Hsem Hpref Hnot_stopped.
   - now inversion Hnot_stopped.
   - exists c0. apply SSTbd.
-  - destruct t as [|e' t']. now inversion Hpref.
+  - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
     simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
     inversion Hsem. subst. simpl in Hnot_stopped.
     destruct (IHm c' t' H3 Hpref Hnot_stopped) as [c'' HH].
