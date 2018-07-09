@@ -13,3 +13,6 @@ Criteria.v
 r2RSC_teq.v
 SemanticsSafetyLike.v
 separation.v
+
+TraceModel2.v
+Properties2.v
