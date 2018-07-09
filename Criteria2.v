@@ -1,11 +1,11 @@
 Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import Events.
-Require Import CommonST.
-Require Import TraceModel.
-Require Import Robustdef.
-Require Import Properties.
-Require Import Topology.
+Require Import CommonST2.
+Require Import TraceModel2.
+Require Import Robustdef2.
+Require Import Properties2.
+Require Import Topology2.
 
 (** *property free criteria *)
 
@@ -122,19 +122,20 @@ Proof.
     + exists some_ctx. intros H. exfalso. apply (k H).
 Qed.
 
-Theorem RLC_RLP : RLC <-> (forall P π, Liveness π -> RP P π).
-Proof.
-  rewrite RLC'. split.
-  - intros rlc P π Hl. rewrite contra_RP. intros [C' [t [H0 H1]]].
-    assert(Hi : inf t) by (rewrite (not_in_liv_inf π) in Hl; now apply ( Hl t H1)).
-    destruct (rlc P C' t Hi H0) as [C K0]. clear rlc.
-    now exists C,t.
-  - intros rlp P C' t Hi H0.
-    specialize (rlp P (fun b => b <> t) (inf_excluded_is_liv t Hi)).
-    rewrite contra_RP in rlp. destruct rlp as [C [t' [K0 K1]]].
-    now exists C', t. apply NNPP in K1. subst t'.
-    now exists C.
-Qed.
+(* TODO: Restore proof: here, missing lemma from Properties. *)
+(* Theorem RLC_RLP : RLC <-> (forall P π, Liveness π -> RP P π). *)
+(* Proof. *)
+(*   rewrite RLC'. split. *)
+(*   - intros rlc P π Hl. rewrite contra_RP. intros [C' [t [H0 H1]]]. *)
+(*     assert(Hi : inf t) by (rewrite (not_in_liv_inf π) in Hl; now apply ( Hl t H1)). *)
+(*     destruct (rlc P C' t Hi H0) as [C K0]. clear rlc. *)
+(*     now exists C,t. *)
+(*   - intros rlp P C' t Hi H0. *)
+(*     specialize (rlp P (fun b => b <> t) (inf_excluded_is_liv t Hi)). *)
+(*     rewrite contra_RP in rlp. destruct rlp as [C [t' [K0 K1]]]. *)
+(*     now exists C', t. apply NNPP in K1. subst t'. *)
+(*     now exists C. *)
+(* Qed. *)
 
 (*********************************************************)
 (* Criterium for Observable Properties Preservation  
