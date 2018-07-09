@@ -1,8 +1,8 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
-Require Import Robustdef.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
+Require Import Robustdef2.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
@@ -80,21 +80,23 @@ Lemma longest_in_psem : forall (P' : prg tgt) m,
           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
 Admitted.
 
+(* TODO: TM#2 *)
 Lemma a_technical_lemma: forall (P' : prg tgt) m,
     psem P' m -> (exists egood, psem P' (fsnoc m egood)) \/ psem P' (m[fstop/ftbd]).
-Proof.
-  intros P' m Hpsem. destruct (fstopped m) eqn:Hstop.
-  + right. now rewrite <- if_fstopped_equal. 
-  + destruct Hpsem as [b [Hpref Hsem]].
-    assert (embedding m = b \/ embedding m <> b) by now apply classic.
-    destruct H as [H | H].
-    ++ right. exists b. split; try now auto.
-       rewrite <- H. rewrite embedding_is_the_same.
-       now apply embed_pref.
-    ++ left. destruct (proper_prefix m b Hpref H Hstop) as [egood HH].
-       now exists egood, b.
-Qed.
-            
+(* Proof. *)
+(*   intros P' m Hpsem. destruct (fstopped m) eqn:Hstop. *)
+(*   + right. now rewrite <- if_fstopped_equal.  *)
+(*   + destruct Hpsem as [b [Hpref Hsem]]. *)
+(*     assert (embedding m = b \/ embedding m <> b) by now apply classic. *)
+(*     destruct H as [H | H]. *)
+(*     ++ right. exists b. split; try now auto. *)
+(*        rewrite <- H. rewrite embedding_is_the_same. *)
+(*        now apply embed_pref. *)
+(*     ++ left. destruct (proper_prefix m b Hpref H Hstop) as [egood HH]. *)
+(*        now exists egood, b. *)
+(* Qed. *)
+Admitted.
+
 Theorem two_rRSC_teq : two_rRSC -> teq_preservation.
 Proof.
   unfold two_rRSC, teq_preservation. intros twoR P1 P2 H0 Ct t.
