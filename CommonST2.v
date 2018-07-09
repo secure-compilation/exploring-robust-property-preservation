@@ -1,5 +1,5 @@
-Require Import TraceModel. 
-Require Import Properties.
+Require Import TraceModel2. 
+Require Import Properties2.
 Require Import ClassicalExtras.
 
 Set Implicit Arguments. 
