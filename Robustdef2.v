@@ -1,7 +1,7 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
 Require Import ClassicalExtras.
 Require Import FunctionalExtensionality.
 
@@ -55,6 +55,7 @@ Proof.
     + exists (fun t => False).  split; auto. 
       intros [t Heq]. destruct t;
       [specialize (Heq (tcons an_event tstop))
+      |specialize (Heq tstop)
       |specialize (Heq tstop)];  now rewrite Heq.    
     + unfold RclassP. intros P π H tt. 
       eapply (RclassP_sufficient_to_RPP (fun π => exists t, (forall b, π b <-> b <> t)));
