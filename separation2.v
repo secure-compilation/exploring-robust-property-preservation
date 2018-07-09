@@ -263,14 +263,21 @@ Definition my_pi2 : prop :=
 Lemma my_pi2_safety : Safety my_pi2.
 Proof.
   unfold Safety, my_pi2. intros t hneq.
-  rewrite neq_finitely_refutable in hneq.
+  rewrite neq_finitely_refutable in hneq. 
   destruct hneq as [m1 [m2 [h1 [h2 h3]]]].
   rewrite de_morgan1 in h3. destruct h3 as [k | k]. 
   +  exists m1. split; try now auto. 
      intros tt htt. rewrite neq_finitely_refutable.
      exists m1, m2. repeat (split; try now auto).
-  + admit.
-Admitted.           
+  + destruct t. exists fstop. split; try now auto.
+    intros [] htt; try now auto.
+    destruct m1; try now auto.
+    destruct m2; try now auto. (* this model does not allow to prove this! *)
+    (*maybe use another argument or try to change the property... 
+      in the worst case we can prove RLP =/=> RPP but not RLP =/=> RSP 
+    *)
+Admitted.     
+
 
 Theorem separation_RLP_RSP :
   (forall P π, Liveness π -> c2_RPP P π) /\
