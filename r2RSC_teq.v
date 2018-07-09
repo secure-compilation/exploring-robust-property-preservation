@@ -98,8 +98,8 @@ Qed.
 Theorem two_rRSC_teq : two_rRSC -> teq_preservation.
 Proof.
   unfold two_rRSC, teq_preservation. intros twoR P1 P2 H0 Ct t.
-  apply NNPP. intros ff. rewrite not_iff in ff.
-  destruct ff as [[f0 f1] | [f0 f1]].
+  apply NNPP. intros ff. rewrite not_iff in ff. 
+  destruct ff as [[f0 f1] | [f1 f0]].
   + specialize (twoR myr P1 P2 (teq_premises_myr_holds P1 P2 H0)).
      destruct (fin_or_inf t) as [Hfin | Hinf].
     ++ apply fin_equal in Hfin. destruct Hfin as [m Hm].
@@ -205,8 +205,111 @@ Proof.
            apply same_snoc_same_pointwise in K2; try now auto.
            destruct K2 as [K21 K22]. rewrite K21 in Hp2.
            now apply not_stop_not_snoc_pref in Hp2.
-   + admit. (* this is just the symmetric case i.e. *)
-(*                 (sem' (plug' (compile P2) Ct) t) /\ *)
-    (*               ~  sem' (plug' (compile P1) Ct) t) *)
-Admitted.
-          
+    + assert (H0new :  forall (Cs : ctx src) (t : trace), sem src (Cs [P2]) t <-> sem src (Cs [P1]) t) by
+      now firstorder.                                   
+    specialize (twoR myr P2 P1 (teq_premises_myr_holds P2 P1 H0new)).
+     destruct (fin_or_inf t) as [Hfin | Hinf].
+    ++ apply fin_equal in Hfin. destruct Hfin as [m Hm].
+       destruct (longest_in_psem  (Ct [P1 ↓]) m) as [mm [Hfpr [Hpsem2 [Hstopmm Hmax]]]].
+       destruct Hpsem2 as [t2 [Hpref2 Hsem2]].
+       assert (H : (embedding mm) = t2 \/ (embedding mm) <> t2) by now apply classic.
+       destruct H as [Ht2t | H].
+       * assert (embedding m <> embedding mm).
+         { intros ff. apply equal_embedding in Hm. subst. now rewrite <- ff in Hsem2. }
+         destruct (twoR Ct m (mm[fstop/ftbd])).
+         ** exists t. split; try now auto. now apply equal_prefix.
+         ** exists t2. split; try now auto. rewrite <- Ht2t. now apply with_stop_prefix_embedding.       
+         ** apply H. apply (equal_stopped m t) in Hm.
+            now apply equal_with_stop_same_embedding. 
+         ** destruct H1 as [H1 | H1].
+            *** apply H. assert (Heq : mm[fstop/ftbd] = m).
+                { apply (fpr_stop_equal (mm[fstop/ftbd]) m); try now auto.
+                  now apply with_stop_fstopped. }
+                rewrite (embedding_is_the_same mm) in *. now rewrite <- Heq.
+            *** destruct H1 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]].
+                apply (proper_fpr (fsnoc m0 i2) mm) in Hfpr2; try now auto.
+                apply (fpr_transitivity (fsnoc m0 i2) mm m Hfpr2) in Hfpr; try now auto.
+                destruct (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m)
+                  as [Hfalse | Hfalse]; try now auto.
+                now apply (snoc_m_event_equal m0 i1 i2) in Hfalse; auto.
+                apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence.
+                now apply snoc_stop.        
+       * destruct (proper_prefix mm t2) as [e He]; try now auto.
+         assert (Hnot : ~ fpr (fsnoc mm e) m).
+         { intros ff. assert (Hfoo1 : psem (Ct [P1 ↓]) (fsnoc mm e)) by now exists t2.
+           assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. 
+           specialize (Hmax (fsnoc mm e) ff Hfoo1 Hfoo2).
+           now apply (not_stop_not_snoc_pref mm e). }
+         destruct (twoR Ct m (fsnoc mm e)) as [K1 | [K2 | K3]]; try now auto.
+         exists t. split; auto. now apply (equal_prefix m t).
+         now exists t2.
+         assert (fstopped m = true) by now apply (equal_stopped m t).
+         assert (m = fsnoc mm e) by now apply fpr_stop_equal. now subst.
+         destruct K3 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]].
+         assert ((fpr (fsnoc m0 i2)) mm \/ (fsnoc m0 i2) = fsnoc mm e) by
+             now apply (compare_with_snoc (fsnoc m0 i2) mm e).
+         destruct H1.
+         ** apply (fpr_transitivity (fsnoc m0 i2) mm m) in H1; try now auto.
+            apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1.      
+            destruct H1; apply Hdiffi;
+              [now apply (snoc_diff m0 i1 i2) | symmetry; now apply (snoc_diff m0 i2 i1) ].
+         ** apply same_snoc_same_pointwise in H1; try now auto.            
+            destruct H1 as [Heq1 Heq2].                       
+            subst.
+            assert (psem (Ct [P1 ↓]) (fsnoc mm i1)).
+            { apply (input_totality_tgt ((Ct [P1 ↓])) mm e i1); try now auto.
+            now exists t2. }
+            rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).  
+            now apply (not_stop_not_snoc_pref mm i1). 
+    ++ destruct (non_empty_sem tgt (Ct [P1 ↓])) as [b Hb].
+       destruct t,b; try now auto. 
+       * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
+         now exists tstop. now exists (tcons e b). destruct H; try now auto.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
+         now destruct m.
+       * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
+         now exists (tcons e t). now exists tstop. destruct H; try now auto.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
+         now destruct m.         
+       * destruct (tgt_sem (tcons e t) (Ct [P1 ↓]) f1 Hinf) as
+                     [m [ebad [Hpsemm [Hpref Hpsem']]]].
+         assert ( (exists egood,  psem (Ct [P1 ↓]) (fsnoc m egood)) \/
+                             psem (Ct [P1 ↓]) (m[fstop/ftbd]))
+          by now apply a_technical_lemma.
+        destruct H as [k1 | k2].
+        ** destruct k1 as [egood Hpsem].
+            assert (fstopped m = false \/ fstopped m = true) by
+               (destruct (fstopped m); now auto).
+            destruct H as [K | K].
+         -- destruct (twoR Ct (fsnoc m ebad) (fsnoc m egood)) as [H | [H | H]]; try now auto.
+            now exists (tcons e t). apply snoc_m_event_equal in H. now subst. assumption.
+            apply snoc_m_event_equal in H. now subst. assumption.
+            destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
+            destruct (same_snoc_same_finpref m m' egood ebad i2 i1); try now auto.
+            intros ff. now subst. 
+            apply snoc_diff in Hp1; try now auto.
+            apply snoc_diff in Hp2; try now auto.  subst.
+             specialize (input_totality_tgt (Ct [P1 ↓]) m' egood ebad); try now auto.
+         -- specialize (stop_snoc_id m ebad K).
+            specialize (stop_snoc_id m egood K).
+            intros H3 H4. rewrite H3 in Hpsem. now rewrite H4 in Hpsem'.
+        ** destruct (twoR Ct  (fsnoc m ebad) (m[fstop/ftbd])) as [H | [H | H]]; try now auto. 
+           now exists (tcons e t).
+           apply Hpsem'. destruct k2 as [x [Hx HHx]]. exists x. split; try now auto.
+           now apply (fpr_pref_pref (fsnoc m ebad) (m[fstop/ftbd]) x).  
+           apply fpr_stop_equal in H. now rewrite <- H in Hpsem'.
+           now apply with_stop_fstopped. 
+           destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].            
+           apply proper_fpr in Hp2; try apply with_stop_fstopped; try (now apply snoc_stop).
+           apply compare_with_snoc in Hp1. destruct Hp1 as [K1 | K2].
+           apply (same_fpr (fsnoc m' i1) (fsnoc m' i2) m K1) in Hp2.
+           destruct Hp2 as [Hp | Hp]; apply snoc_m_event_equal in Hp; now congruence.
+           assert (fstopped m = false).
+           { destruct (fstopped m) eqn : Hm; try now auto.
+             rewrite (stop_snoc_id m ebad) in K2; try now auto.
+             rewrite <- K2 in Hp2. apply snoc_m_event_equal in Hp2; auto.
+             congruence. }              
+           apply same_snoc_same_pointwise in K2; try now auto.
+           destruct K2 as [K21 K22]. rewrite K21 in Hp2.
+           now apply not_stop_not_snoc_pref in Hp2.
+Qed. 
