@@ -454,19 +454,33 @@ Proof.
 Qed.
 
 (* TODO: TM#2 *)
+Inductive diverges : trace -> Prop :=
+| div_silent : diverges tsilent
+| div_cons : forall e t, diverges t -> diverges (tcons e t).
+
 (* Lemma proper_prefix : forall m t, *)
-(*     prefix m t ->  *)
+(*     prefix m t -> *)
 (*     embedding m <> t -> *)
 (*     fstopped m = false -> *)
 (*     (exists e, prefix (fsnoc m e) t). *)
-(* Proof. *)
-(*   induction m; intros t Hpref Hembed Hstop; try now auto. *)
-(*   + destruct t. try now auto. admit. now exists e. *)
-(*   + destruct t; try now auto. *)
-(*     inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto.  *)
-(*     intros ff. apply Hembed. simpl. now apply embed_cons. *)
-(*     now exists e. *)
-(* Qed. *)
+Lemma proper_prefix : forall m t,
+    prefix m t ->
+    embedding m <> t ->
+    fstopped m = false ->
+    ~ diverges t ->
+    (exists e, prefix (fsnoc m e) t).
+Proof.
+  induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
+  + destruct t.
+    * now auto.
+    * now pose proof div_silent.
+    * now exists e.
+  + destruct t; try now auto.
+    inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto.
+    * intros ff. apply Hembed. simpl. now apply embed_cons.
+    * intros ff. now pose proof div_cons e0 t ff.
+    * now exists e.
+Qed.
 
 Lemma fpr_stop_equal : forall m1 m2,
     fpr m1 m2 ->
