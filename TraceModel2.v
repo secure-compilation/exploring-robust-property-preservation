@@ -47,23 +47,27 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
    as we have at least two distinct events
    CH: this doesn't seem to use different_events though!
 *)
-(* TODO: TM#2 *)
-(* Lemma many_continuations : *)
-(*   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta. *)
-(* Proof. *)
-(*    induction m as [| | e m' IH]; intros ta Hita. *)
-(*   - exists tstop. split; try now auto. *)
-(*     intro Hc. subst. apply Hita. now constructor. *)
-(*   - exists tstop. split; try now auto. *)
-(*     intro Hc. subst. apply Hita. now constructor. *)
-(*   - destruct ta as [| | e' ta']. *)
-(*     + exfalso. apply Hita. now constructor. *)
-(*     + admit. *)
-(*     + apply inf_tcons in Hita. specialize (IH ta' Hita). *)
-(*       destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t'). *)
-(*       split; try now auto. *)
-(*       ++ intro Hc. inversion Hc. now subst. *)
-(* Qed. *)
+Lemma many_continuations :
+  forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta.
+Proof.
+   induction m as [| | e m' IH]; intros ta Hita.
+  - exists tstop. split; try now auto.
+    intro Hc. subst. apply Hita. now constructor.
+  - exists tstop. split; try now auto.
+    intro Hc. subst. apply Hita. now constructor.
+  - destruct ta as [| | e' ta'].
+    + exfalso. apply Hita. now constructor.
+    + specialize (IH tsilent Hita).
+      destruct IH as [t' Ht'].
+      destruct Ht' as [Hpref Hnsilent].
+      exists (tcons e t'). split.
+      ++ simpl. auto.
+      ++ unfold not. intros H. inversion H. 
+    + apply inf_tcons in Hita. specialize (IH ta' Hita).
+      destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t').
+      split; try now auto.
+      ++ intro Hc. inversion Hc. now subst.
+Qed.
 
 (* we try to identify a finite trace and the fpref made of the same events *)
 Fixpoint equal (m : finpref) (t : trace) : Prop :=
