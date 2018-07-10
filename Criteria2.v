@@ -359,18 +359,10 @@ Proof.
   specialize (H Hpi1 Ct t t). tauto.
 Qed.
 
-
-Definition two_rRSC : Prop :=
-  forall P1 P2 (r : finpref -> finpref -> Prop),
-    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
-                  psem (Cs [P2]) m2 ->
-                  r m1 m2) ->
-     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
-                  psem (Ct [P2 ↓]) m2 ->
-                  r m1 m2)).
-
 (*************************************************************************)
 (* Robust 2-rel Safety Pres              *)
+(* We give three equivalent caracterization of the same criterion: r2RSP, r2RSC
+   and two_rRSC *)
 (*************************************************************************)
 Definition safety2 r := forall (t1 t2 : trace),
     ~ (r t1 t2) ->
@@ -410,6 +402,17 @@ Definition r2RSC := forall Ct P1 P2 m1 m2,
   psem (plug _ (P2 ↓) Ct) m2 ->
   exists Cs, psem (plug _ P1 Cs) m1 /\ psem (plug _ P2 Cs) m2.
 
+
+Definition two_rRSC : Prop :=
+  forall P1 P2 (r : finpref -> finpref -> Prop),
+    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
+                  psem (Cs [P2]) m2 ->
+                  r m1 m2) ->
+     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
+                  psem (Ct [P2 ↓]) m2 ->
+                  r m1 m2)).
+
+
 Theorem r2RSP_r2RSC : r2RSP <-> r2RSC.
 Proof.
   rewrite r2RSP'.
@@ -447,6 +450,23 @@ Proof.
     unfold psem in HCs1. unfold psem in HCs2. destruct HCs1 as [t1' [Hpref1' Hsem1']].
     destruct HCs2 as [t2' [Hpref2' Hsem2']].
     exists Cs, t1', t2'. auto.
+Qed.
+
+Theorem r2RSC_two_rRSC : r2RSC <-> two_rRSC.
+Proof.
+  unfold r2RSC, two_rRSC.
+  split.
+  - intros H P1 P2 r H' Ct m1 m2 Hsem1 Hsem2.
+    specialize (H Ct P1 P2 m1 m2 Hsem1 Hsem2).
+    destruct H as [Cs [Hsem1' Hsem2']].
+    specialize (H' Cs m1 m2 Hsem1' Hsem2'). now assumption.
+  - intros H Ct P1 P2 m1 m2 Hsem1 Hsem2.
+    specialize (H P1 P2).
+    specialize (H (fun m1 m2 => exists Cs, psem (Cs [P1]) m1 /\ psem (Cs [P2]) m2)); simpl in H.
+    assert (H' : forall Cs m1 m2, psem (Cs [P1]) m1 -> psem (Cs [P2]) m2 ->
+                             (exists Cs, psem (Cs [P1]) m1 /\ psem (Cs [P2]) m2)).
+    { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
+    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
 
 
