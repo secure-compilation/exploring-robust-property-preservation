@@ -1,5 +1,5 @@
 Require Import Events.
-Require Import TraceModel. 
+Require Import TraceModel2.
 Require Import ClassicalExtras.
 
 (* CA: in this file all and only defn of prop, Hprop, relation on prop
@@ -91,7 +91,7 @@ Qed.
 Lemma inf_excluded_is_liv :
   forall ta, inf ta -> Liveness (fun b => b <> ta).
 Proof.
-  unfold Liveness. intros ta m. pose proof many_continuations. now eauto.
+  unfold Liveness. intros ta Hta m. pose proof many_continuations. now eauto.
 Qed.
 
 

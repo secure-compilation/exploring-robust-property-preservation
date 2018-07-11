@@ -8,6 +8,7 @@ Require Import Setoid.
 (** *traces  *)
 CoInductive trace : Set :=
   | tstop : trace
+  | tsilent : trace
   | tcons : event -> trace -> trace.
 
 (** *finite prefixes *)
@@ -22,9 +23,12 @@ Fixpoint prefix m t : Prop :=
   | fstop, tstop | ftbd, _ => True
   | fcons e1 m1, tcons e2 t2 => e1 = e2 /\ prefix m1 t2
   | _, _ => False
-  end. 
+  end.
 
 (** *finite trace*)
+
+(* fin and inf now refer to *executions*, not traces!
+   Eventually they may be given more memorable names than term/nonterm. *)
 Inductive fin : trace -> Prop :=
   | fin_stop : fin tstop
   | fin_cons : forall e t, fin t -> fin (tcons e t).
@@ -48,15 +52,21 @@ Lemma many_continuations :
 Proof.
    induction m as [| | e m' IH]; intros ta Hita.
   - exists tstop. split; try now auto.
-    intro Hc. subst. apply Hita. now constructor. 
-  - exists tstop. split; try now auto. 
-    intro Hc. subst. apply Hita. now constructor. 
-  - destruct ta as [| e' ta'].
+    intro Hc. subst. apply Hita. now constructor.
+  - exists tstop. split; try now auto.
+    intro Hc. subst. apply Hita. now constructor.
+  - destruct ta as [| | e' ta'].
     + exfalso. apply Hita. now constructor.
-    + apply inf_tcons in Hita. specialize (IH ta' Hita). 
+    + specialize (IH tsilent Hita).
+      destruct IH as [t' Ht'].
+      destruct Ht' as [Hpref Hnsilent].
+      exists (tcons e t'). split.
+      ++ simpl. auto.
+      ++ unfold not. intros H. inversion H. 
+    + apply inf_tcons in Hita. specialize (IH ta' Hita).
       destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t').
       split; try now auto.
-      ++ intro Hc. inversion Hc. now subst. 
+      ++ intro Hc. inversion Hc. now subst.
 Qed.
 
 (* we try to identify a finite trace and the fpref made of the same events *)
@@ -80,9 +90,9 @@ Proof.
     [ now exists fstop
     | now exists (fcons e m)]. 
   - intros [m Heq]. generalize dependent t.
-    induction m as [| |e m' IH]; intros t Heq; try now auto.
-    + destruct t; try now auto. now constructor. 
-    + destruct t as [| e' t']; inversion Heq. 
+    induction m as [| | e m' IH]; intros t Heq; try now auto.
+    + destruct t; try now auto. now constructor.
+    + destruct t as [| | e' t']; inversion Heq.
       constructor. now apply IH.
 Qed.
 
@@ -136,6 +146,7 @@ CoFixpoint constant_trace (e : event) : trace := tcons e (constant_trace e).
 
 Theorem trace_eta : forall t, t = match t with
                                   | tstop => tstop
+                                  | tsilent => tsilent
                                   | tcons e t' => tcons e t'
                                   end.
 Proof. destruct t; reflexivity. Qed.
@@ -302,7 +313,7 @@ Qed.
 (* CA: fsnoc is the identity on fstop *)
 Fixpoint fsnoc (m:finpref) (e:event) : finpref :=
   match m with
-  | fstop => fstop 
+  | fstop => fstop
   | ftbd => fcons e ftbd
   | fcons m ms => fcons m (fsnoc ms e)
   end.
@@ -442,18 +453,33 @@ Proof.
        now subst.
 Qed.
 
+(* TODO: TM#2 *)
+Inductive diverges : trace -> Prop :=
+| div_silent : diverges tsilent
+| div_cons : forall e t, diverges t -> diverges (tcons e t).
+
+(* Lemma proper_prefix : forall m t, *)
+(*     prefix m t -> *)
+(*     embedding m <> t -> *)
+(*     fstopped m = false -> *)
+(*     (exists e, prefix (fsnoc m e) t). *)
 Lemma proper_prefix : forall m t,
-    prefix m t -> 
+    prefix m t ->
     embedding m <> t ->
     fstopped m = false ->
+    ~ diverges t ->
     (exists e, prefix (fsnoc m e) t).
 Proof.
-  induction m; intros t Hpref Hembed Hstop; try now auto.
-  + destruct t. try now auto. now exists e.
+  induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
+  + destruct t.
+    * now auto.
+    * now pose proof div_silent.
+    * now exists e.
   + destruct t; try now auto.
-    inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto. 
-    intros ff. apply Hembed. simpl. now apply embed_cons.
-    now exists e.
+    inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto.
+    * intros ff. apply Hembed. simpl. now apply embed_cons.
+    * intros ff. now pose proof div_cons e0 t ff.
+    * now exists e.
 Qed.
 
 Lemma fpr_stop_equal : forall m1 m2,

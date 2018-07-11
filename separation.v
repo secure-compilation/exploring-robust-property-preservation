@@ -1,8 +1,8 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
-Require Import Robustdef.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
+Require Import Robustdef2.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
@@ -31,12 +31,13 @@ Qed.
 Fixpoint take_n (t : trace) (n : nat) : trace :=
   match n, t with
   | 0, _ | _ ,tstop => tstop
+  | _, tsilent => tsilent
   | S m, tcons x xs => tcons x (take_n xs m)
  end.                               
 
 Fixpoint take_nth_pref (t : trace) (n : nat) : finpref :=
   match n, t with
-  | 0, _ | _ ,tstop => ftbd
+  | 0, _ | _ ,tstop | _, tsilent => ftbd
   | S m, tcons x xs => fcons x (take_nth_pref xs m)
  end.                               
 
@@ -77,7 +78,8 @@ Lemma length_take_n : forall n t,
 Proof.
   intros n. induction n; intros t; try now auto.
   destruct t; simpl; try now auto.
-  + omega.  
+  + omega.
+  + omega.
   + apply omega_fact. now apply IHn.
 Qed. 
   
@@ -236,7 +238,7 @@ Qed.
 
 Axiom only_an_omega_produced : exists P, forall C,
       (sem L (plug L P C) an_omega /\
-      (forall t, sem L (plug L P C) t -> t_eq t an_omega)). 
+      (forall t, sem L (plug L P C) t -> t_eq t an_omega)).
 
 Definition c2 : par L -> par ϕ :=
   fun P => P.
@@ -255,32 +257,21 @@ Proof.
   now apply embed_fin.
 Qed.
 
+
 Definition my_pi2 : prop :=
   fun t => t_eq t an_omega.
 
-Lemma my_pi2_safety : Safety my_pi2.
-Proof.
-  unfold Safety, my_pi2. intros t hneq.
-  rewrite neq_finitely_refutable in hneq.
-  destruct hneq as [m1 [m2 [h1 [h2 h3]]]].
-  rewrite de_morgan1 in h3. destruct h3 as [k | k]. 
-  +  exists m1. split; try now auto. 
-     intros tt htt. rewrite neq_finitely_refutable.
-     exists m1, m2. repeat (split; try now auto).
-  + admit.
-Admitted.           
-
-Theorem separation_RLP_RSP :
+Theorem separation_RLP_RPP :
   (forall P π, Liveness π -> c2_RPP P π) /\
-  ~  (forall P π, Safety π -> c2_RPP P π).
+  ~  (forall P π, c2_RPP P π).
 Proof.
   split.
   + now apply c2_robustly_liveness.
   + intros ff. destruct only_an_omega_produced as [P h]. 
-    specialize (ff P my_pi2 my_pi2_safety).
+    specialize (ff P my_pi2).
     unfold c2_RPP, rsat, sat in ff. 
     assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
-    { intros C t hsem. specialize (h C). destruct h as [h1 h2]. 
+    { intros C t hsem. specialize (h C). destruct h as [h1 h2].  
       now apply h2. }  
     specialize (ff H (0, some_ctx_L) tstop). 
     assert  (sem ϕ ((0, some_ctx_L) [c2 P]) tstop).
@@ -290,13 +281,33 @@ Proof.
     specialize (ff H0). unfold my_pi2 in ff. inversion ff. 
 Qed.
 
-Theorem  separation_RLP_RPP :
+Require Import TopologyTrace2. 
+
+Lemma RLP_plus_RSP_RPP :
+  (forall P π, Liveness π -> c2_RPP P π) ->
+  (forall P π, Safety π -> c2_RPP P π) ->
+  (forall P π, c2_RPP P π).
+Proof.
+  intros h1 h2 P π. destruct (decomposition_safety_liveness π) as
+      [s [l [hs [hl h]]]]. unfold c2_RPP, rsat, sat in *. 
+  intros hh C t hsem. rewrite (h t).
+  assert (hhs : forall C t, sem L (C [P]) t -> s t) by now firstorder. 
+  assert (hhl : forall C t, sem L (C [P]) t -> l t) by now firstorder.
+  split.
+  + now apply (h2 P s hs hhs C t hsem).
+  + now apply (h1 P l hl hhl C t hsem). 
+Qed. 
+    
+Corollary separation_RLP_RSP :
    (forall P π, Liveness π -> c2_RPP P π) /\
-   ~  (forall P π, c2_RPP P π).
+   ~  (forall P π, Safety π ->  c2_RPP P π).
 Proof.
   split.
   + now apply c2_robustly_liveness.
-  + destruct separation_RLP_RSP as [K1 K2]. now auto.
+  + intros ff. 
+    assert (forall P π, c2_RPP P π). 
+    { apply RLP_plus_RSP_RPP. now apply c2_robustly_liveness. auto. }
+    destruct separation_RLP_RPP as [K1 K2]. now auto.
 Qed. 
 
   

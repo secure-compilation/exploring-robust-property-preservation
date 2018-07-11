@@ -1,7 +1,7 @@
 Require Import Events.
-Require Import TraceModel.
-Require Import Properties.
-Require Import CommonST.
+Require Import TraceModel2.
+Require Import Properties2.
+Require Import CommonST2.
 
 Section Main.
 
@@ -120,7 +120,7 @@ Proof.
   induction m; intros c0 t Hsem Hpref Hnot_stopped.
   - now inversion Hnot_stopped.
   - exists c0. apply SSTbd.
-  - destruct t as [|e' t']. now inversion Hpref.
+  - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
     simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
     inversion Hsem. subst. simpl in Hnot_stopped.
     destruct (IHm c' t' H3 Hpref Hnot_stopped) as [c'' HH].
@@ -137,15 +137,11 @@ Lemma sem_prefix : forall m P t,
    an operation to remove m from t -- for now removed that part since not needed *)
 Proof. intros m P. now apply (sem'_prefix m (init P)). Qed.
 
-(* CH: ouch, this is actually trivial *)
-Definition semantics_safety_like_reverse : forall t P m,
+Definition semantics_safety_like' : forall t P m,
   sem P t ->
   prefix m t ->
   @psem lang P m.
 Proof.
-  intros t P m H H0. unfold psem. exists t. split; assumption.
-Qed.
-(* CH: old proof
   intros t P m Hsem Hpref.
   remember (fstopped m) as b. symmetry in Heqb. destruct b.
   - pose proof Heqb as H'.
@@ -157,11 +153,6 @@ Qed.
   - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
     eapply steps_psem. eassumption.
 Qed.
-*)
-
-Definition semantics_safety_like_right : forall t P,
-  (forall m, prefix m t -> @psem lang P m) -> sem P t.
-Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
 Proof.

@@ -1,11 +1,11 @@
 Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import Events.
-Require Import CommonST.
-Require Import TraceModel.
-Require Import Robustdef.
-Require Import Properties.
-Require Import Topology.
+Require Import CommonST2.
+Require Import TraceModel2.
+Require Import Robustdef2.
+Require Import Properties2.
+Require Import Topology2.
 
 (** *property free criteria *)
 
@@ -149,6 +149,7 @@ Qed.
 Lemma rewriting_lemma : forall t1 t2,
     (forall m, prefix m t1 -> prefix m t2) ->
     (forall π, π t1 -> π t2).
+Proof.
 Admitted.
 
 Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) <->
@@ -359,18 +360,10 @@ Proof.
   specialize (H Hpi1 Ct t t). tauto.
 Qed.
 
-
-Definition two_rRSC : Prop :=
-  forall P1 P2 (r : finpref -> finpref -> Prop),
-    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
-                  psem (Cs [P2]) m2 ->
-                  r m1 m2) ->
-     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
-                  psem (Ct [P2 ↓]) m2 ->
-                  r m1 m2)).
-
 (*************************************************************************)
 (* Robust 2-rel Safety Pres              *)
+(* We give three equivalent caracterization of the same criterion: r2RSP, r2RSC
+   and two_rRSC *)
 (*************************************************************************)
 Definition safety2 r := forall (t1 t2 : trace),
     ~ (r t1 t2) ->
@@ -409,6 +402,17 @@ Definition r2RSC := forall Ct P1 P2 m1 m2,
   psem (plug _ (P1 ↓) Ct) m1 ->
   psem (plug _ (P2 ↓) Ct) m2 ->
   exists Cs, psem (plug _ P1 Cs) m1 /\ psem (plug _ P2 Cs) m2.
+
+
+Definition two_rRSC : Prop :=
+  forall P1 P2 (r : finpref -> finpref -> Prop),
+    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
+                  psem (Cs [P2]) m2 ->
+                  r m1 m2) ->
+     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
+                  psem (Ct [P2 ↓]) m2 ->
+                  r m1 m2)).
+
 
 Theorem r2RSP_r2RSC : r2RSP <-> r2RSC.
 Proof.
@@ -449,13 +453,67 @@ Proof.
     exists Cs, t1', t2'. auto.
 Qed.
 
+Theorem r2RSC_two_rRSC : r2RSC <-> two_rRSC.
+Proof.
+  unfold r2RSC, two_rRSC.
+  split.
+  - intros H P1 P2 r H' Ct m1 m2 Hsem1 Hsem2.
+    specialize (H Ct P1 P2 m1 m2 Hsem1 Hsem2).
+    destruct H as [Cs [Hsem1' Hsem2']].
+    specialize (H' Cs m1 m2 Hsem1' Hsem2'). now assumption.
+  - intros H Ct P1 P2 m1 m2 Hsem1 Hsem2.
+    specialize (H P1 P2).
+    specialize (H (fun m1 m2 => exists Cs, psem (Cs [P1]) m1 /\ psem (Cs [P2]) m2)); simpl in H.
+    assert (H' : forall Cs m1 m2, psem (Cs [P1]) m1 -> psem (Cs [P2]) m2 ->
+                             (exists Cs, psem (Cs [P1]) m1 /\ psem (Cs [P2]) m2)).
+    { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
+    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
+Qed.
+(*************************************************************************)
+(* Robust 2-relational Hyperproperty Preservation *)
+(*************************************************************************)
+
+Definition r2HRP : Prop :=
+  forall P1 P2 r, (hrsat2 P1 P2 r) -> (hrsat2 (P1 ↓) (P2 ↓) r).
+
+Definition r2HRC : Prop :=
+  forall P1 P2 Ct, exists Cs, (sem src (Cs [P1]) = sem tgt (Ct [P1 ↓]))
+                    /\ (sem src (Cs [P2]) = sem tgt (Ct [P2 ↓])).
+
+
+Theorem r2HRP_r2HRC : r2HRP <-> r2HRC.
+Proof.
+  unfold r2HRP, r2HRC; split.
+  - intros H2hrp P1 P2 Ct. apply NNPP. intros ff.
+    rewrite not_ex_forall_not in ff.
+    specialize (H2hrp P1 P2).
+    specialize (H2hrp (fun f1 f2 => exists Cs, forall t, f1 t = sem src (Cs [ P1 ]) t
+                                                   /\ f2 t = sem src (Cs [ P2 ]) t)).
+    simpl in *.
+    assert (hh : hrsat2 P1 P2
+            (fun f1 f2 : prop =>
+             exists Cs : ctx src,
+               forall t : trace, f1 t = sem src (Cs [P1]) t /\ f2 t = sem src (Cs [P2]) t)).
+    { clear. unfold hrsat2. intros. exists C. intros. split; now auto. }
+    specialize (H2hrp hh Ct); clear hh.
+    unfold hrsat2 in H2hrp. destruct H2hrp as [Cs h].
+    specialize (ff Cs). 
+    assert (sem src (Cs [P1]) = sem tgt (Ct [P1 ↓])).
+    { apply functional_extensionality. intros t. specialize (h t).
+      destruct h as [h1 h2]. auto. }
+    assert (sem src (Cs [P2]) = sem tgt (Ct [P2 ↓])).
+    { apply functional_extensionality. intros t. specialize (h t).
+      destruct h as [h1 h2]. auto. }
+    apply ff. split; auto.
+  - intros h P1 P2 r hcs Ct. destruct (h P1 P2 Ct) as [Cs [h0 h1]]; clear h.
+    specialize (hcs Cs).
+    rewrite h0, h1 in hcs. now assumption.
+Qed.
 
 (*************************************************************************)
 (* Robust 2-rel HyperProperty Pres => trace equivalence pres             *)
 (*************************************************************************)
 
-Definition r2HRP : Prop :=
-  forall P1 P2 r, (hrsat2 P1 P2 r) -> (hrsat2 (P1 ↓) (P2 ↓) r).
 
 Lemma r2HRP_teq : r2HRP -> teq_preservation.
 Proof.
