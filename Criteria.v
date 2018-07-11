@@ -242,6 +242,48 @@ Proof.
     destruct (ssc P C') as [C h0]. exists C. now firstorder.
 Qed.
 
+(* 2SC Hyperproperties *)
+
+(* forall (b : prop), ~ (H b) ->
+                (exists (m1 m2 : finpref),
+                    spref (fun m => m = m1 \/ m = m2) b /\
+                    forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
+*)
+Definition twoSC (H : hprop) : Prop :=
+  exists t1 t2, forall b, ~ (H b) <->  b t1 /\ b t2.
+
+Definition twoSCC :=
+  forall P Ct t1 t2, 
+      (sem tgt (Ct [P ↓]) t1 /\ sem tgt (Ct [P ↓]) t2)
+      -> exists Cs, (sem src (Cs [P ]) t1 /\ sem src (Cs [P ]) t2).
+
+Theorem twoSCP_twoSCC :
+  (forall P H, twoSC H -> RHP P H) <-> twoSCC.
+Proof.
+  split.
+  - unfold twoSCC. intros h0 P C' t1 t2 [H1 H2].
+    specialize (h0 P).
+    assert (s : twoSC (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/ (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
+    { unfold twoSC. intros. exists t1, t2. intros b. split.
+      intros. apply de_morgan2 in H. destruct H as [H1' H2'].
+      apply dne in H1'. apply dne in H2'. split; auto.
+      intros H. apply de_morgan2. split; rewrite <- dne; destruct H; intros; try assumption.
+    }
+    specialize (h0 (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/ (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
+    specialize (h0 s).
+    rewrite contra_RHP in h0.
+    destruct h0 as [C h1]. exists C'.
+    apply de_morgan2; split; now rewrite <- dne.
+    apply de_morgan2 in h1; destruct h1 as [h1 h2];
+      rewrite <- dne in h1; rewrite <- dne in h2.
+    exists C; split; tauto.
+  - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
+    specialize (ssc P C'). unfold twoSC in HH. destruct HH as [t1 [t2 HH]].
+    specialize (ssc t1 t2). destruct ssc as [C h0].
+    split; firstorder.
+    exists C. firstorder.
+Qed.
+
 
 (*********************************************************)
 (* Criterium for HyperSafety Preservation                *)
@@ -274,7 +316,7 @@ Definition H2Safe (H : hprop) : Prop :=
                     spref (fun m => m = m1 \/ m = m2) b /\
                     forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
 
-Definition H2SRC := forall P Ct, forall m1 m2, 
+Definition H2SRC := forall P Ct, forall m1 m2,
         (spref (fun m => m = m1 \/ m = m2) (sem tgt ( Ct [ P ↓]))
          -> exists Cs, spref (fun m => m = m1 \/ m = m2) (sem src ( Cs [ P]))).
 
