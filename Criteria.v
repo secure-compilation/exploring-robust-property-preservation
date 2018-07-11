@@ -267,6 +267,35 @@ Proof.
     exists C. now apply hm2.
 Qed.
 
+(* 2-Hypersafety *)
+Definition H2Safe (H : hprop) : Prop :=
+  forall (b : prop), ~ (H b) ->
+                (exists (m1 m2 : finpref),
+                    spref (fun m => m = m1 \/ m = m2) b /\
+                    forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
+
+Definition H2SRC := forall P Ct, forall m1 m2, 
+        (spref (fun m => m = m1 \/ m = m2) (sem tgt ( Ct [ P ↓]))
+         -> exists Cs, spref (fun m => m = m1 \/ m = m2) (sem src ( Cs [ P]))).
+
+Theorem R2HSP_H2SRC : (forall P H, H2Safe H -> RHP P H) <-> H2SRC.
+Proof.
+  split.
+  - unfold H2SRC.
+    intros. specialize (H P).
+    assert (hs : H2Safe (fun π => ~ spref (fun m => m = m1 \/ m = m2) π)).
+    { clear. unfold H2Safe. intros b hm. rewrite <- dne in hm.
+      exists m1, m2. split. assumption. now auto. }
+    specialize (H (fun π => ~ spref (fun m => m = m1 \/ m = m2) π) hs).
+    rewrite contra_RHP in H. destruct H as [C hh].
+    now exists Ct. exists C. now apply NNPP.
+  - intros hsrc P H hs. rewrite contra_RHP. intros [C' h0].
+    destruct (hs (fun b => sem tgt (C' [P ↓]) b)) as [m1 [m2 [H1 H2]]].
+    assumption.
+    destruct (hsrc P C' m1 m2) as [C hh]; auto.
+    exists C. now apply H2.
+Qed.
+
 
 (*********************************************************)
 (* Criterium for HyperLiveness Preservation      
@@ -585,32 +614,7 @@ Proof.
 Admitted. 
 
 
- Theorem r2RC_teq_preservation : r2RPP -> teq_preservation.
- Proof. 
-   unfold r2RPP, rsat2, sat2, teq_preservation.
-   intros H P1 P2 hsrc Ct t.   
-   specialize (H P1 P2 traces_match (premises_hold P1 P2 hsrc)). 
-   apply NNPP. rewrite not_equiv. intros [[K1 K2] | [K1 K2]].
-   + destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2].
-     assert ((exists m e, prefix (fsnoc m e) t /\ psem (Ct [P2 ↓]) m /\
-                     ~  psem (Ct [P2 ↓]) ( fsnoc m e)) \/
-             (((forall m, prefix m t -> psem (Ct [P2 ↓]) m) /\  diverges t))) by admit.
-     destruct H0 as [K | K]. 
-     ++ admit. (* "usual" proof *)
-     ++ destruct K as [hh1 hh2].
-        specialize (hh1 (tsilent_ftbd t hh2)).
-        specialize (hh1 (correct t hh2 )).
-        destruct hh1 as [t' [hpref hsem2]]. (* t' and t must match but if they are not equal we 
-        have a contradiction *)  
-        specialize (H Ct t t' K1 hsem2). destruct H as [h | h]; try now subst.
-        destruct h as [m [e1 [e2 [he1 [he2 [hdes [hstop [hpref1 hpref2]]]]]]]].
-        apply (improved t t' hh2 hpref _) in hpref1. 
-        apply (same_ext (fsnoc m e1) (fsnoc m e2) t' hpref1) in hpref2.  
-        destruct hpref2 as [H | H]; apply (snoc_diff _ _ _ ) in H; now auto. 
 
-        
-   (* t' is longer than t!! *)
-   + admit. (*symmetric case *).
 
 
 
