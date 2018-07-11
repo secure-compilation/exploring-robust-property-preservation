@@ -120,6 +120,6 @@ Definition determinacy (K : level) : Prop :=
 
 Definition semantics_safety_like (K : level) : Prop :=
   forall t P,
-    ~ sem K P t -> inf t ->
+    ~ sem K P t -> inf t -> ~ diverges t ->
     (exists m ebad, psem P m /\ prefix (fsnoc m ebad) t /\ ~ psem P (fsnoc m ebad)).
 

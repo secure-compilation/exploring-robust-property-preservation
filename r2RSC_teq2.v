@@ -102,6 +102,7 @@ Proof.
          now exists egood, b.
 Qed.
 
+Hypothesis no_divergence : forall P' t, sem tgt P' t -> ~ diverges t.
 Theorem two_rRSC_teq : two_rRSC -> teq_preservation.
 Proof.
   unfold two_rRSC, teq_preservation. intros twoR P1 P2 H0 Ct t.
@@ -135,6 +136,7 @@ Proof.
                 apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence.
                 now apply snoc_stop.        
        * destruct (proper_prefix mm t2) as [e He]; try now auto.
+         eapply no_divergence; eassumption.
          assert (Hnot : ~ fpr (fsnoc mm e) m).
          { intros ff. assert (Hfoo1 : psem (Ct [P2 ↓]) (fsnoc mm e)) by now exists t2.
            assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. 
@@ -162,20 +164,25 @@ Proof.
             rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).  
             now apply (not_stop_not_snoc_pref mm i1). 
     ++ destruct (non_empty_sem tgt (Ct [P2 ↓])) as [b Hb].
-       destruct t,b; try now auto. 
+       destruct t,b; try now auto.
+       * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
          now exists tstop. now exists (tcons e b). destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
          now destruct m.
+       * eapply no_divergence in f0. apply f0. constructor.
+       * eapply no_divergence in f0. apply f0. constructor.
        * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
          now exists (tcons e t). now exists tstop. destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
-         now destruct m.         
+         now destruct m.
+       * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (tgt_sem (tcons e t) (Ct [P2 ↓]) f1 Hinf) as
-                     [m [ebad [Hpsemm [Hpref Hpsem']]]].
-         assert ( (exists egood,  psem (Ct [P2 ↓]) (fsnoc m egood)) \/
-                             psem (Ct [P2 ↓]) (m[fstop/ftbd]))
-          by now apply a_technical_lemma.
+                     [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption.
+         assert ( (exists egood,                           psem     (Ct [P2 ↓]) (fsnoc m egood)) \/
+                                                      psem     (Ct [P2 ↓]) (m[fstop/ftbd])  \/
+                  (exists t,     prefix m t /\ diverges t /\  sem tgt (Ct [P2 ↓]) t))
+           by now apply a_technical_lemma.
         destruct H as [k1 | k2].
         ** destruct k1 as [egood Hpsem].
             assert (fstopped m = false \/ fstopped m = true) by
@@ -193,25 +200,27 @@ Proof.
          -- specialize (stop_snoc_id m ebad K).
             specialize (stop_snoc_id m egood K).
             intros H3 H4. rewrite H3 in Hpsem. now rewrite H4 in Hpsem'.
-        ** destruct (twoR Ct  (fsnoc m ebad) (m[fstop/ftbd])) as [H | [H | H]]; try now auto. 
-           now exists (tcons e t).
-           apply Hpsem'. destruct k2 as [x [Hx HHx]]. exists x. split; try now auto.
-           now apply (fpr_pref_pref (fsnoc m ebad) (m[fstop/ftbd]) x).  
-           apply fpr_stop_equal in H. now rewrite <- H in Hpsem'.
-           now apply with_stop_fstopped. 
-           destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].            
-           apply proper_fpr in Hp2; try apply with_stop_fstopped; try (now apply snoc_stop).
-           apply compare_with_snoc in Hp1. destruct Hp1 as [K1 | K2].
-           apply (same_fpr (fsnoc m' i1) (fsnoc m' i2) m K1) in Hp2.
-           destruct Hp2 as [Hp | Hp]; apply snoc_m_event_equal in Hp; now congruence.
-           assert (fstopped m = false).
-           { destruct (fstopped m) eqn : Hm; try now auto.
-             rewrite (stop_snoc_id m ebad) in K2; try now auto.
-             rewrite <- K2 in Hp2. apply snoc_m_event_equal in Hp2; auto.
-             congruence. }              
-           apply same_snoc_same_pointwise in K2; try now auto.
-           destruct K2 as [K21 K22]. rewrite K21 in Hp2.
-           now apply not_stop_not_snoc_pref in Hp2.
+        ** destruct k2 as [k2 | [t' [k21 [k22 k23]]]].
+           - destruct (twoR Ct  (fsnoc m ebad) (m[fstop/ftbd])) as [H | [H | H]]; try now auto.
+             now exists (tcons e t).
+             apply Hpsem'. destruct k2 as [x [Hx HHx]]. exists x. split; try now auto.
+             now apply (fpr_pref_pref (fsnoc m ebad) (m[fstop/ftbd]) x).
+             apply fpr_stop_equal in H. now rewrite <- H in Hpsem'.
+             now apply with_stop_fstopped.
+             destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
+             apply proper_fpr in Hp2; try apply with_stop_fstopped; try (now apply snoc_stop).
+             apply compare_with_snoc in Hp1. destruct Hp1 as [K1 | K2].
+             apply (same_fpr (fsnoc m' i1) (fsnoc m' i2) m K1) in Hp2.
+             destruct Hp2 as [Hp | Hp]; apply snoc_m_event_equal in Hp; now congruence.
+             assert (fstopped m = false).
+             { destruct (fstopped m) eqn : Hm; try now auto.
+               rewrite (stop_snoc_id m ebad) in K2; try now auto.
+               rewrite <- K2 in Hp2. apply snoc_m_event_equal in Hp2; auto.
+               congruence. }
+             apply same_snoc_same_pointwise in K2; try now auto.
+             destruct K2 as [K21 K22]. rewrite K21 in Hp2.
+             now apply not_stop_not_snoc_pref in Hp2.
+           - apply no_divergence in k23. contradiction.
    + admit. (* this is just the symmetric case i.e. *)
 (*                 (sem' (plug' (compile P2) Ct) t) /\ *)
     (*               ~  sem' (plug' (compile P1) Ct) t) *)
