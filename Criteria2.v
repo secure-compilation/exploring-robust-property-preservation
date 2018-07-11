@@ -496,7 +496,7 @@ Section source_determinism.
 
   Hypothesis src_det : forall P t1 t2, sem src P t1 -> sem src P t2 -> t1 = t2.
 
-  Theorem two_RSC_teq_preservation : r2RC -> teq_preservation.
+  Theorem two_RC_teq_preservation : r2RC -> teq_preservation.
   Proof.
     unfold r2RC. rewrite teq'. intros H P1 P2 [Ct [t' H']].   
     rewrite not_iff in H'. destruct H' as [[H1' nH2'] | [nH1' H2']].
