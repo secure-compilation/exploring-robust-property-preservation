@@ -82,20 +82,25 @@ Admitted.
 
 (* TODO: TM#2 *)
 Lemma a_technical_lemma: forall (P' : prg tgt) m,
-    psem P' m -> (exists egood, psem P' (fsnoc m egood)) \/ psem P' (m[fstop/ftbd]).
-(* Proof. *)
-(*   intros P' m Hpsem. destruct (fstopped m) eqn:Hstop. *)
-(*   + right. now rewrite <- if_fstopped_equal.  *)
-(*   + destruct Hpsem as [b [Hpref Hsem]]. *)
-(*     assert (embedding m = b \/ embedding m <> b) by now apply classic. *)
-(*     destruct H as [H | H]. *)
-(*     ++ right. exists b. split; try now auto. *)
-(*        rewrite <- H. rewrite embedding_is_the_same. *)
-(*        now apply embed_pref. *)
-(*     ++ left. destruct (proper_prefix m b Hpref H Hstop) as [egood HH]. *)
-(*        now exists egood, b. *)
-(* Qed. *)
-Admitted.
+    psem P' m ->
+    (exists egood, psem P' (fsnoc m egood)) \/
+     psem P' (m[fstop/ftbd]) \/
+     (exists t, prefix m t /\ diverges t /\ sem tgt P' t).
+Proof.
+  intros P' m Hpsem. destruct (fstopped m) eqn:Hstop.
+  + right. left. now rewrite <- if_fstopped_equal.
+  + destruct Hpsem as [b [Hpref Hsem]].
+    assert (embedding m = b \/ embedding m <> b) by now apply classic.
+    destruct H as [H | H].
+    ++ right. left. exists b. split; try now auto.
+       rewrite <- H. rewrite embedding_is_the_same.
+       now apply embed_pref.
+    ++ assert (Hdiv : diverges b \/ ~ diverges b) by now apply classic.
+       destruct Hdiv as [Hdiv | Hdiv].
+       - right. right. now exists b.
+       - left. destruct (proper_prefix m b Hpref H Hstop Hdiv) as [egood HH].
+         now exists egood, b.
+Qed.
 
 Theorem two_rRSC_teq : two_rRSC -> teq_preservation.
 Proof.
