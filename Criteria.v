@@ -551,6 +551,70 @@ Section source_determinism.
 End source_determinism.
 
 
+(*************************************************************************)
+(* If ??? than
+    r2RC =>  trace equivalence preservation                          *)
+(*************************************************************************)
+
+Hypothesis src_d : determinacy src. 
+
+Program Fixpoint tsilent_ftbd (t : trace) (h : diverges t) : finpref := 
+  match t with
+  | tsilent => ftbd
+  | tcons e s => fcons e (tsilent_ftbd s _)  
+  | tstop => fstop
+  end.
+Next Obligation. now inversion h. Defined. 
+
+Lemma correct : forall t (h : diverges t),
+    prefix (tsilent_ftbd t h) t.
+Admitted.
+
+Lemma improved : forall t t' (h : diverges t),
+    prefix (tsilent_ftbd t h) t' ->
+    forall m, prefix m t -> prefix m t'.
+Admitted.
+  
+Lemma premises_hold : forall P1 P2,
+     (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
+     (forall Cs t1 t2, sem src (Cs [P1]) t1 -> sem src (Cs [P2]) t2 ->
+       traces_match t1 t2).
+Proof.
+  intros P1 P2 H Cs t1 t2 h1 h2.
+  (* it needs : determinacy src *)
+Admitted. 
+
+
+ Theorem r2RC_teq_preservation : r2RPP -> teq_preservation.
+ Proof. 
+   unfold r2RPP, rsat2, sat2, teq_preservation.
+   intros H P1 P2 hsrc Ct t.   
+   specialize (H P1 P2 traces_match (premises_hold P1 P2 hsrc)). 
+   apply NNPP. rewrite not_equiv. intros [[K1 K2] | [K1 K2]].
+   + destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2].
+     assert ((exists m e, prefix (fsnoc m e) t /\ psem (Ct [P2 ↓]) m /\
+                     ~  psem (Ct [P2 ↓]) ( fsnoc m e)) \/
+             (((forall m, prefix m t -> psem (Ct [P2 ↓]) m) /\  diverges t))) by admit.
+     destruct H0 as [K | K]. 
+     ++ admit. (* "usual" proof *)
+     ++ destruct K as [hh1 hh2].
+        specialize (hh1 (tsilent_ftbd t hh2)).
+        specialize (hh1 (correct t hh2 )).
+        destruct hh1 as [t' [hpref hsem2]]. (* t' and t must match but if they are not equal we 
+        have a contradiction *)  
+        specialize (H Ct t t' K1 hsem2). destruct H as [h | h]; try now subst.
+        destruct h as [m [e1 [e2 [he1 [he2 [hdes [hstop [hpref1 hpref2]]]]]]]].
+        apply (improved t t' hh2 hpref _) in hpref1. 
+        apply (same_ext (fsnoc m e1) (fsnoc m e2) t' hpref1) in hpref2.  
+        destruct hpref2 as [H | H]; apply (snoc_diff _ _ _ ) in H; now auto. 
+
+        
+   (* t' is longer than t!! *)
+   + admit. (*symmetric case *).
+
+
+
+
 
 (*************************************************************************)
 (* Robust Relational Hyperproperty Preservation                          *)
