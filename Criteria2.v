@@ -508,7 +508,12 @@ Section source_determinism.
       destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
       exists Cs, t'. intros Hf. rewrite <- Hf in H2. 
       specialize (src_det (Cs [P1] ) t1 t' H1 H2). now subst.
-   Qed.
+  Qed.
+
+  Theorem r2RPP_teq_preservation : r2RPP -> teq_preservation.
+  Proof.
+    rewrite r2RPP_r2RC. now apply two_RC_teq_preservation.
+  Qed. 
   
 End source_determinism.
 
