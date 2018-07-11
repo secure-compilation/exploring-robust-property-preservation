@@ -1,8 +1,8 @@
 Require Import Events.
-Require Import TraceModel2.
-Require Import Properties2.
-Require Import CommonST2.
-Require Import Robustdef2.
+Require Import TraceModel.
+Require Import Properties.
+Require Import CommonST.
+Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
@@ -281,7 +281,7 @@ Proof.
     specialize (ff H0). unfold my_pi2 in ff. inversion ff. 
 Qed.
 
-Require Import TopologyTrace2. 
+Require Import TopologyTrace.
 
 Lemma RLP_plus_RSP_RPP :
   (forall P π, Liveness π -> c2_RPP P π) ->

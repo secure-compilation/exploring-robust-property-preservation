@@ -1,8 +1,8 @@
 Require Import Events.
-Require Import TraceModel2.
-Require Import Properties2.
-Require Import CommonST2.
-Require Import Robustdef2.
+Require Import TraceModel.
+Require Import Properties.
+Require Import CommonST.
+Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.

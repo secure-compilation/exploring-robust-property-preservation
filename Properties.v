@@ -1,5 +1,5 @@
 Require Import Events.
-Require Import TraceModel2.
+Require Import TraceModel.
 Require Import ClassicalExtras.
 
 (* CA: in this file all and only defn of prop, Hprop, relation on prop

@@ -1,7 +1,7 @@
 Require Import Events.
-Require Import TraceModel2.
-Require Import Properties2.
-Require Import CommonST2.
+Require Import TraceModel.
+Require Import Properties.
+Require Import CommonST.
 
 Section Main.
 

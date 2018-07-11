@@ -13,13 +13,3 @@ Criteria.v
 r2RSC_teq.v
 SemanticsSafetyLike.v
 separation.v
-
-TraceModel2.v
-Properties2.v
-Topology2.v
-TopologyTrace2.v
-CommonST2.v
-Robustdef2.v
-Criteria2.v
-separation2.v
-SemanticsSafetyLike2.v

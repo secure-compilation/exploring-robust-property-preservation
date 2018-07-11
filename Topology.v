@@ -1,7 +1,7 @@
 Require Import Events.
 Require Import ClassicalExtras.
-Require Import TraceModel2.
-Require Import Properties2.
+Require Import TraceModel.
+Require Import Properties.
 Require Import FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalFacts.
 
