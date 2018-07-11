@@ -137,11 +137,15 @@ Lemma sem_prefix : forall m P t,
    an operation to remove m from t -- for now removed that part since not needed *)
 Proof. intros m P. now apply (sem'_prefix m (init P)). Qed.
 
-Definition semantics_safety_like' : forall t P m,
+(* CH: ouch, this is actually trivial *)
+Definition semantics_safety_like_reverse : forall t P m,
   sem P t ->
   prefix m t ->
   @psem lang P m.
 Proof.
+  intros t P m H H0. unfold psem. exists t. split; assumption.
+Qed.
+(* CH: old proof
   intros t P m Hsem Hpref.
   remember (fstopped m) as b. symmetry in Heqb. destruct b.
   - pose proof Heqb as H'.
@@ -153,6 +157,11 @@ Proof.
   - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
     eapply steps_psem. eassumption.
 Qed.
+*)
+
+Definition semantics_safety_like_right : forall t P,
+  (forall m, prefix m t -> @psem lang P m) -> sem P t.
+Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
 Proof.
