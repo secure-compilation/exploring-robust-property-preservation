@@ -74,11 +74,58 @@ Proof.
 Qed.
 
 
+Fixpoint length (m : finpref) :=
+  match m with
+  | fstop => 0
+  | ftbd => 0
+  | fcons e m' => 1 + length m'
+  end.
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
           (fstopped mm = false) /\ 
           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
+Proof.
 Admitted.
+    
+(* Informal proof: *)
+(* By induction on the length of m, |m|.
+
+  - Base case: |m| = 0. 
+    Then either m = ftbd or m = fstop.
+    Let mm = ftbd. It is clear that (fpr ftbd m), that psem P' ftbd (because the semantics are not
+    empty), that ftbd is not stopped.
+    Let m' be a prefix of m, such that psem P' m' and m' is not stopped. Then, m' = ftbd.
+    Hence the result.
+  - Inductive case: let m be a finite prefix of length n + 1. Suppose the property is true
+    for any finite prefix m' of length n' <= n.
+    
+    First, we can see that since m is of length n + 1, there exists m' such that |m'| = n,
+    m' = m_1 ftbd, and m = m_1 e fstop or m = m_1 e ftbd.
+    By induction hypothesis on m' of length n, there exists mm' such that fpr mm' m', 
+    psem P' mm', fstopped mm' = false, and 
+    (∀ m'', fpr m'' m' -> psem P' m''->  fstopped m'' = false -> fpr m'' mm').
+
+    Let us consider two cases:
+    + psem P' (m_1 e ftbd).
+      Here, let mm = m_1 e ftbd (i.e. m, where the terminator is replaced by ftbd)
+      ++ fpr m m therefore fpr (m_1 e ftbd) m
+      ++ psem P' (m_1 e ftbd)
+      ++ fstopped (m_1 e ftbd) = false
+      ++ let m'' be such that fpr m'' m, psem P' m'', fstopped m'' = false.
+         let us show that fpr m'' (m_1 e ftbd). This is true: any prefix of m that is not stopped
+         is also a prefix of m where the terminator is replaced by ftbd.
+    + ~ (psem P' (m_1 e ftbd))
+      Let mm = mm'.
+      ++ fpr mm' m' and fpr m' m so by transitivity fpr m'' m.
+      ++ psem P' mm'
+      ++ fstopped mm' = false
+      ++ let m'' be such that fpr m'' m, psem P' m'', fstopped m'' = false.
+         let us show that fpr m'' mm'.
+         first, since ~(psem P' (m_1 e ftbd)), (psem P' mm'), and (fpr m'' m), we have that
+         (fpr m'' (m_1 ftbd)) i.e. (fpr m'' m') By the induction hypothesis, 
+         we obtain the result, fpr m'' mm.
+    Hence, the theorem is proved for any finite prefix m.
+*)
 
 (* TODO: TM#2 *)
 Lemma a_technical_lemma: forall (P' : prg tgt) m,
