@@ -169,8 +169,8 @@ Qed.
 Definition an_omega := constant_trace (an_event).  
 Definition another_omega := constant_trace (another_event). 
 
-Axiom an_omega_produced : exists P, forall C, sem L (plug L P C) an_omega. 
-Axiom another_omega_produced : exists P, forall C, sem L (plug L P C) another_omega.
+Hypothesis an_omega_produced : exists P, forall C, sem L (plug L P C) an_omega.
+Hypothesis another_omega_produced : exists P, forall C, sem L (plug L P C) another_omega.
 
 Lemma not_equal: ~ t_eq an_omega another_omega.
 Proof.
@@ -236,7 +236,7 @@ Qed.
 (* RLP =/=> RPP                                           *) 
 (**********************************************************)
 
-Axiom only_an_omega_produced : exists P, forall C,
+Hypothesis only_an_omega_produced : exists P, forall C,
       (sem L (plug L P C) an_omega /\
       (forall t, sem L (plug L P C) t -> t_eq t an_omega)).
 
