@@ -610,7 +610,8 @@ Admitted.
 
         
    (* t' is longer than t!! *)
-   + admit. (*symmetric case *).
+   + admit. (*symmetric case *)
+  Admitted.
 
 
 
