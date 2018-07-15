@@ -88,10 +88,10 @@ Definition lang : level := @Build_level partial
                                         non_empty_sem.
 
 Inductive steps : cfg -> finpref -> cfg -> Prop :=
-| SSTbd : forall c, steps c ftbd c
+| SSTbd : forall c, steps c (ftbd nil) c
 | SSCons : forall c e c' m c'', step c e c' ->
-                                steps c' m c'' ->
-                                steps c (fcons e m) c''.
+                                steps c' (ftbd m) c'' ->
+                                steps c (ftbd (cons e m)) c''.
 
 Axiom tapp : finpref -> trace -> trace. (* Where have all the flowers gone? *)
 
@@ -117,8 +117,7 @@ Lemma sem'_prefix : forall m c0 t,
   fstopped m = false ->
   exists c, steps c0 m c.
 Proof.
-  induction m; intros c0 t Hsem Hpref Hnot_stopped.
-  - now inversion Hnot_stopped.
+  destruct m as [m | m]; induction m; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
   - exists c0. apply SSTbd.
   - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
     simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
