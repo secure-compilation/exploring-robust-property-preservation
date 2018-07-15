@@ -6,6 +6,7 @@ Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
+Require Import List.
 
 Definition two_rRSC : Prop :=
   forall (r : finpref -> finpref -> Prop) P1 P2 ,
@@ -73,13 +74,12 @@ Proof.
     ++ now exists m, e1, e2.
 Qed.
 
-
 Fixpoint length (m : finpref) :=
   match m with
-  | fstop => 0
-  | ftbd => 0
-  | fcons e m' => 1 + length m'
+  | fstop m => List.length m
+  | ftbd  m => List.length m
   end.
+
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
           (fstopped mm = false) /\ 
@@ -213,16 +213,18 @@ Proof.
     ++ destruct (non_empty_sem tgt (Ct [P2 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
-       * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
+       * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *)
+         destruct (twoR Ct (fstop nil) (ftbd (cons e nil))); try now auto.
          now exists tstop. now exists (tcons e b). destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
-         now destruct m.
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in f0. apply f0. constructor.
        * eapply no_divergence in f0. apply f0. constructor.
-       * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
-         now exists (tcons e t). now exists tstop. destruct H; try now auto.
+       * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *)
+         destruct (twoR Ct (ftbd (cons e nil)) (fstop nil)); try now auto.
+         now (exists (tcons e t)). now (exists tstop). destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
-         now destruct m.
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (tgt_sem (tcons e t) (Ct [P2 ↓]) f1 Hinf) as
                      [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption.
@@ -328,16 +330,18 @@ Proof.
     ++ destruct (non_empty_sem tgt (Ct [P1 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
-       * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
-         now exists tstop. now exists (tcons e b). destruct H; try now auto.
-         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
-         now destruct m.
+       * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *)
+         destruct (twoR Ct (fstop nil) (ftbd (cons e nil))); try now auto.
+         now (exists tstop). now (exists (tcons e b)). destruct H; try now auto.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in f1. apply f1. constructor.
        * eapply no_divergence in f1. apply f1. constructor.
-       * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
-         now exists (tcons e t). now exists tstop. destruct H; try now auto.
+       * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *)
+         destruct (twoR Ct (ftbd (cons e nil)) (fstop nil)); try now auto.
+         now (exists (tcons e t)). now (exists tstop). destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
-         now destruct m.
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (tgt_sem (tcons e t) (Ct [P1 ↓]) f0 Hinf) as
                      [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption.
