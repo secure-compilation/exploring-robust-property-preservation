@@ -6,7 +6,8 @@ Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
-Require Import ZArith. 
+Require Import ZArith.
+Require Import List.
 
 Axiom L : level. 
 
@@ -16,53 +17,63 @@ Definition ϕ_ctx  := prod nat (ctx L).
 Definition ϕ_plug : ϕ_par -> ϕ_ctx -> ϕ_prg :=
   fun P C =>  (fst C , plug L P (snd C)).
 
-Fixpoint length (m : finpref) : nat :=
+Definition length (m : finpref) : nat :=
   match m with
-  | fstop | ftbd => 0
-  | fcons x xs => S (length xs)
+  | fstop m => List.length m
+  | ftbd m  => List.length m
   end.
 
 Lemma stop_same_lenght: forall m, length m = length (m[fstop/ftbd]). 
 Proof.
-  induction m; try now auto.
-  simpl. now rewrite IHm.
-Qed. 
+  now destruct m.
+Qed.
 
 Fixpoint take_n (t : trace) (n : nat) : trace :=
   match n, t with
   | 0, _ | _ ,tstop => tstop
   | _, tsilent => tsilent
   | S m, tcons x xs => tcons x (take_n xs m)
- end.                               
+  end.                               
 
-Fixpoint take_nth_pref (t : trace) (n : nat) : finpref :=
+Fixpoint take_nth_pref' (t : trace) (n : nat) : pref :=
   match n, t with
-  | 0, _ | _ ,tstop | _, tsilent => ftbd
-  | S m, tcons x xs => fcons x (take_nth_pref xs m)
- end.                               
+  | 0, _  | _, tstop | _, tsilent => nil
+  | S m, tcons x xs => cons x (take_nth_pref' xs m)
+  end.
+
+Definition take_nth_pref (t : trace) (n : nat) : finpref :=
+  ftbd (take_nth_pref' t n).
+
+(* Fixpoint take_nth_pref (t : trace) (n : nat) : finpref := *)
+(*   match n, t with *)
+(*   | 0, _ | _ ,tstop | _, tsilent => ftbd *)
+(*   | S m, tcons x xs => fcons x (take_nth_pref xs m) *)
+(*   end. *)                               
 
 Lemma nth_pref_pref : forall t n, prefix (take_nth_pref t n) t.
 Proof.
   intros t n. generalize dependent t. induction n; intros t; try now auto.
-  destruct t; try now auto.
+  destruct t; simpl in *; try now auto. 
 Qed. 
 
 Lemma pref_take_pref : forall m t,
     prefix m t ->
     prefix m (take_n t (length m)).
 Proof.
-  intros m t. generalize dependent t. induction m; intros t hpref; try now auto.
+  intros m t. generalize dependent t. destruct m as [m | m]; induction m; intros t hpref; try now auto.
   + destruct t; try now auto. 
     simpl in *. destruct hpref as [h1 h2]. split; try now auto.
+  + destruct t; try now auto.
+    simpl in *; destruct hpref as [h1 h2]. split; try now auto.
 Qed.   
 
 Lemma take_embedding : forall t m,
     prefix m t -> 
     (take_n t (length m)) = embedding m.
 Proof.
-  intros t m. generalize dependent t. induction m; intros t hpref; try now auto.
-  destruct t; try now auto. simpl in *. destruct hpref as [h1 h2].
-  subst. now rewrite (IHm t).
+  intros t m. generalize dependent t. destruct m as [m | m]; induction m; intros t hpref; try now auto;
+  destruct t; try now auto; simpl in *; destruct hpref as [h1 h2];
+  subst; now rewrite (IHm t).
 Qed. 
 
 Definition ϕ_sem : ϕ_prg -> prop :=
@@ -100,20 +111,31 @@ Qed.
 
 Lemma fpr_shorter: forall m1 m2, fpr m1 m2 -> length m1 <= length m2.
 Proof.
-  induction m1; intros m2 hpref; simpl; try omega. 
+  destruct m1 as [m1 | m1]; induction m1; intros m2 hpref; simpl; try omega.
   + destruct m2; try now auto. inversion hpref; subst.
-    simpl. apply omega_fact.  now apply IHm1.
-Qed.     
+    simpl. apply omega_fact. omega.
+  + destruct m2 as [m2 | m2]; destruct m2; try now auto.
+    ++ simpl. inversion hpref; subst.
+       apply omega_fact. now apply (IHm1 (fstop m2) H0).
+    ++ simpl. inversion hpref; subst.
+       apply omega_fact. now apply (IHm1 (ftbd m2) H0).
+Qed.
   
 (*TODO : move to Tracemdel.v *)         
 Lemma prefix_embeding_fpr : forall m1 m2,
     prefix m1 (embedding m2) -> fpr m1 (m2[fstop/ftbd]).
 Proof.
-  induction m1; intros m2 hpref; try now auto.
-  + now destruct m2.
+  destruct m1 as [m1 | m1]; induction m1; intros [m2 | m2]; intros hpref; try now auto;
+    try now destruct m2.
   + destruct m2; try now auto. inversion hpref. subst.
-    simpl. split; try now auto.
-Qed. 
+    simpl. specialize (IHm1 (fstop m2) H0). simpl in *; now subst.
+  + destruct m2; try now auto. inversion hpref. subst.
+    simpl. specialize (IHm1 (fstop m2) H0). simpl in *; now subst.
+  + destruct m2; try now auto. inversion hpref. subst.
+    simpl. specialize (IHm1 (fstop m2) H0). simpl in *; now subst.  
+  + destruct m2; try now auto. inversion hpref. subst.
+    simpl. specialize (IHm1 (fstop m2) H0). simpl in *; now subst.
+Qed.
 
 Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
 Proof. intros n1 n2 n3 h1 h2. omega. Qed. 
@@ -175,7 +197,7 @@ Hypothesis another_omega_produced : exists P, forall C, sem L (plug L P C) anoth
 Lemma not_equal: ~ t_eq an_omega another_omega.
 Proof.
   rewrite neq_finitely_refutable.
-  exists (fcons an_event ftbd), (fcons another_event ftbd). 
+  exists (ftbd (cons an_event nil)), (ftbd (cons another_event nil)). 
   repeat (split; try now auto). 
   intros [f1 f2]. inversion f1. now apply different_events.  
 Qed.
@@ -275,7 +297,7 @@ Proof.
       now apply h2. }  
     specialize (ff H (0, some_ctx_L) tstop). 
     assert  (sem ϕ ((0, some_ctx_L) [c2 P]) tstop).
-    simpl. unfold ϕ_sem, ϕ_plug. exists ftbd. 
+    simpl. unfold ϕ_sem, ϕ_plug. exists (ftbd nil). 
     repeat (split; try now auto). simpl. exists an_omega.
     split; try now auto. now apply (h some_ctx_L). 
     specialize (ff H0). unfold my_pi2 in ff. inversion ff. 
