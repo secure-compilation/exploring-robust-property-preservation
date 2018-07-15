@@ -629,16 +629,38 @@ End source_determinism.
 
 Hypothesis src_d : determinacy src. 
 
-Program Fixpoint tsilent_ftbd (t : trace) (h : diverges t) : finpref := 
+(** TODO: Check if this is correct i.e. if the lemmas are satisfied *)
+
+Program Fixpoint tsilent_ftbd' (t : trace) (h : diverges t) : pref :=
   match t with
-  | tsilent => ftbd
-  | tcons e s => fcons e (tsilent_ftbd s _)  
-  | tstop => fstop
+  | tsilent => nil
+  | tstop   => nil
+  | tcons e s => cons e (tsilent_ftbd' s _)
   end.
-Next Obligation. now inversion h. Defined. 
+Next Obligation. now inversion h. Defined.
+
+Definition tsilent_ftbd (t : trace) (h : diverges t) : finpref :=
+  ftbd (tsilent_ftbd' t h).
+
+(* Program Fixpoint tsilent_ftbd (t : trace) (h : diverges t) : finpref :=  *)
+(*   match t with *)
+(*   | tsilent => ftbd *)
+(*   | tcons e s => fcons e (tsilent_ftbd s _)   *)
+(*   | tstop => fstop *)
+(*   end. *)
+(* Next Obligation. now inversion h. Defined.  *)
+
+Lemma tsilent_ftbd'_tsilent :
+  forall (h : diverges tsilent), tsilent_ftbd' tsilent h = nil.
+Admitted.
 
 Lemma correct : forall t (h : diverges t),
     prefix (tsilent_ftbd t h) t.
+Proof.
+  intros t h.   
+  inversion h; subst.
+  - simpl. now rewrite tsilent_ftbd'_tsilent.
+  - admit.
 Admitted.
 
 Lemma improved : forall t t' (h : diverges t),
