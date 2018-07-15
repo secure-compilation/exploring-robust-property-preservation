@@ -12,17 +12,33 @@ CoInductive trace : Set :=
   | tcons : event -> trace -> trace.
 
 (** *finite prefixes *)
+Definition pref := list event.
+
 Inductive finpref : Set :=
-  | fstop : finpref
-  | ftbd : finpref 
-  | fcons : event -> finpref -> finpref.
+| fstop : pref -> finpref
+| ftbd  : pref -> finpref
+.
 
 (** *prefix relation *)
-Fixpoint prefix m t : Prop :=
+Fixpoint fstop_prefix (m : pref) (t : trace) : Prop :=
   match m, t with
-  | fstop, tstop | ftbd, _ => True
-  | fcons e1 m1, tcons e2 t2 => e1 = e2 /\ prefix m1 t2
+    | nil, tstop => True
+    | nil, _     => False
+    | cons e1 m', tcons e2 t' => e1 = e2 /\ fstop_prefix m' t'
+    | _, _       => False
+  end.
+
+Fixpoint ftbd_prefix (m : pref) (t : trace) : Prop :=
+  match m, t with
+  | nil, _ => True
+  | cons e1 m', tcons e2 t' => e1 = e2 /\ ftbd_prefix m' t'
   | _, _ => False
+  end.
+
+Definition prefix (m : finpref) (t : trace) : Prop :=
+  match m with
+  | fstop m => fstop_prefix m t    
+  | ftbd m  => ftbd_prefix m t
   end.
 
 (** *finite trace*)
@@ -50,47 +66,67 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
 Lemma many_continuations :
   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta.
 Proof.
-   induction m as [| | e m' IH]; intros ta Hita.
-  - exists tstop. split; try now auto.
-    intro Hc. subst. apply Hita. now constructor.
-  - exists tstop. split; try now auto.
-    intro Hc. subst. apply Hita. now constructor.
-  - destruct ta as [| | e' ta'].
-    + exfalso. apply Hita. now constructor.
-    + specialize (IH tsilent Hita).
-      destruct IH as [t' Ht'].
-      destruct Ht' as [Hpref Hnsilent].
-      exists (tcons e t'). split.
-      ++ simpl. auto.
-      ++ unfold not. intros H. inversion H. 
-    + apply inf_tcons in Hita. specialize (IH ta' Hita).
-      destruct IH as [t' [Hpref Hdiff]]. eexists (tcons e t').
-      split; try now auto.
-      ++ intro Hc. inversion Hc. now subst.
+  destruct m as [m | m].
+  - induction m as [ | e m IHm]; intros ta Hinf.
+    + exists tstop. split; try now auto.
+      intros Hc; subst. apply Hinf. now constructor.
+    + destruct ta as [| | e' ta].
+      ++ exfalso. apply Hinf. now constructor.
+      ++ specialize (IHm tsilent Hinf).
+         destruct IHm as [t' [Hpref Hnsilent]].
+         exists (tcons e t'). now split.
+      ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
+         destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
+         split; try now auto.
+         intros Hc. inversion Hc; now subst.
+  - induction m as [ | e m IHm]; intros ta Hinf.
+    + exists tstop. split; try now auto.
+      intros Hc; subst. apply Hinf. now constructor.
+    + destruct ta as [| | e' ta].
+      ++ exfalso. apply Hinf. now constructor.
+      ++ specialize (IHm tsilent Hinf).
+         destruct IHm as [t' [Hpref Hnsilent]].
+         exists (tcons e t'). now split.
+      ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
+         destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
+         split; try now auto.
+         intros Hc. inversion Hc; now subst.
 Qed.
 
 (* we try to identify a finite trace and the fpref made of the same events *)
-Fixpoint equal (m : finpref) (t : trace) : Prop :=
+
+Fixpoint fstop_equal (m : pref) (t : trace) : Prop :=
   match m, t with
-  | fstop, tstop  => True
-  | fcons e2 ms, tcons e1 ts => e1 = e2 /\ equal ms ts
-  | _ , _ => False
+  | nil, tstop => True
+  | cons e1 m', tcons e2 t' => e1 = e2 /\ fstop_equal m' t'
+  | _, _ => False
   end.
+
+Definition ftbd_equal (m : pref) (t : trace) : Prop := False.
+
+Definition equal (m : finpref) (t : trace) : Prop :=
+  match m with
+  | fstop m => fstop_equal m t
+  | ftbd m  => ftbd_equal m t
+  end.
+
 
 Lemma equal_prefix : forall m t, equal m t -> prefix m t.
 Proof.
-  induction m; destruct t; intro H; simpl in *;
-  try now tauto. now firstorder.
+  destruct m as [m | m]; induction m; destruct t; intro H; simpl in *;
+  now tauto.
 Qed.
 
 Lemma fin_equal : forall t, fin t <-> exists m : finpref, equal m t.
 Proof.
   intro t. split.
-  - intro H. induction H as [| e t H [m IH]];
-    [ now exists fstop
-    | now exists (fcons e m)]. 
+  - intro H. induction H as [| e t H [m IH]].
+    now (exists (fstop nil)). destruct m as [m | m].
+    now (exists (fstop (cons e m))).
+    now simpl in IH.                         
   - intros [m Heq]. generalize dependent t.
-    induction m as [| | e m' IH]; intros t Heq; try now auto.
+    destruct m as [m | m];    
+    induction m as [| e m' IH]; intros t Heq; try now auto.
     + destruct t; try now auto. now constructor.
     + destruct t as [| | e' t']; inversion Heq.
       constructor. now apply IH.
@@ -98,6 +134,7 @@ Qed.
 
 Lemma single_cont : forall m t t', equal m t -> prefix m t' -> t = t'.
 Proof.
+  destruct m as [m | m];
   induction m; destruct t, t'; firstorder.
   subst. now rewrite (IHm t t').
 Qed.
@@ -113,9 +150,8 @@ Qed.
 
 Fixpoint fstopped (m : finpref) : bool:=
   match m with
-  | fstop => true
-  | ftbd  => false
-  | fcons x xs => fstopped xs
+  | fstop _ => true
+  | ftbd  _ => false
   end. 
 
 Lemma stop_sngle_continuation : forall m t1 t2,
@@ -123,7 +159,7 @@ Lemma stop_sngle_continuation : forall m t1 t2,
     prefix m t1 -> prefix m t2 ->
     t1 = t2.
 Proof.
-  induction m; intros [] [] H H0 H1; try now auto.
+  intros [m | m]; induction m; intros [] [] H H0 H1; try now auto.
   + inversion H0. inversion H1. clear H0 H1.
     subst. simpl in H. specialize (IHm t t0 H H3 H5).
     now subst.
@@ -133,11 +169,8 @@ Lemma equal_stopped : forall m t,
     equal m t ->
     fstopped m = true.
 Proof.
-  intros m. induction m; intros t H;
+  intros [m | m]; induction m; intros t H;
   try now auto.
-  destruct t; try now auto. simpl in H.
-  destruct H as [H1 H2]. subst.
-  simpl. now apply (IHm t).
 Qed.
 
 (************************************************************************)
@@ -193,28 +226,39 @@ Qed.
 (* a way to get a trace t from a finite prefix m is
    to consider the trace made of the same events of m
    and then add a tstop.
-*)
-Fixpoint embedding (m : finpref) : trace :=
+ *)
+
+Fixpoint embedding_pref (m : pref) : trace :=
   match m with
-  | fstop | ftbd => tstop
-  | fcons e xs => tcons e (embedding xs)
+  | nil => tstop
+  | cons e m' => tcons e (embedding_pref m')
+  end.
+
+Definition embedding (m : finpref) : trace :=
+  match m with
+  | fstop m | ftbd m => embedding_pref m
   end.
 
 Lemma embed_pref : forall m, prefix m (embedding m).
-Proof. now induction m. Qed.
+Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma embed_fin : forall m, fin (embedding m).
-Proof. induction m; now constructor. Qed. 
+Proof. destruct m as [m | m]; induction m; now constructor. Qed. 
 
 Lemma embed_eq : forall m, fstopped m = true -> equal m (embedding m).
-Proof. induction m; intros H; try now auto. simpl in *. now auto. Qed.
+Proof. destruct m as [m | m]; induction m; intros H; try now auto.
+       simpl in *. now auto.
+Qed.
 
 Lemma equal_embedding : forall m t,
     equal m t ->
     embedding m = t. 
 Proof.
-  induction m; intros t Heq; destruct t; try now auto.
-  inversion Heq. simpl. subst. now rewrite (IHm t H0).
+  destruct m as [m | m]; induction m; intros t Heq; destruct t; try now auto.
+  inversion Heq. simpl. subst.
+  assert (H: equal (fstop m) t) by auto.
+  assert (H': (embedding (fstop m)) = embedding_pref m) by auto.
+  specialize (IHm t H). now subst.
 Qed.
 
 Lemma embed_cons:  forall m t e,
@@ -223,7 +267,8 @@ Lemma embed_cons:  forall m t e,
 Proof.
   intros [] t a He; try now destruct t.
   simpl in *. now rewrite He.
-Qed. 
+  simpl in *. now rewrite He.
+Qed.
 
 (************************************************************************)
 
@@ -231,59 +276,118 @@ Qed.
 
 
 (* CA: we can define a prefix relation among finite prefixes *)
-Fixpoint fpr (m1 m2 : finpref) : Prop :=
+
+Fixpoint fpr_ftbd (m1 m2 : pref) : Prop :=
   match m1, m2 with
-  | ftbd, _ | fstop, fstop => True
-  | (fcons x xs), (fcons y ys) => x = y /\ fpr xs ys
+  | nil, _ => True
+  | cons e1 m1', cons e2 m2' => e1 = e2 /\ fpr_ftbd m1' m2'
   | _, _ => False
   end.
 
+(* Not used!! *)
+Fixpoint fpr_fstop (m1 m2 : pref) : Prop :=
+  match m1, m2 with
+  | nil, nil => True
+  | cons e1 m1', cons e2 m2' => e1 = e2 /\ fpr_fstop m1' m2'
+  | _, _ => False
+  end.
+
+Fixpoint fpr (m1 m2 : finpref) : Prop :=
+  match m1, m2 with
+  | ftbd m1, ftbd m2 | ftbd m1, fstop m2 => fpr_ftbd m1 m2
+  (* | ftbd m1, fstop m2 => fpr_ftbd m1 m2 *)                                 
+  | fstop m1, fstop m2 => m1 = m2(* or fpr_fstop m1 m2 *)
+  | fstop m1, ftbd m2 => False
+  end.
+
 Lemma fpr_reflexivity : forall m, fpr m m.
-Proof.  now induction m. Qed.
+Proof.  destruct m as [m | m]; now induction m. Qed.
 
 Lemma fpr_transitivity : forall m1 m2 m3,
     fpr m1 m2 -> fpr m2 m3 -> fpr m1 m3.
 Proof.
-  induction m1; intros m2 m3 H2 H3; auto;
-  destruct m2; inversion H2; auto.
-  + destruct m3; inversion H3. subst. simpl.
-    split; auto. now apply (IHm1 m2 m3).
+  destruct m1 as [m1 | m1];
+  induction m1; intros [m2 | m2] [m3 | m3] H2 H3; auto;
+  destruct m2; inversion H2; auto;
+    destruct m3; inversion H3; subst; simpl; split; auto.
+  now apply (IHm1 (ftbd m2) (ftbd m3)).
+  now apply (IHm1 (ftbd m2) (ftbd m3)).
 Qed.
 
 Lemma fpr_pref_pref : forall m1 m2 t,
     fpr m1 m2 -> prefix m2 t -> prefix m1 t.
 Proof.
-  induction m1; intros [] [] H1 H2;
-  try (now auto); inversion H1; inversion H2; subst; auto.
-  simpl. split; auto. now apply (IHm1 f t).
+  destruct m1 as [m1 | m1].
+  - induction m1; intros [] [] H1 H2; simpl in *; subst; try (now auto).
+  - induction m1 as [| e m1'].
+    + intros [] [] H1 H2; simpl in *; subst; try (now auto).
+    + intros m2 t. intros H1 H2.
+      destruct m2 as [[| e2 m2'] | [| e2 m2']]; simpl in *; subst; try (now auto);
+        destruct H1; subst; destruct t; try contradiction;
+        destruct H2; subst; split; auto.
+      specialize (IHm1' (fstop m2') t); simpl in *; auto.
+      specialize (IHm1' (ftbd m2') t); simpl in *; auto.
 Qed.
 
 Lemma a_foo_lemma : forall m,
-    fpr m ftbd -> m = ftbd.
-Proof. now induction m. Qed.
+    fpr m (ftbd nil) -> m = ftbd nil.
+Proof. destruct m as [m | m]; now induction m. Qed.
 
-Lemma another_foo_lemma : forall m1 m2 e,
-    fpr m1 m2 -> fpr (fcons e m1) (fcons e m2).
-Proof. now induction m1. Qed.
+(* Lemma another_foo_lemma : forall m1 m2 e, *)
+(*     fpr m1 m2 -> fpr (fcons e m1) (fcons e m2). *)
+(* Proof. destruct m as [m1 | m1]; now induction m1. Qed. *)
 
 Lemma same_ext : forall m1 m2 t,
     prefix m1 t -> prefix m2 t ->
     fpr m1 m2 \/ fpr m2 m1.
 Proof.
-  induction m1; intros [] [] H1 H2;
-  try (now auto); inversion H1; inversion H2; subst.
-  destruct (IHm1 f t H0 H4) as [K | K];
-  [now left | now right].
+  destruct m1 as [m1 | m1]; induction m1; intros [] [] H1 H2;
+    try (now auto); destruct H1; destruct p; simpl in *;
+      destruct H2; simpl in *; subst; try (now auto);
+  try (specialize (IHm1 (fstop p) t H0 H2); simpl in IHm1;
+  destruct IHm1; subst; 
+    [now left | now right]);
+  try (specialize (IHm1 (ftbd p) t H0 H2); simpl in IHm1;
+  destruct IHm1; subst; 
+  [now left | now right]).
 Qed.
 
 Lemma same_fpr : forall m1 m2 m,
     fpr m1 m -> fpr m2 m ->
     (fpr m1 m2 \/ fpr m2 m1).
 Proof.
-  induction m1; intros [] [] H1 H2;
-  try (now auto); inversion H1; inversion H2; subst.
-  destruct (IHm1 f f0 H0 H4) as [K | K];
-  [now left | now right].
+  destruct m1 as [p1 | p1]; destruct m2 as [p2 | p2]; destruct m as [p | p];
+    try now auto.
+  - generalize dependent p2. generalize dependent p.
+    induction p1.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+  - generalize dependent p2. generalize dependent p.
+    induction p1.
+    + intros p p2 H1 H2. simpl in *; subst; now right.
+    + intros p p2 H1 H2. simpl in *; subst; now right.
+  - generalize dependent p2. generalize dependent p.
+    induction p1.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+  - generalize dependent p2. generalize dependent p.
+    induction p1.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+    + intros p p2 H1 H2. simpl in *; subst.
+      destruct p as [| a' p'].
+      ++ contradiction.
+      ++ destruct H1; subst. destruct p2; auto.
+         simpl in H2; destruct H2; subst. specialize (IHp1 p' p2 H0 H1).
+         destruct IHp1; [now left | now right].
+  - generalize dependent p2. generalize dependent p.
+    induction p1.
+    + intros p p2 H1 H2. simpl in *; subst; now left.
+    + intros p p2 H1 H2. simpl in *; subst.
+      destruct p as [| a' p'].
+      ++ contradiction.
+      ++ destruct H1; subst. destruct p2; auto.
+         simpl in H2; destruct H2; subst. specialize (IHp1 p' p2 H0 H1).
+         destruct IHp1; [now left | now right].
 Qed.
 
 Lemma non_comp_pref_diff_traces : forall t1 t2 m1 m2,
@@ -294,16 +398,17 @@ Proof.
   subst. apply H1. now apply (same_ext m1 m2 t2).
 Qed.
 
-Lemma no_prper_fpr_ftbd : forall m, m <> ftbd -> fpr m ftbd -> False.
-Proof. now induction m. Qed.
+Lemma no_prper_fpr_ftbd : forall m, m <> ftbd nil -> fpr m (ftbd nil) -> False.
+Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma stop_sngle_continuation_fpr : forall m1 m2,
     fstopped m1 = true ->
     fpr m1 m2 ->
     m1 = m2.
 Proof.
-  induction m1, m2; try now auto.
-  intros H H0. inversion H0. subst. now rewrite (IHm1 m2).
+  destruct m1 as [m1 | m1]; destruct m2 as [m2 | m2];
+    induction m1, m2; try now auto.
+  intros H H0; simpl in *; subst. now rewrite H0.
 Qed.
 
 (**************************************************)
@@ -311,11 +416,17 @@ Qed.
 (** *snoc *)
 
 (* CA: fsnoc is the identity on fstop *)
-Fixpoint fsnoc (m:finpref) (e:event) : finpref :=
+
+Fixpoint snoc {A : Type} (l : list A) (x : A) : list A :=
+  match l with
+  | nil => cons x nil
+  | cons x' l' => cons x' (snoc l' x)
+  end.
+
+Definition fsnoc (m : finpref) (e : event) :=
   match m with
-  | fstop => fstop
-  | ftbd => fcons e ftbd
-  | fcons m ms => fcons m (fsnoc ms e)
+  | fstop m' => m
+  | ftbd  m' => ftbd (snoc m' e)
   end.
 
 Lemma stop_snoc_id : forall m e,
@@ -323,25 +434,25 @@ Lemma stop_snoc_id : forall m e,
     fsnoc m e = m.
 Proof.
   induction m; try now auto.
-  intros e0 H. simpl in *. now rewrite (IHm e0 H).
 Qed.
 
 Lemma fpr_snoc_fpr : forall m1 m2 e,
     fpr m1 m2 ->
     fpr m1 (fsnoc m2 e).
 Proof.
-  induction m1; intros [] a H; try now auto;
+  destruct m1 as [m1 | m1]; induction m1; intros [] e H; try now auto;
   inversion H; subst.
-  + simpl in *. destruct H as [H1 H2].
-    specialize (IHm1 f a H2). now auto.
+  + simpl in *. destruct p. contradiction.
+    destruct H as [H1 H2].
+    specialize (IHm1 (ftbd p) e H2). now split.
 Qed.
 
 Lemma snoc_stop' : forall m e b, fstopped (fsnoc m e) = b ->
                             fstopped m = b.
 Proof.
-  intros m e b H. induction m; inversion H; auto.
-    simpl in *. specialize (IHm H0). now rewrite H.
+  intros m e b H. now destruct m.
 Qed.
+
 
 Lemma snoc_stop : forall m e b, fstopped (fsnoc m e) = b <->
                                 fstopped m = b.
@@ -359,13 +470,17 @@ Lemma compare_with_snoc : forall m1 m e,
     fpr m1 (fsnoc m e) ->
     (fpr m1 m \/ m1 = fsnoc m e).
 Proof.
-  induction m1, m; intros a H; try now auto.
-  + inversion H. apply a_foo_lemma in H1.
-    subst. now right.
-  + inversion H. subst. specialize (IHm1 m a H1).
-    simpl. destruct IHm1.
+  destruct m1 as [m1 | m1]; induction m1; destruct m as [m | m];
+    induction m; intros e' H; try now auto.
+  + inversion H. assert (fpr (ftbd m1) (ftbd nil)).
+    { auto. }
+    apply a_foo_lemma in H2.
+    subst; simpl. inversion H2; now right.
+  + simpl in *.
+    destruct H. subst; simpl in *.
+    specialize (IHm1 (ftbd m) e' H0). simpl in *. destruct IHm1.
     ++ now left.
-    ++ right. now subst.
+    ++ right. inversion H. now subst.
 Qed.
 
 Lemma snoc_diff : forall m a b,
@@ -373,23 +488,34 @@ Lemma snoc_diff : forall m a b,
     fpr (fsnoc m a) (fsnoc m b) ->
     a = b.
 Proof.
-  intros m a b H H0. eapply (compare_with_snoc (fsnoc m a) m b) in H0.
-  destruct H0 as [H0 | H0]; auto; induction m; inversion H;
-  inversion H0; auto; try now apply IHm; try now auto. 
+  intros [m|m] a b H H0. inversion H.
+  clear H. simpl in *.
+  eapply (compare_with_snoc (fsnoc (ftbd m) a) (ftbd m) b) in H0.
+  destruct H0 as [H0 | H0]; auto.
+  - induction m; inversion H0; auto; try now apply IHm.
+  - induction m; inversion H0; auto.
+    assert (H: fsnoc (ftbd m) a = fsnoc (ftbd m) b).
+    { simpl. now rewrite H1. }
+    now specialize (IHm H).
 Qed.
 
-Lemma no_snoc_fpr_ftb : forall m e, ~ fpr (fsnoc m e) ftbd.
-Proof. now induction m. Qed.
+Lemma no_snoc_fpr_ftb : forall m e, ~ fpr (fsnoc m e) (ftbd nil).
+Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma fpr_snoc_ftbd : forall m e f,
     fstopped m = false ->
-    fpr (fsnoc m e) (fsnoc ftbd f) ->
-    m = ftbd.
+    fpr (fsnoc m e) (fsnoc (ftbd nil) f) ->
+    m = ftbd nil.
 Proof.
-  intros m e f H H0. induction m; try now auto.
-  + simpl in H, H0. inversion H0; clear H0.
-    apply no_prper_fpr_ftbd in H2. now exfalso.
-    exfalso. now apply (no_snoc_fpr_ftb m e H2).
+  intros [m|m] e f H H0. induction m; try now auto.
+  + apply compare_with_snoc in H0. destruct H0.
+    now apply no_snoc_fpr_ftb in H0.
+    simpl in H0. inversion H0.
+    destruct m; auto.
+    simpl in *. clear H. inversion H2. subst.
+    assert (H: ~ (snoc m e = nil)).
+    { now induction m. }
+    contradiction.
 Qed.
 
 Lemma same_snoc_same_finpref : forall m m0 e1 e2 i1 i2,
@@ -400,31 +526,39 @@ Lemma same_snoc_same_finpref : forall m m0 e1 e2 i1 i2,
     fpr (fsnoc m0 i2) (fsnoc m e2) ->
     m0 = m.
 Proof.
-  induction m; intros m0 e1 e2 i1 i2 H H0 H1 H2 H3 H4;
-  try now auto; simpl in H3, H4.
+  destruct m as [m | m]; induction m as [| e' m' IHm'];
+  intros m0 e1 e2 i1 i2 H H0 H1 H2 H3 H4;
+  try now auto; simpl in *.
   + now apply (fpr_snoc_ftbd m0 i1 e1).
-  + destruct m0; try now auto; simpl in H4, H4.
-    ++ inversion H3. inversion H4. now subst.
-    ++ simpl in H1, H2, H3, H4. inversion H3. inversion H4. subst.
-       destruct (IHm m0 e1 e2 i1 i2); now auto.
- Qed.
+  + destruct m0 as [m0 | m0].
+    inversion H1.
+    destruct m0 as [| e0 m0]; simpl in *. destruct H3, H4; subst; contradiction.
+    destruct H3, H4; subst.
+    specialize (IHm' (ftbd m0) e1 e2 i1 i2 H H0 H1 H2 H5 H6). now inversion IHm'.
+Qed.
 
 Lemma snoc_lemma : forall m,
-    m = ftbd \/
+    m = ftbd nil \/
     (exists m' e', m = fsnoc m' e').
 Proof.
-  intros m. induction m; try now auto.
-  + right. now exists fstop, an_event.
-  + destruct IHm as [Hftbd | [m' [e' H]]]; right; subst.  
-    ++ now exists ftbd, e. 
-    ++ now exists (fcons e m'), e'. 
+  intros [m | m]; induction m.
+  - right. now exists (fstop nil), an_event.
+  - destruct IHm as [H | H]; try now inversion H.
+    right. destruct H as [m' [e' H]]. now exists (fstop (cons a m)), e'.
+  - now left.
+  - destruct IHm as [H | H]. 
+    + inversion H; subst. right. now exists (ftbd nil), a.
+    + destruct H as [m' [e' H]]. right.
+      destruct m' as [m' | m'].
+      now exists (ftbd (cons a m')), e'.
+      inversion H. exists (ftbd (cons a m')), e'. now subst. 
 Qed.
 
 Lemma not_stop_not_snoc_pref : forall m e,
     fstopped m = false ->
     fpr (fsnoc m e) m -> False.
 Proof.
-  intros m e H H0. induction m; try now auto.
+  intros [m | m] e H H0; induction m; try now auto.
   simpl in *. destruct H0 as [Heq H0].
   now apply IHm.
 Qed.
@@ -434,7 +568,7 @@ Lemma snoc_m_event_equal : forall m e1 e2,
     fpr (fsnoc m e1) (fsnoc m e2) ->
     e1 = e2.
 Proof.
-  intros m e1 e2 Hstop Hfpr.
+  intros [m | m] e1 e2 Hstop Hfpr;
   induction m; inversion Hfpr; try now auto.
 Qed.     
 
@@ -444,13 +578,15 @@ Lemma same_snoc_same_pointwise : forall m1 m2 e1 e2,
     fsnoc m1 e1 = fsnoc m2 e2 ->
     m1 = m2 /\ e1 = e2.
 Proof.
-  induction m1; intros m2 e1 e2 Hstop1 Hstop2 Heq; try now auto.
-  + destruct m2; inversion Heq; try now auto.
+  destruct m1 as [m1 | m1]; induction m1; intros m2 e1 e2 Hstop1 Hstop2 Heq;
+    try now auto.
+  + destruct m2 as [m2 | m2]; destruct m2; inversion Heq; try now auto.
+    simpl in *. 
     ++ now destruct m2. 
-  + destruct m2; inversion Heq; try now auto.
-    ++ exfalso. apply (no_snoc_fpr_ftb m1 e1). now rewrite H1. 
-    ++ destruct (IHm1 m2 e1 e2); try now auto.
-       now subst.
+  + destruct m2 as [m2 | m2]; destruct m2; inversion Heq; try now auto.
+    ++ exfalso. apply (no_snoc_fpr_ftb (ftbd m1) e1). simpl in *. now rewrite H1. 
+    ++ destruct (IHm1 (ftbd m2) e1 e2); simpl in *; subst; try now auto.
+       now rewrite H1. inversion H; now subst.
 Qed.
 
 (* TODO: TM#2 *)
@@ -470,16 +606,17 @@ Lemma proper_prefix : forall m t,
     ~ diverges t ->
     (exists e, prefix (fsnoc m e) t).
 Proof.
-  induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
+  destruct m as [m | m]; induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
   + destruct t.
     * now auto.
     * now pose proof div_silent.
     * now exists e.
   + destruct t; try now auto.
-    inversion Hpref. subst. destruct (IHm t) as [e H]; try now auto.
-    * intros ff. apply Hembed. simpl. now apply embed_cons.
-    * intros ff. now pose proof div_cons e0 t ff.
-    * now exists e.
+    inversion Hpref. subst. destruct (IHm t) as [e' H]; try now auto.
+    * intros ff. apply Hembed. simpl. pose proof embed_cons (ftbd m) t e.
+      now specialize (H ff).
+    * intros ff. now pose proof div_cons e t ff.
+    * now exists e'.
 Qed.
 
 Lemma fpr_stop_equal : forall m1 m2,
@@ -487,12 +624,16 @@ Lemma fpr_stop_equal : forall m1 m2,
     fstopped m1 = true ->
     m1 = m2.
 Proof.
-  intros m1. induction m1; intros m2 Hpref Hstop.
-  + now destruct m2. 
-  + inversion Hstop.
+  intros [m1 | m1]; induction m1; intros [m2 | m2] Hpref Hstop.
+  + now destruct m2.
+  + inversion Hpref.
   + destruct m2; try now auto.
-    inversion Hpref. subst. simpl in Hstop.
-    now rewrite (IHm1 m2 H0 Hstop).
+    inversion Hpref. now subst.
+  + destruct m2; try now auto.
+  + inversion Hstop.
+  + inversion Hstop.
+  + destruct m2; now auto.
+  + destruct m2; now auto.
 Qed.
 
 
@@ -500,10 +641,10 @@ Qed.
 
 (** *m[fstop/ftbd] *)
 
-Fixpoint same_events_with_stop (m : finpref) : finpref :=
+Definition same_events_with_stop (m : finpref) : finpref :=
   match m with
-  | ftbd | fstop => fstop
-  | fcons x xs => fcons x (same_events_with_stop xs)
+  | ftbd m => fstop m
+  | fstop m => fstop m
   end.
 
 Notation "m [fstop/ftbd]" := (same_events_with_stop m)
@@ -511,31 +652,29 @@ Notation "m [fstop/ftbd]" := (same_events_with_stop m)
 
 Lemma with_stop_fstopped : forall m,
     fstopped (m[fstop/ftbd]) = true.
-Proof. now induction m. Qed.
+Proof. now destruct m. Qed.
 
 Lemma if_fstopped_equal : forall m,
     fstopped m = true ->
     m = m[fstop/ftbd].
 Proof.
-  intros m Hstop. induction m; try now auto.
-  simpl in Hstop. simpl. now rewrite <- (IHm Hstop).
-Qed. 
+  now destruct m.
+Qed.
 
 Lemma embedding_is_the_same : forall m,
     embedding m =
     embedding (m[fstop/ftbd]).
 Proof.
-  induction m; try now auto. 
-  simpl. now rewrite IHm.
-Qed. 
+  now destruct m.
+Qed.
 
 Lemma m_fpr_with_stop : forall m,
     fpr m (m[fstop/ftbd]).
-Proof. now induction m. Qed.
+Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma with_stop_prefix_embedding :forall m,
     prefix (m [fstop/ftbd]) (embedding m).
-Proof. now induction m. Qed.
+Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma equal_with_stop_same_embedding : forall m mm,
     fstopped m = true ->
@@ -543,10 +682,12 @@ Lemma equal_with_stop_same_embedding : forall m mm,
     fpr m (mm[fstop/ftbd]) ->
     embedding m = embedding mm.
 Proof.
-  induction m; intros mm Hstop Hfpr HfprStop; try now destruct mm. 
-  simpl in Hstop. simpl.
-  destruct mm; try now auto. inversion Hfpr. inversion HfprStop. subst. 
-  now rewrite (IHm mm Hstop H0 H2).
+  destruct m as [m | m]; destruct m;
+    intros mm Hstop Hfpr HfprStop; try now destruct mm.
+  simpl in *. 
+  destruct mm; try now auto; simpl in *. inversion Hfpr; subst. reflexivity.
+  simpl in *; now subst.
+  destruct mm as [mm | mm]; simpl in *; now subst.
 Qed.
 
 Lemma proper_fpr: forall m0 mm,
@@ -554,9 +695,9 @@ Lemma proper_fpr: forall m0 mm,
     fstopped m0 = false ->
     fpr m0 mm.
 Proof. 
-  induction m0; intros mm Hfpr Hstop; try now auto.
+  destruct m0 as [m0 | m0]; induction m0; intros mm Hfpr Hstop; try now auto.
   simpl in Hstop. destruct mm; try now auto.
-  inversion Hfpr. subst. simpl. split; now auto. 
+  now destruct mm as [mm | mm]. 
 Qed.
 
 (*******************************************************************************)
@@ -575,11 +716,14 @@ Qed.
 
 Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2.
 Proof.
-  intros m. induction m; intros t1 t2 hpref heq; try now auto.
+  intros [m | m]; induction m; intros t1 t2 hpref heq; try now auto.
   + now destruct t1, t2. 
   + destruct t1, t2; try now auto. inversion hpref. subst.   
     inversion heq. subst. simpl. split; try now auto.
-    now apply (IHm t1 t2). 
+    now apply (IHm t1 t2).
+  + destruct t1, t2; try now auto. inversion hpref. subst.
+    inversion heq. subst. simpl. split; try now auto.
+    now apply (IHm t1 t2).
 Qed.
 
 Lemma same_finite_prefixes : forall t1 t2, t_eq t1 t2 ->
