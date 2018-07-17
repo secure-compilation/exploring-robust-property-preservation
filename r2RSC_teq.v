@@ -214,7 +214,38 @@ Proof.
     + (* same case *)
       admit.
 Admitted.
-            
+
+
+Lemma snoc_injective : forall (e1 e2 : event) p1 p2,
+  snoc p1 e1 = snoc p2 e2 -> e1 = e2 /\ p1 = p2.
+Admitted.
+
+Lemma destruct_fpr_ftbd_snoc : forall p' p e,
+  fpr_ftbd p' (snoc p e) ->
+  p' = snoc p e \/ fpr_ftbd p' p.
+Proof.
+  induction p' as [| e' p''].
+  - intros p e H. simpl in *. tauto.
+  - intros p e H. simpl in H.
+    remember (snoc p e) as pe. destruct pe as [| e'' p''']. tauto.
+    destruct H as [H1 H2]. subst e''.
+    destruct (destruct_pref p''') as [| [e''' [p'''' H]]].
+    + subst p'''. destruct p as [| e1 [| e2 ]]; simpl in Heqpe.
+      * destruct p''. now left. simpl in H2; tauto.
+      * now inversion Heqpe.
+      * now inversion Heqpe.
+    + subst p'''. destruct (IHp'' _ _ H2) as [IH | IH].
+      * subst p''. left. reflexivity.
+      * destruct p as [| e1 [| e2 ]]; simpl in Heqpe.
+        ++ destruct p''''; simpl in *; now inversion Heqpe.
+        ++ inversion Heqpe. destruct p''''; simpl in *.
+           -- right. tauto.
+           -- inversion H1. subst. destruct p''''; simpl in *; now inversion Heqpe.
+        ++ inversion Heqpe. subst e1. right. simpl. split. reflexivity.
+           replace (e2 :: snoc l e) with (snoc (e2 :: l) e) in H1 by reflexivity.
+           apply snoc_injective in H1. destruct H1 as [H11 H12]. now subst.
+Qed.
+
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
           (fstopped mm = false) /\ 
@@ -248,12 +279,13 @@ Proof.
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
                           fpr (ftbd p') (fstop p)).
-         { clear.
-           generalize dependent p.
-           induction p' using pref_ind_snoc.
-           - intros; now auto.
-           - intros. destruct p; try now auto.
-         assert (fpr_ftbd p' p).
+         { intros H0 H1 H2. unfold fpr in H2.
+           apply destruct_fpr_ftbd_snoc in H2.
+           destruct H2 as [H21 | H22].
+           + subst p'. tauto.
+           + assumption.
+        }
+        specialize (Hlemma Hsem' H Hm'). apply H'; assumption.
          
   - exists (ftbd nil); repeat (try split); try now auto.
     + admit.
