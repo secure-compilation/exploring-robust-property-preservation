@@ -74,17 +74,191 @@ Proof.
     ++ now exists m, e1, e2.
 Qed.
 
-Fixpoint length (m : finpref) :=
+Definition length (m : finpref) :=
   match m with
   | fstop m => List.length m
   | ftbd  m => List.length m
   end.
 
+Lemma destruct_pref : forall (m : pref), m = nil \/ exists (e : event) (m' : pref),  m = snoc m' e.
+Proof.
+  induction m.
+  - now left.
+  - right. destruct IHm.
+    + subst. now exists a, nil.
+    + destruct H as [e [m' H]]. subst.
+      now exists e, (cons a m').
+Qed.
+
+Lemma snoc_length : forall (m' : pref) (e : event) (n : nat),
+    Datatypes.length (snoc m' e) = S n -> Datatypes.length m' = n.
+Proof.
+  admit.
+Admitted.
+
+Theorem finpref_ind_snoc :
+  forall (P : finpref -> Prop),
+    P (ftbd nil) ->
+    (forall (m : pref), P (fstop m)) ->
+    (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
+    forall m, P m.
+Proof.
+  intros P Hnil Hstop Hind.
+  assert (H: forall (n : nat) (m : finpref), length m = n -> P m).
+  { induction n.
+    - intros [m | m] Hlen; try now auto.
+      destruct m; try now auto.
+    - intros m Hlen.
+      destruct m; try now auto.
+      destruct (destruct_pref p).
+      subst; simpl in *. inversion Hlen.
+      destruct H as [e' [p' H']].
+      subst; apply snoc_length in Hlen. specialize (IHn (ftbd p') Hlen).
+      now specialize (Hind (ftbd p') e' (IHn)).
+  }
+  intros m. now apply (H (length m) m).
+Qed.
+
+Theorem pref_ind_snoc :
+  forall (P : pref -> Prop),
+    P nil ->
+    (forall (p : pref) (e : event), P p -> P (snoc p e)) ->
+    forall p, P p.
+Proof.
+  intros P Hnil Hind.
+  assert (H: forall (n : nat) (p : pref), Datatypes.length p = n -> P p).
+  { induction n.
+    - intros p Hlen; try now auto.
+      destruct p; try now auto.
+    - intros p Hlen.
+      destruct (destruct_pref p); try now auto.
+      subst; assumption.
+      destruct H as [e' [p' H']].
+      subst; apply snoc_length in Hlen. specialize (IHn p' Hlen).
+      now specialize (Hind p' e' IHn). }
+  intros p. now apply (H (Datatypes.length p) p).
+Qed.
+
+
+Lemma longest_in_psem' : forall (P' : prg tgt) (n : nat) (m : finpref),
+    length m = n -> exists mm, (fpr mm m) /\ (psem P' mm) /\
+                         (fstopped mm = false) /\ 
+                         (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
+Proof.
+  intros P'.
+  induction n as [| n IHn].
+  - (* n = 0 *)
+    intros m Hlen.
+    exists (ftbd nil). repeat (try split).
+    now destruct m.
+    destruct (non_empty_sem tgt P') as [t Ht].
+    unfold psem; now (exists t).
+    intros m' Hfpr Hpsem Hstopped.
+    destruct m'. inversion Hstopped.
+    destruct p. now simpl.
+    destruct m as [m | m]; destruct m; try now auto.
+  - (* n ∈ Nat *)
+    intros m Hlen. destruct m as [m | m]; destruct (destruct_pref m); subst; try inversion Hlen.
+    + destruct H as [e [m' H]]. subst.
+      apply snoc_length in H1.
+      pose proof (classic (psem P' (ftbd (snoc m' e)))) as H0.
+      destruct H0.
+      ++ exists (ftbd (snoc m' e)). repeat (try split); try now auto.
+         apply m_fpr_with_stop.
+         intros m'0 Hfpr'0 Hpsem'0 Hstopped'0.
+         assert (H0: forall m m', fpr m (fstop m') -> fstopped m = false -> fpr m (ftbd m')).
+         { clear. now destruct m. }
+         apply (H0 m'0 (snoc m' e) Hfpr'0 Hstopped'0).
+      ++ specialize (IHn (ftbd m') H1). destruct IHn as [mm [Hfpr [Hpsem [Hstopped H0]]]].
+         exists mm. repeat (try split); try now auto.
+         pose proof (fpr_transitivity mm (ftbd m') (fstop (snoc m' e))).
+         specialize (H2 Hfpr). apply H2.
+         pose proof (fpr_snoc_fpr (ftbd m') (ftbd m') e).
+         pose proof (fpr_reflexivity (ftbd m')) as Hrefl. specialize (H3 Hrefl).
+         assert (H4 : fsnoc (ftbd m') e = ftbd (snoc m' e)) by reflexivity.
+         rewrite H4 in H3. clear H4 Hrefl.
+         pose proof (fpr_transitivity (ftbd m') (ftbd (snoc m' e)) (fstop (snoc m' e))).
+         specialize (H4 H3).
+         pose proof (m_fpr_with_stop (ftbd (snoc m' e))). simpl in H5. specialize (H4 H5). assumption.
+         intros m'0 Hfpr'0 Hsem'0 Hstopped'0.
+         assert (H2 : forall tgt (P' : prg tgt) m m' e, fpr m (fstop (snoc m' e)) -> psem P' m
+                                                   -> ~(psem P' (ftbd (snoc m' e))) -> fpr m (ftbd m')).
+         { clear. intros tgt P'.
+           induction m using finpref_ind_snoc; intros; try now auto.
+           - simpl in *; subst. apply H1.
+             unfold psem in H0. unfold psem. destruct H0 as [t [Hpref Hsem]].
+             exists t; split.
+             apply (fpr_pref_pref (ftbd (snoc m' e)) (fstop (snoc m' e))).
+             apply m_fpr_with_stop. assumption.
+             assumption.
+           - destruct m as [m | m].
+             simpl in *. subst. apply H1.
+             unfold psem in H0. unfold psem. destruct H0 as [t [Hpref Hsem]].
+             exists t; split.
+             apply (fpr_pref_pref (ftbd (snoc m' e0)) (fstop (snoc m' e0))).
+             apply m_fpr_with_stop. assumption.
+             assumption. simpl in *.
+             destruct (destruct_pref m') as [|Hm].
+             + subst. admit.
+             + destruct Hm as [e' [p Hp]]; subst.
+               specialize (IHm p e').
+               assert (Hfpr : fpr_ftbd (snoc m e) (snoc (snoc p e') e0) -> fpr_ftbd m (snoc p e')).
+               { clear. induction m.
+                 - intros. reflexivity.
+                 - intros. admit. }
+               admit.
+             
+         }
+         specialize (H2 tgt P' m'0 m' e Hfpr'0 Hsem'0 H).
+         now specialize (H0 m'0 H2 Hsem'0 Hstopped'0).
+    + (* same case *)
+      admit.
+Admitted.
+            
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
           (fstopped mm = false) /\ 
           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
 Proof.
+  intros P'.
+  destruct m as [p | p]; induction p using pref_ind_snoc.
+  - exists (ftbd nil); repeat (try split); try now auto.
+    + admit.
+    + intros. destruct m'; now auto.
+  - pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
+    destruct H.
+    + exists (ftbd (snoc p e)); repeat (try split).
+      ++ now apply m_fpr_with_stop.
+      ++ now assumption.
+      ++ intros m' Hfpr Hpsem Hstopped.
+         now destruct m'.
+    + destruct IHp as [mm [Hfpr [Hsem [Hstopped H']]]].
+      exists mm; repeat (try split); destruct mm as [pp | pp]; try now auto.
+      ++ destruct (destruct_pref pp); try now subst.
+         destruct H0 as [e' [m' Hsubst]]; subst.
+         assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
+         { clear H' Hstopped Hsem H. now assumption. }
+         clear Hfpr.
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         { clear. now induction p. }
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+      ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
+         specialize (H' (ftbd p')).
+         assert (Hlemma : psem P' (ftbd p') ->
+                          ~ (psem P' (ftbd (snoc p e))) ->
+                          fpr (ftbd p') (ftbd (snoc p e)) ->
+                          fpr (ftbd p') (fstop p)).
+         { clear.
+           generalize dependent p.
+           induction p' using pref_ind_snoc.
+           - intros; now auto.
+           - intros. destruct p; try now auto.
+         assert (fpr_ftbd p' p).
+         
+  - exists (ftbd nil); repeat (try split); try now auto.
+    + admit.
+  - 
+    
 Admitted.
     
 (* Informal proof: *)
