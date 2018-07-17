@@ -156,17 +156,27 @@ Qed.
   - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
     eapply steps_psem. eassumption.
 Qed.
-*)
+ *)
+
+Fixpoint fsnoc' (m : finpref) (e : event) : finpref :=
+  match m with
+  | fstop m' => fstop (snoc m' e)
+  | ftbd m' => ftbd (snoc m' e)
+  end.
+
+Theorem finpref_ind_snoc :
+  forall (P : finpref -> Prop),
+    P (ftbd nil) ->
+    (forall (m : pref), P (fstop m)) ->
+    (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
+    forall m, P m.
+Proof. Admitted.
 
 Definition semantics_safety_like_right : forall t P,
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
-Proof.
-  unfold semantics_safety_like. simpl.
-  intros t P Hsem Hinf.
-  (* unfold psem. simpl. *)
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
      signified with a dependent type for the sake of simplicity), that
      does not belong to psem P. The argument can be that if every prefix
@@ -178,6 +188,51 @@ Proof.
      are two possible cases: if m' is in sem P, it is the minimal bad
      prefix and e the bad event, and we are done; if m' is still not in
      sem P, we continue reducing it. (Thus, an easy induction.) *)
-Admitted.
+
+Proof.
+  unfold semantics_safety_like. simpl.
+  intros t P Hsem Hinf.
+  intros Hndiv.
+  pose proof semantics_safety_like_right. specialize (H t P).
+  rewrite -> contra in H.
+  specialize (H Hsem). apply not_all_ex_not in H.
+  destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
+  generalize dependent Hm2. generalize dependent Hm1.
+  destruct m as [p | p].
+  - (* fstop *)
+    intros Hm1 Hm2.
+    assert (forall t m, prefix (fstop m) t -> fin t).
+    { clear. intros t m. generalize dependent t. induction m; intros t H.
+      - destruct t; try now auto. constructor.
+      - destruct t; try now auto.
+        destruct H as [H1 H2].
+        specialize (IHm t H2). now constructor. }
+    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p Hm1).
+  - (* ftbd *)
+    induction p as [| p' e' IH] using pref_ind_snoc; intros Hm1 Hm2.
+    + (* p = nil *)
+      assert (Hm2' : @psem lang P (ftbd nil)).
+      { clear. unfold psem. pose proof non_empty_sem P. destruct H as [t Ht].
+        exists t; now split. }
+      now contradiction.
+    + (* p = snoc p' e' *)
+      pose proof (classic (@psem lang P (ftbd p'))) as [H | H].
+      ++ exists (ftbd p'), e'. subst. split; try split; assumption.
+      ++ apply IH.
+         assert (H0: forall (p : pref) e t, prefix (ftbd (snoc p e)) t -> prefix (ftbd p) t).
+         { clear. induction p.
+           - intros. now auto.
+           - intros. simpl in *. destruct t; try now auto.
+             destruct p; try now auto.
+             destruct H as [H1 H2].
+             specialize (IHp e t H2).
+             split; try now auto.
+         }
+         apply H0 in Hm1. assumption.
+         assumption.
+Qed.
+
 
 End Main.
+
+
