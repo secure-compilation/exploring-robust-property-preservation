@@ -53,6 +53,20 @@ Proof.
     exists C',t. auto. apply NNPP in H1. subst t'. now exists C.
 Qed.
 
+Axiom some_ctx_src : ctx src.
+
+Theorem RC_RPP_not_really_simpler : RC <-> (forall P π, RP P π).
+Proof.
+  unfold RC, RP, rsat, sat. split.
+  - intros HRTC P π HsatCP Ct t HsemCtPC. destruct (HRTC P Ct t) as [Cs HTRC']. eauto.
+  - intros HRTP P. pose proof (HRTP P (fun t => exists Cs, sem src (Cs[P]) t)) as HRTP'. simpl in HRTP'.
+    assert(G : forall Cs t, sem src (Cs [P]) t -> exists Cs, sem src (Cs [P]) t) by eauto.
+    intros Ct t. specialize (HRTP' G Ct t). clear G HRTP.
+    (* this still doesn't work without classical logic *)
+    destruct (classic (sem tgt (Ct [P ↓]) t)).
+    + firstorder.
+    + exists some_ctx_src. tauto.
+Qed.
 
 (*********************************************************)
 (* Criterium for Safety Properties Preservation          *)
