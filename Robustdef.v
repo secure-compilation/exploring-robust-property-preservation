@@ -13,13 +13,13 @@ Lemma contra_RP (P : par src) (π : prop) :
      RP P π <->
      ((exists C' t', sem tgt (C' [ P ↓ ]) t'  /\ ~ π t') ->
       (exists C t ,  sem src (C [ P ]) t /\ ~ π t)).
-Proof. 
+Proof.
    unfold RP. split.
   - intros H. rewrite contra in H.
     repeat rewrite neg_rsat in H. assumption.
   - intros H. rewrite contra.
     repeat rewrite neg_rsat. assumption.
-Qed.  
+Qed.
 
 (** *RObust Preservation of a class of properties*)
 Definition RclassP (class : prop -> Prop) (P : par src) (π : prop) : Prop :=
@@ -39,9 +39,9 @@ Proof.
   intros [C' [t [H0 H1]]]. specialize (Hrxp P (fun b => b <> t)).
   unfold RclassP in Hrxp. specialize (Hrxp (Hx t)).
   rewrite contra_RP in Hrxp.
-  destruct Hrxp as [C [t' [K0 K1]]]; try now exists C', t. 
+  destruct Hrxp as [C [t' [K0 K1]]]; try now exists C', t.
   exists C, t'. split; try now auto. apply NNPP in K1. now subst.
-Qed. 
+Qed.
 
 
 (* RP is not strictly monotonic *)
@@ -50,16 +50,16 @@ Lemma RclassP_not_strict : exists (X Y : prop -> Prop),
     ((forall P π, RclassP Y P π) -> (forall P π, RclassP X P π)).
 Proof.
     exists (fun π => True), (fun π => exists t, (forall b, π b <-> b <> t)).
-    split; try now auto. 
+    split; try now auto.
     split.
-    + exists (fun t => False).  split; auto. 
+    + exists (fun t => False).  split; auto.
       intros [t Heq]. destruct t;
       [specialize (Heq (tcons an_event tstop))
       |specialize (Heq tstop)
-      |specialize (Heq tstop)];  now rewrite Heq.    
-    + unfold RclassP. intros P π H tt. 
+      |specialize (Heq tstop)];  now rewrite Heq.
+    + unfold RclassP. intros P π H tt.
       eapply (RclassP_sufficient_to_RPP (fun π => exists t, (forall b, π b <-> b <> t)));
-        try now auto. 
+        try now auto.
       ++ intros t. now exists t.
 Qed.
 
@@ -76,12 +76,12 @@ Lemma contra_RHP (P : par src) (H : hprop) :
        (exists C  : ctx src, ~ H (beh (C [ P ])))).
 Proof.
   unfold RHP, rhsat, hsat. split.
-  + intros Hr [C' Hc']. rewrite contra in Hr. 
+  + intros Hr [C' Hc']. rewrite contra in Hr.
     repeat rewrite not_forall_ex_not in Hr.
-    destruct Hr as [C Hc]; try now exists C'. now exists C. 
+    destruct Hr as [C Hc]; try now exists C'. now exists C.
   + intros Himp. rewrite contra. repeat rewrite not_forall_ex_not.
     now auto.
-Qed.                               
+Qed.
 
 (** *Robust Preservation of a class of HyperProperties*)
 Definition RHclassP (class : hprop -> Prop) (P : par src) (H : hprop) : Prop :=
@@ -99,11 +99,11 @@ Lemma RHclassP_sufficient_to_RHP :
     (forall π, X (fun π' => π' <> π)) -> ((forall P H, RHclassP X P H) -> (forall P H, RHP P H)).
 Proof.
   intros X Hx Hrxp P H. rewrite contra_RHP.
-  intros [C' Hc']. specialize (Hrxp P (fun μ => μ <> (beh (C' [ P ↓] )))). 
+  intros [C' Hc']. specialize (Hrxp P (fun μ => μ <> (beh (C' [ P ↓] )))).
   unfold RHclassP in Hrxp. specialize (Hrxp (Hx (beh (C' [ P ↓] )))).
   rewrite contra_RHP in Hrxp.
   destruct Hrxp as [C Hdif]; try now exists C'.
-  apply NNPP in Hdif. exists C. now rewrite Hdif.  
+  apply NNPP in Hdif. exists C. now rewrite Hdif.
 Qed.
 
 Definition class_lift (H : prop -> Prop) : hprop -> Prop :=
@@ -115,28 +115,28 @@ Lemma robust_lift_lemma : forall (prop_class : prop -> Prop),
     (forall P h, (class_lift prop_class) h -> RHP P h).
 Proof.
   intros class. unfold RP, rhsat, rsat, hsat, sat. split.
-  + intros Hrp P h [π [Hclass Heq]] Hpremise Ct. 
-    specialize (Hrp P π Hclass). unfold lifting, "<<" in *. 
+  + intros Hrp P h [π [Hclass Heq]] Hpremise Ct.
+    specialize (Hrp P π Hclass). unfold lifting, "<<" in *.
      rewrite Heq in *.
     now firstorder.
   + intros Hrp P π Hclass premise.
     assert (class_lift class (lifting π)) by now exists π.
-    specialize (Hrp P (lifting π) H).    
-    unfold RHP, rhsat, hsat, lifting, "<<" in *. 
+    specialize (Hrp P (lifting π) H).
+    unfold RHP, rhsat, hsat, lifting, "<<" in *.
     now firstorder.
 Qed.
-  
+
 (* Robust Preservation of SSC => RPP *)
 Lemma RSSCP_RPP : (forall P H, SSC H -> RHP P H) -> (forall P π, RP P π).
 Proof.
   assert ((forall P π, RP P π) <-> (forall P π, (fun _ => True) π -> RP P π)) by firstorder.
   rewrite H. rewrite robust_lift_lemma. intros Hssc P h [π [foo Heq]].
   assert (SSC h).
-  { apply SSC_iff. exists (fun μ => (forall t, μ t <-> π t)). 
+  { apply SSC_iff. exists (fun μ => (forall t, μ t <-> π t)).
     intros μ. rewrite Heq. unfold lifting, "<<" in *.
     now firstorder. }
   now apply Hssc.
-Qed. 
+Qed.
 
 (** *Relational *)
 
@@ -172,7 +172,7 @@ Definition teq_preservation : Prop :=
   forall P1 P2, (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
            (forall Ct t, sem tgt (Ct [P1 ↓]) t <-> sem tgt (Ct [P2 ↓]) t).
 
-Lemma teq' : teq_preservation <-> (forall P1 P2, 
+Lemma teq' : teq_preservation <-> (forall P1 P2,
  (exists Ct t, ~ (sem tgt (Ct [P1 ↓]) t  <-> sem tgt (Ct [P2 ↓]) t)) ->
  (exists Cs t', ~ (sem src (Cs [P1]) t'  <-> sem src (Cs [P2]) t'))).
 Proof.

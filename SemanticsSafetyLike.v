@@ -9,9 +9,9 @@ Variable partial : Set.
 Variable program : Set.
 Variable context : Set.
 Variable plug : partial -> context -> program.
-  
+
 Variable cfg : Set.
-Variable init : program -> cfg. 
+Variable init : program -> cfg.
 Variable step : cfg -> event -> cfg -> Prop.
 
 Definition stuck (c:cfg) : Prop :=  forall e c', ~step c e c'.

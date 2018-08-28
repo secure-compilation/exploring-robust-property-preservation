@@ -3,7 +3,7 @@ Require Import Properties.
 Require Import ClassicalExtras.
 Require Import Events.
 
-Set Implicit Arguments. 
+Set Implicit Arguments.
 
 Record level :=
   {
@@ -15,20 +15,20 @@ Record level :=
     non_empty_sem : forall W, exists t, sem W t
   }.
 
-  
+
 Axiom src : level.
 Axiom tgt : level.
 Axiom compile_par : (par src) -> (par tgt).
 Axiom compile_ctx : (ctx src) -> (ctx tgt).
-Axiom compile_prg : (prg src) -> (ctx tgt). 
+Axiom compile_prg : (prg src) -> (ctx tgt).
 
 Notation "C [ P ]" := (plug _ P C) (at level 50).
-Notation "P ↓" := (compile_par P) (at level 50). 
+Notation "P ↓" := (compile_par P) (at level 50).
 
 
 Definition psem {K : level}
                 (P : prg K)
-                (m : finpref) : Prop := 
+                (m : finpref) : Prop :=
   exists t, prefix m t /\ (sem K) P t.
 
 Definition sat {K : level}
@@ -39,7 +39,7 @@ Definition sat {K : level}
 Definition rsat {K : level}
                 (P : par K)
                 (π : prop) : Prop :=
-  forall C, sat (C [ P ] ) π. 
+  forall C, sat (C [ P ] ) π.
 
 
 Lemma neg_rsat {K : level} :
@@ -75,7 +75,7 @@ Lemma neg_rhsat {K : level} :
 Proof.
   intros P H. split; unfold rhsat; intro H0;
   [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
-Qed.   
+Qed.
 
 Definition sat2 {K : level} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
   forall t1 t2, sem K P1 t1 -> sem K P2 t2 -> r t1 t2.
@@ -94,7 +94,7 @@ Proof.
     rewrite not_imp. split.
     ++ assumption.
     ++ rewrite not_imp. now auto.
-Qed. 
+Qed.
 
 
 Definition rsat2 {K : level} (P1 P2 : @par K) (r : rel_prop) : Prop :=
@@ -112,7 +112,7 @@ Definition hrsat2 {K : level} (P1 P2 : @par K) (r : rel_hprop) : Prop :=
 Definition input_totality (K : level) : Prop :=
   forall (P : prg K) m e1 e2,
     is_input e1  -> is_input e2 -> fstopped m = false ->
-    psem P (fsnoc m e1) -> psem P (fsnoc m e2). 
+    psem P (fsnoc m e1) -> psem P (fsnoc m e2).
 
 Definition traces_match (t1 t2 : trace) : Prop :=
  t1 = t2 \/
