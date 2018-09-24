@@ -16,9 +16,15 @@ Variable step : cfg -> event -> cfg -> Prop.
 
 Definition stuck (c:cfg) : Prop :=  forall e c', ~step c e c'.
 
+Variable silent : event -> Prop.
+
+CoInductive can_loop_silent : cfg -> Prop :=
+| FSilent : forall c e c', step c e c' -> silent e -> can_loop_silent c' -> can_loop_silent c.
+
 CoInductive sem' : cfg -> trace -> Prop :=
 | SStop : forall c, stuck c -> sem' c tstop
-| SCons : forall c e c' t, step c e c' -> sem' c' t -> sem' c (tcons e t).
+| SCons : forall c e c' t, step c e c' -> ~silent e -> sem' c' t -> sem' c (tcons e t)
+| SSilent : forall c, can_loop_silent c -> sem' c tsilent.
 
 Definition sem (p:program) : trace -> Prop := sem' (init p).
 
@@ -33,8 +39,13 @@ CoFixpoint trace_of (c:cfg) : trace.
   unfold stuck in H. do 2 setoid_rewrite not_forall_ex_not in H.
   apply indefinite_description in H. destruct H as [e H].
   apply indefinite_description in H. destruct H as [c' H].
-  apply NNPP in H. eapply (tcons e). apply (trace_of c').
-Defined.
+  apply NNPP in H.
+  destruct (classicT (silent e)) as [He | He].
+  - exact (tcons e (trace_of c')).
+  - destruct (classicT (can_loop_silent c')) as [Hc | Hc].
+    + exact tsilent.
+    + admit. (* exact (trace_of c'). -- but still need to convince Coq *)
+Admitted.
 
 (* The usual hack to unfold CoFixpoints, but it ain't pretty and
    it still doesn't compute because of all the axioms *)
