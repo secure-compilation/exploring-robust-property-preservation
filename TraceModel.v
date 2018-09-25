@@ -20,6 +20,12 @@ Inductive finpref : Set :=
 | ftbd  : pref -> finpref
 .
 
+Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(p) :=
+  destruct m as [[|e p] | [|e p]].
+
+Tactic Notation "induction" "finpref" ident(m) "as" ident(e) ident(p) ident(Hp) :=
+  destruct m as [m | m]; induction m as [|e p Hp].
+
 (** *prefix relation *)
 Fixpoint fstop_prefix (m : pref) (t : trace) : Prop :=
   match m, t with
@@ -67,31 +73,29 @@ Proof. intros e t H Hc. apply H. now constructor. Qed.
 Lemma many_continuations :
   forall m ta, inf ta -> exists t', prefix m t' /\ t' <> ta.
 Proof.
-  destruct m as [m | m].
-  - induction m as [ | e m IHm]; intros ta Hinf.
-    + exists tstop. split; try now auto.
-      intros Hc; subst. apply Hinf. now constructor.
-    + destruct ta as [| | e' ta].
-      ++ exfalso. apply Hinf. now constructor.
-      ++ specialize (IHm tsilent Hinf).
-         destruct IHm as [t' [Hpref Hnsilent]].
-         exists (tcons e t'). now split.
-      ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
-         destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
-         split; try now auto.
-         intros Hc. inversion Hc; now subst.
-  - induction m as [ | e m IHm]; intros ta Hinf.
-    + exists tstop. split; try now auto.
-      intros Hc; subst. apply Hinf. now constructor.
-    + destruct ta as [| | e' ta].
-      ++ exfalso. apply Hinf. now constructor.
-      ++ specialize (IHm tsilent Hinf).
-         destruct IHm as [t' [Hpref Hnsilent]].
-         exists (tcons e t'). now split.
-      ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
-         destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
-         split; try now auto.
-         intros Hc. inversion Hc; now subst.
+  induction finpref m as e m IHm; intros ta Hinf.
+  + exists tstop. split; try now auto.
+    intros Hc; subst. apply Hinf. now constructor.
+  + destruct ta as [| | e' ta].
+    ++ exfalso. apply Hinf. now constructor.
+    ++ specialize (IHm tsilent Hinf).
+       destruct IHm as [t' [Hpref Hnsilent]].
+       exists (tcons e t'). now split.
+    ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
+       destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
+       split; try now auto.
+       intros Hc. inversion Hc; now subst.
+  + exists tstop. split; try now auto.
+    intros Hc; subst. apply Hinf. now constructor.
+  + destruct ta as [| | e' ta].
+    ++ exfalso. apply Hinf. now constructor.
+    ++ specialize (IHm tsilent Hinf).
+       destruct IHm as [t' [Hpref Hnsilent]].
+       exists (tcons e t'). now split.
+    ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
+       destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
+       split; try now auto.
+       intros Hc. inversion Hc; now subst.
 Qed.
 
 (* we try to identify a finite trace and the fpref made of the same events *)
@@ -113,8 +117,7 @@ Definition equal (m : finpref) (t : trace) : Prop :=
 
 Lemma equal_prefix : forall m t, equal m t -> prefix m t.
 Proof.
-  destruct m as [m | m]; induction m; destruct t; intro H; simpl in *;
-  now tauto.
+  induction finpref m as e p Hp; destruct t; intros H; now tauto.
 Qed.
 
 Lemma fin_equal : forall t, fin t <-> exists m : finpref, equal m t.
@@ -125,8 +128,7 @@ Proof.
     now (exists (fstop (cons e m))).
     now simpl in IH.                         
   - intros [m Heq]. generalize dependent t.
-    destruct m as [m | m];    
-    induction m as [| e m' IH]; intros t Heq; try now auto.
+    induction finpref m as e m' IH; intros t Heq; try now auto.
     + destruct t; try now auto. now constructor.
     + destruct t as [| | e' t']; inversion Heq.
       constructor. now apply IH.
@@ -134,9 +136,8 @@ Qed.
 
 Lemma single_cont : forall m t t', equal m t -> prefix m t' -> t = t'.
 Proof.
-  destruct m as [m | m];
-  induction m; destruct t, t'; firstorder.
-  subst. now rewrite (IHm t t').
+  induction finpref m as e p IHp; destruct t, t'; firstorder.
+  subst. now rewrite (IHp t t').
 Qed.
 
 Lemma single_cont_consequence : forall t,
