@@ -12,7 +12,7 @@ Proof. easy. Qed.
 Lemma full_observable : Observable  (fun t => True).
 Proof.
   unfold Observable. intros t ff.
-  now exists ftbd.
+  now exists (ftbd nil).
 Qed.
 
 Lemma union_observable : forall H : hprop,

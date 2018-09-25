@@ -6,6 +6,7 @@ Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
+Require Import List.
 
 Definition two_rRSC : Prop :=
   forall (r : finpref -> finpref -> Prop) P1 P2 ,
@@ -73,20 +74,84 @@ Proof.
     ++ now exists m, e1, e2.
 Qed.
 
-
-Fixpoint length (m : finpref) :=
-  match m with
-  | fstop => 0
-  | ftbd => 0
-  | fcons e m' => 1 + length m'
-  end.
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
           (fstopped mm = false) /\
           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
 Proof.
-Admitted.
-
+  intros P'.
+  destruct m as [p | p]; induction p using pref_ind_snoc.
+  - exists (ftbd nil); repeat (try split); try now auto.
+    + unfold psem. pose proof (non_empty_sem tgt P').
+      destruct H as [t Ht].
+      exists t; split. reflexivity. assumption.
+    + intros. destruct m'; now auto.
+  - pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
+    destruct H.
+    + exists (ftbd (snoc p e)); repeat (try split).
+      ++ now apply m_fpr_with_stop.
+      ++ now assumption.
+      ++ intros m' Hfpr Hpsem Hstopped.
+         now destruct m'.
+    + destruct IHp as [mm [Hfpr [Hsem [Hstopped H']]]].
+      exists mm; repeat (try split); destruct mm as [pp | pp]; try now auto.
+      ++ destruct (destruct_pref pp); try now subst.
+         destruct H0 as [e' [m' Hsubst]]; subst.
+         assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
+         { clear H' Hstopped Hsem H. now assumption. }
+         clear Hfpr.
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         { clear. now induction p. }
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+      ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
+         specialize (H' (ftbd p')).
+         assert (Hlemma : psem P' (ftbd p') ->
+                          ~ (psem P' (ftbd (snoc p e))) ->
+                          fpr (ftbd p') (ftbd (snoc p e)) ->
+                          fpr (ftbd p') (fstop p)).
+         { intros H0 H1 H2. unfold fpr in H2.
+           apply destruct_fpr_ftbd_snoc in H2.
+           destruct H2 as [H21 | H22].
+           + subst p'. tauto.
+           + assumption.
+         }
+         specialize (Hlemma Hsem' H Hm'). apply H'; assumption.
+  - exists (ftbd nil); repeat (try split); try now auto.
+    + unfold psem. pose proof (non_empty_sem tgt P').
+      destruct H as [t Ht].
+      exists t; split. reflexivity. assumption.
+  - pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
+    destruct H.
+    + exists (ftbd (snoc p e)); repeat (try split).
+      ++ now apply fpr_reflexivity.
+      ++ now assumption.
+      ++ intros m' Hfpr Hpsem Hstopped.
+         now destruct m'.
+    + destruct IHp as [mm [Hfpr [Hsem [Hstopped H']]]].
+      exists mm; repeat (try split); destruct mm as [pp | pp]; try now auto.
+      ++ destruct (destruct_pref pp); try now subst.
+         destruct H0 as [e' [m' Hsubst]]; subst.
+         assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
+         { clear H' Hstopped Hsem H. now assumption. }
+         clear Hfpr.
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         { clear. now induction p. }
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+      ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
+         specialize (H' (ftbd p')).
+         assert (Hlemma : psem P' (ftbd p') ->
+                          ~ (psem P' (ftbd (snoc p e))) ->
+                          fpr (ftbd p') (ftbd (snoc p e)) ->
+                          fpr (ftbd p') (fstop p)).
+         { intros H0 H1 H2. unfold fpr in H2.
+           apply destruct_fpr_ftbd_snoc in H2.
+           destruct H2 as [H21 | H22].
+           + subst p'. tauto.
+           + assumption.
+         }
+         specialize (Hlemma Hsem' H Hm'). apply H'; assumption.
+Qed.
+    
 (* Informal proof: *)
 (* By induction on the length of m, |m|.
 
@@ -213,16 +278,18 @@ Proof.
     ++ destruct (non_empty_sem tgt (Ct [P2 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
-       * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
+       * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *)
+         destruct (twoR Ct (fstop nil) (ftbd (cons e nil))); try now auto.
          now exists tstop. now exists (tcons e b). destruct H; try now auto.
-         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
-         now destruct m.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in f0. apply f0. constructor.
        * eapply no_divergence in f0. apply f0. constructor.
-       * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
-         now exists (tcons e t). now exists tstop. destruct H; try now auto.
-         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
-         now destruct m.
+       * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *)
+         destruct (twoR Ct (ftbd (cons e nil)) (fstop nil)); try now auto.
+         now (exists (tcons e t)). now (exists tstop). destruct H; try now auto.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (tgt_sem (tcons e t) (Ct [P2 ↓]) f1 Hinf) as
                      [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption.
@@ -328,16 +395,18 @@ Proof.
     ++ destruct (non_empty_sem tgt (Ct [P1 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
-       * destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto.
-         now exists tstop. now exists (tcons e b). destruct H; try now auto.
+       * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *)
+         destruct (twoR Ct (fstop nil) (ftbd (cons e nil))); try now auto.
+         now (exists tstop). now (exists (tcons e b)). destruct H; try now auto.
          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
-         now destruct m.
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in f1. apply f1. constructor.
        * eapply no_divergence in f1. apply f1. constructor.
-       * destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto.
-         now exists (tcons e t). now exists tstop. destruct H; try now auto.
-         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
-         now destruct m.
+       * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *)
+         destruct (twoR Ct (ftbd (cons e nil)) (fstop nil)); try now auto.
+         now (exists (tcons e t)). now (exists tstop). destruct H; try now auto.
+         destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. 
+         destruct m as [m | m]; now destruct m.
        * eapply no_divergence in Hb. apply Hb. constructor.
        * destruct (tgt_sem (tcons e t) (Ct [P1 ↓]) f0 Hinf) as
                      [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption.

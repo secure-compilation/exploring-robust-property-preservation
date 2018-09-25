@@ -88,17 +88,39 @@ Definition lang : level := @Build_level partial
                                         non_empty_sem.
 
 Inductive steps : cfg -> finpref -> cfg -> Prop :=
-| SSTbd : forall c, steps c ftbd c
+| SSTbd : forall c, steps c (ftbd nil) c
 | SSCons : forall c e c' m c'', step c e c' ->
-                                steps c' m c'' ->
-                                steps c (fcons e m) c''.
+                                steps c' (ftbd m) c'' ->
+                                steps c (ftbd (cons e m)) c''.
 
-Axiom tapp : finpref -> trace -> trace. (* Where have all the flowers gone? *)
+(* Axiom tapp : finpref -> trace -> trace. *) (* Where have all the flowers gone? *)
+
+Fixpoint tapp' (p : pref) (t : trace) : trace :=
+  match p with
+  | nil => t
+  | cons e p' => tcons e (tapp' p' t)
+  end.
+
+Definition tapp (m : finpref) (t : trace) : trace :=
+  match m with
+  | fstop p => embedding (fstop p) (* justification:  
+                           we can't really add anything after a stopped trace. *)
+  | ftbd  p => tapp' p t
+  end.
+
+Lemma tapp_pref : forall (m : finpref) (t : trace),
+    prefix m (tapp m t).
+Proof.
+  destruct m as [p | p]; induction p; try now auto.
+  - intros t. specialize (IHp t). simpl in *. now split.
+  - intros t. specialize (IHp t). simpl in *. now split.
+Qed.
 
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
+Proof.
 Admitted.
 
 Lemma steps_psem : forall P m c,
@@ -107,9 +129,11 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  - admit. (* trivial with a real tapp *)
+  - inversion Hsteps.
+    + now simpl.
+    + subst. apply tapp_pref. 
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
-Admitted.
+Qed.
 
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
@@ -117,8 +141,7 @@ Lemma sem'_prefix : forall m c0 t,
   fstopped m = false ->
   exists c, steps c0 m c.
 Proof.
-  induction m; intros c0 t Hsem Hpref Hnot_stopped.
-  - now inversion Hnot_stopped.
+  destruct m as [m | m]; induction m; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
   - exists c0. apply SSTbd.
   - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
     simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
@@ -157,17 +180,27 @@ Qed.
   - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
     eapply steps_psem. eassumption.
 Qed.
-*)
+ *)
+
+Fixpoint fsnoc' (m : finpref) (e : event) : finpref :=
+  match m with
+  | fstop m' => fstop (snoc m' e)
+  | ftbd m' => ftbd (snoc m' e)
+  end.
+
+Theorem finpref_ind_snoc :
+  forall (P : finpref -> Prop),
+    P (ftbd nil) ->
+    (forall (m : pref), P (fstop m)) ->
+    (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
+    forall m, P m.
+Proof. Admitted.
 
 Definition semantics_safety_like_right : forall t P,
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
-Proof.
-  unfold semantics_safety_like. simpl.
-  intros t P Hsem Hinf.
-  (* unfold psem. simpl. *)
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
      signified with a dependent type for the sake of simplicity), that
      does not belong to psem P. The argument can be that if every prefix
@@ -179,6 +212,51 @@ Proof.
      are two possible cases: if m' is in sem P, it is the minimal bad
      prefix and e the bad event, and we are done; if m' is still not in
      sem P, we continue reducing it. (Thus, an easy induction.) *)
-Admitted.
+
+Proof.
+  unfold semantics_safety_like. simpl.
+  intros t P Hsem Hinf.
+  intros Hndiv.
+  pose proof semantics_safety_like_right. specialize (H t P).
+  rewrite -> contra in H.
+  specialize (H Hsem). apply not_all_ex_not in H.
+  destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
+  generalize dependent Hm2. generalize dependent Hm1.
+  destruct m as [p | p].
+  - (* fstop *)
+    intros Hm1 Hm2.
+    assert (forall t m, prefix (fstop m) t -> fin t).
+    { clear. intros t m. generalize dependent t. induction m; intros t H.
+      - destruct t; try now auto. constructor.
+      - destruct t; try now auto.
+        destruct H as [H1 H2].
+        specialize (IHm t H2). now constructor. }
+    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p Hm1).
+  - (* ftbd *)
+    induction p as [| p' e' IH] using pref_ind_snoc; intros Hm1 Hm2.
+    + (* p = nil *)
+      assert (Hm2' : @psem lang P (ftbd nil)).
+      { clear. unfold psem. pose proof non_empty_sem P. destruct H as [t Ht].
+        exists t; now split. }
+      now contradiction.
+    + (* p = snoc p' e' *)
+      pose proof (classic (@psem lang P (ftbd p'))) as [H | H].
+      ++ exists (ftbd p'), e'. subst. split; try split; assumption.
+      ++ apply IH.
+         assert (H0: forall (p : pref) e t, prefix (ftbd (snoc p e)) t -> prefix (ftbd p) t).
+         { clear. induction p.
+           - intros. now auto.
+           - intros. simpl in *. destruct t; try now auto.
+             destruct p; try now auto.
+             destruct H as [H1 H2].
+             specialize (IHp e t H2).
+             split; try now auto.
+         }
+         apply H0 in Hm1. assumption.
+         assumption.
+Qed.
+
 
 End Main.
+
+
