@@ -57,6 +57,7 @@ Inductive fin : trace -> Prop :=
   | fin_cons : forall e t, fin t -> fin (tcons e t).
 
 Definition inf (t : trace) : Prop := ~(fin t).
+Hint Unfold inf.
 
 Lemma fin_or_inf : forall t, fin t \/ inf t.
 Proof.
@@ -887,9 +888,8 @@ Definition tapp (m : finpref) (t : trace) : trace :=
 Lemma tapp_pref : forall (m : finpref) (t : trace),
     prefix m (tapp m t).
 Proof.
-  destruct m as [p | p]; induction p; try now auto.
-  - intros t. specialize (IHp t). simpl in *. now split.
-  - intros t. specialize (IHp t). simpl in *. now split.
+  induction finpref m as e p IHp; intros; try now auto;
+    split; simpl in *; now auto.
 Qed.
 
 Lemma tapp_div_pref : forall (t : trace),

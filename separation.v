@@ -9,7 +9,7 @@ Require Import Logic.ClassicalFacts.
 Require Import ZArith.
 Require Import List.
 
-Axiom L : level.
+Axiom L : language.
 
 Definition ϕ_par := par L.
 Definition ϕ_prg := prod nat (prg L).
@@ -154,7 +154,7 @@ Proof.
   apply prefix_embeding_fpr. now rewrite embedding_is_the_same.
 Qed.
 
-Definition ϕ := Build_level ϕ_plug
+Definition ϕ := Build_language ϕ_plug
                             ϕ_sem
                             non_empty_ϕ.
 

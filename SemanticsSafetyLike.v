@@ -80,7 +80,7 @@ Admitted.
 Lemma non_empty_sem : forall W, exists t, sem W t.
 Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of. Qed.
 
-Definition lang : level := @Build_level partial
+Definition lang : language := @Build_language partial
                                         program
                                         context
                                         plug
