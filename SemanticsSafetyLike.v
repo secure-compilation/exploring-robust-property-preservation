@@ -93,12 +93,34 @@ Inductive steps : cfg -> finpref -> cfg -> Prop :=
                                 steps c' (ftbd m) c'' ->
                                 steps c (ftbd (cons e m)) c''.
 
-Axiom tapp : finpref -> trace -> trace. (* Where have all the flowers gone? *)
+(* Axiom tapp : finpref -> trace -> trace. *) (* Where have all the flowers gone? *)
+
+Fixpoint tapp' (p : pref) (t : trace) : trace :=
+  match p with
+  | nil => t
+  | cons e p' => tcons e (tapp' p' t)
+  end.
+
+Definition tapp (m : finpref) (t : trace) : trace :=
+  match m with
+  | fstop p => embedding (fstop p) (* justification:  
+                           we can't really add anything after a stopped trace. *)
+  | ftbd  p => tapp' p t
+  end.
+
+Lemma tapp_pref : forall (m : finpref) (t : trace),
+    prefix m (tapp m t).
+Proof.
+  destruct m as [p | p]; induction p; try now auto.
+  - intros t. specialize (IHp t). simpl in *. now split.
+  - intros t. specialize (IHp t). simpl in *. now split.
+Qed.
 
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
+Proof.
 Admitted.
 
 Lemma steps_psem : forall P m c,
@@ -107,9 +129,11 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  - admit. (* trivial with a real tapp *)
+  - inversion Hsteps.
+    + now simpl.
+    + subst. apply tapp_pref. 
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
-Admitted.
+Qed.
 
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
