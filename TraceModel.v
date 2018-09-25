@@ -316,6 +316,23 @@ Proof.
   now apply (IHm1 (ftbd m2) (ftbd m3)).
 Qed.
 
+Lemma fpr_antisymmetry : forall (m m' : finpref),
+    fpr m m' /\ fpr m' m -> m = m'.
+Proof.
+  intros m.
+  induction finpref m as e p IHp;
+    intros m' [H1 H2];
+    destruct finpref m' as e' p';
+    try now auto.
+  - now inversion H1.
+  - specialize (IHp (ftbd p')).
+    inversion H1 as [Heq Hpp']; inversion H2 as [_ Hp'p].
+    subst.
+    simpl in IHp. assert (H: fpr_ftbd p p' /\ fpr_ftbd p' p) by auto.
+    specialize (IHp H). now inversion IHp.
+Qed.
+
+
 Lemma fpr_pref_pref : forall m1 m2 t,
     fpr m1 m2 -> prefix m2 t -> prefix m1 t.
 Proof.
