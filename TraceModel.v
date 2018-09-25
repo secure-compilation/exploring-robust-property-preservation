@@ -111,7 +111,6 @@ Definition equal (m : finpref) (t : trace) : Prop :=
   | ftbd m  => ftbd_equal m t
   end.
 
-
 Lemma equal_prefix : forall m t, equal m t -> prefix m t.
 Proof.
   destruct m as [m | m]; induction m; destruct t; intro H; simpl in *;
@@ -866,4 +865,42 @@ Proof.
         ++ inversion Heqpe. subst e1. right. simpl. split. reflexivity.
            replace (e2 :: snoc l e) with (snoc (e2 :: l) e) in H1 by reflexivity.
            apply snoc_injective in H1. destruct H1 as [H11 H12]. now subst.
+Qed.
+
+
+(* Axiom tapp : finpref -> trace -> trace. *) (* Where have all the flowers gone? *)
+
+Fixpoint tapp' (p : pref) (t : trace) : trace :=
+  match p with
+  | nil => t
+  | cons e p' => tcons e (tapp' p' t)
+  end.
+
+Definition tapp (m : finpref) (t : trace) : trace :=
+  match m with
+  | fstop p => embedding (fstop p) (* justification:  
+                           we can't really add anything after a stopped trace. *)
+  | ftbd  p => tapp' p t
+  end.
+
+Lemma tapp_pref : forall (m : finpref) (t : trace),
+    prefix m (tapp m t).
+Proof.
+  destruct m as [p | p]; induction p; try now auto.
+  - intros t. specialize (IHp t). simpl in *. now split.
+  - intros t. specialize (IHp t). simpl in *. now split.
+Qed.
+
+Lemma tapp_div_pref : forall (t : trace),
+    diverges t -> exists (m : finpref), fstopped m = false /\ t = tapp m tsilent.
+Proof.
+  intros t Ht.
+  induction Ht.
+  - now (exists (ftbd nil)).
+  - destruct IHHt as [m Hm].
+    destruct m as [p | p].
+    + now destruct Hm.
+    + destruct Hm.
+      exists ((ftbd (cons e p))).
+      split; now subst.
 Qed.
