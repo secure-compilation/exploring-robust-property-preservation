@@ -272,7 +272,7 @@ Lemma longest_prefix {K : language} {HK : semantics_safety_like K} :
               (exists m, prefix m t /\ psem W m /\
                          (forall m', prefix m' t -> psem W m' -> fpr m' m)).
 Proof.
-  intros W t.
+  intros W t. 
 Admitted.
 
   
