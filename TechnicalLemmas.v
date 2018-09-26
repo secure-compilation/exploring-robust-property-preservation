@@ -201,13 +201,9 @@ Lemma longest_prefix_tstop {K : language} {HK : semantics_safety_like K} :
          (exists m, prefix m t /\ psem W m /\
                (forall m', prefix m' t -> psem W m' -> fpr m' m)).
 Proof.
-  intros W t [m Hm] Hsem.
-  pose proof longest_in_psem W.
-  destruct (H m) as [m0 [Hfpr [Hpsem [Hstopped Hm0]]]].
-  exists m0; repeat try split.
-  - admit.
-  - assumption.
-  - intros m' Hpref Hpsem'.
+  intros W t [m Hm].
+  apply longest_contra. intros H.
+  unfold semantics_safety_like in HK.
 Admitted.
     
     
@@ -219,6 +215,38 @@ Lemma longest_prefix {K : language} {HK : semantics_safety_like K} :
                          (forall m', prefix m' t -> psem W m' -> fpr m' m)).
 Proof.
   intros W t.
+  apply longest_contra.
+  intros H.
+  unfold semantics_safety_like in HK.
+  rewrite dne. intros H'.
+  specialize (HK t W H').
+  destruct (classic (inf t)).
+  - admit.
+  - (* fin t *)
+    unfold inf in H0; rewrite <- dne in H0.
+    inversion H0.
+    + (* tstop *)
+      subst.
+      specialize (H (ftbd nil)).
+      assert (psem W (ftbd nil) /\ prefix (ftbd nil) tstop).
+      { clear.
+        split. pose proof (non_empty_sem K W). unfold psem. destruct H as [t Ht].
+        exists t. split; auto. now destruct t.
+        now auto.
+      }
+      specialize (H H1). destruct H as [m' [Hfpr [Hneq [Hpref Hpsem]]]].
+      assert (Hc : m' = fstop nil).
+      { clear HK H1 H' H0.
+        now destruct finpref m' as e p.
+      }
+      subst.
+      clear Hneq. clear Hfpr.
+      clear Hpref.
+      unfold psem in Hpsem.
+      destruct Hpsem as [t [Hpref Hsem]].
+      now destruct t.
+    + 
+
 Admitted.
 
   
