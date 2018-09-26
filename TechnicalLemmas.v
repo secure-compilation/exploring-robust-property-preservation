@@ -196,21 +196,75 @@ Proof.
       subst. now pose proof (fpr_reflexivity m').
 Qed.
 
+
+Lemma tapp_pref : forall m t t', t = tapp m t' -> prefix m t.
+Proof.
+  intros [].
+  + induction p; intros t t' H.  
+    ++ now rewrite H.
+    ++ destruct t; try now inversion H.
+       simpl. split; try now inversion H. 
+       +++ apply (IHp t t'). now inversion H. 
+  + induction p; intros t t' H.  
+    ++ now rewrite H.
+    ++ destruct t; try now inversion H.
+       simpl. split; try now inversion H. 
+       +++ apply (IHp t t'). now inversion H.
+Qed.
+
+Lemma prefix_fin_fpr : forall m mt t, prefix m t ->
+                                 t = tapp mt tstop ->
+                                 fstopped m = false ->
+                                 fpr m mt.
+Proof.
+  intros []; induction p; intros [] t Hpref Happ Hstop; try now inversion Hstop.
+  + destruct t; try now auto.
+    inversion Hpref; subst. destruct p0; try now auto.
+    inversion Happ. rewrite H1 in *.
+    assert (foo : fstopped (ftbd p) = false) by auto.
+    assert (app_foo : t = tapp (fstop p0) tstop) by auto. 
+    specialize (IHp (fstop p0) t H0 app_foo foo). now auto.
+  + destruct t; try now auto.
+    inversion Hpref; subst. destruct p0; try now auto.
+    inversion Happ. rewrite H1 in *.
+    assert (foo : fstopped (ftbd p) = false) by auto.
+    assert (app_foo : t = tapp (ftbd p0) tstop) by auto. 
+    specialize (IHp (ftbd p0) t H0 app_foo foo). now auto.
+Qed.   
+
+Lemma stopped_pref_app : forall t m, prefix m t -> fstopped m = true ->
+                                t = tapp m tstop.
+Proof.
+  intros t [] Hpref Hstop; try now inversion Hstop.
+  generalize dependent t. induction p; intros [] Hpref; try now auto. 
+  inversion Hpref; subst. assert (Hfoo : fstopped (fstop p) = true) by reflexivity.
+  rewrite (IHp Hfoo t); auto. 
+Qed.   
+
+Lemma not_sem_psem_not_stopped {K : language} :
+  forall W t m, ~ sem K W t -> prefix m t -> psem W m  -> fstopped m = false. 
+Proof.
+  intros W t m Hsemt Hpref Hpsem.
+  destruct (fstopped m) eqn:Hstop; auto.
+  apply stopped_pref_app in Hpref; auto. 
+  destruct Hpsem as [t1 [H1 H2]].
+  apply stopped_pref_app in H1; auto. now subst.
+Qed.
+
+
 Lemma longest_prefix_tstop {K : language} {HK : semantics_safety_like K} :
   forall W t, (exists m, t = tapp m tstop) -> ~ sem K W t ->
-         (exists m, prefix m t /\ psem W m /\
-               (forall m', prefix m' t -> psem W m' -> fpr m' m)).
+         (exists mm, prefix mm t /\ psem W mm /\
+               (forall m', prefix m' t -> psem W m' -> fpr m' mm)).
 Proof.
   intros W t [m Hm] Hsem.
-  pose proof longest_in_psem W.
-  destruct (H m) as [m0 [Hfpr [Hpsem [Hstopped Hm0]]]].
-  exists m0; repeat try split.
-  - admit.
-  - assumption.
-  - intros m' Hpref Hpsem'.
-Admitted.
-    
-    
+  destruct (longest_in_psem W m) as [m0 [Hfpr [Hpsem [Hstopped Hm0]]]].
+  assert (forall n, prefix n t -> psem W n -> fstopped n = false).
+  { intros n H H0. now apply (not_sem_psem_not_stopped W t). }
+  exists m0. repeat split;auto.
+  - apply (fpr_pref_pref m0 m t); auto. now apply (tapp_pref m t tstop).
+  - intros m' H0 H1. apply Hm0; auto. apply (prefix_fin_fpr m' m t); auto. 
+Qed.   
   
 
 Lemma longest_prefix {K : language} {HK : semantics_safety_like K} :
