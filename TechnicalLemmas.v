@@ -265,14 +265,91 @@ Proof.
   - apply (fpr_pref_pref m0 m t); auto. now apply (tapp_pref m t tstop).
   - intros m' H0 H1. apply Hm0; auto. apply (prefix_fin_fpr m' m t); auto. 
 Qed.   
-  
+
+
+Lemma fstopped_prefix_fpr : forall m m',
+    (fstopped m = false -> prefix m' (tapp m tsilent) -> fpr m' m /\ fstopped m' = false).
+Proof.
+  intros m m'. generalize dependent m.
+  induction finpref m' as e' p' IHp';
+  intros [p | p] H1 H2; try now auto.
+- simpl in H2. now destruct p.
+- simpl in H2. destruct p as [|e p].
+  + contradiction.
+  + specialize (IHp' (ftbd p)). assert (fstopped (ftbd p) = false) by auto.
+    specialize (IHp' H). simpl in *.
+    destruct H2. specialize (IHp' H2). now destruct IHp'.
+- destruct p as [|e p].
+  + contradiction.
+  + specialize (IHp' (ftbd p)). assert (fstopped (ftbd p) = false) by auto.
+    specialize (IHp' H). simpl in *.
+    destruct H2. specialize (IHp' H2). now destruct IHp'.
+Qed.
+
+Lemma continuum_lemma : forall m m' e1,
+    fpr m m' -> fpr m' (fsnoc m e1) -> m = m' \/ m' = fsnoc m e1.
+Proof.
+  induction finpref m as e p IHp; intros; try now auto.
+  - destruct finpref m' as e' p'; try now auto.
+  - destruct finpref m' as e' p'; try now auto.
+    inversion H; subst. now left.
+  - destruct finpref m' as e' p'; try now auto.
+    inversion H0; subst. simpl in *.
+    assert (p' = nil) by now destruct p'.
+    subst; now right.
+  - destruct finpref m' as e' p'; try now auto.
+    destruct H; subst.
+    destruct H0; subst.
+    specialize (IHp (ftbd p') e1 H1 H0).
+    destruct IHp as [IHp | IHp]; inversion IHp; subst.
+    now left.
+    now right.
+Qed.             
 
 Lemma longest_prefix {K : language} {HK : semantics_safety_like K} :
   forall W t, ~ sem K W t ->
               (exists m, prefix m t /\ psem W m /\
                          (forall m', prefix m' t -> psem W m' -> fpr m' m)).
 Proof.
-  intros W t. 
-Admitted.
+  intros W t.
+  (* apply longest_contra. *)
+  intros H.
+  destruct (fin_or_inf t) as [Ht | Ht].
+  - (* fin t *)
+    apply (@longest_prefix_tstop K HK W t).
+    now apply (tapp_fin_pref t Ht). assumption. 
+  - (* inf t *)
+    destruct (classic (diverges t)) as [Ht' | Ht'].
+    + (* diverges t *)
+      pose proof (tapp_div_pref t Ht') as [m [Hnstopped Hsilent]].
+      pose proof (longest_in_psem W m) as [mm [Hfpr [Hpsem [Hnstopped' Hmax]]]].
+      subst.
+      exists mm. repeat (split; auto).
+      ++ apply fpr_pref_pref with (m2 := m).
+         assumption.
+         now apply tapp_pref with (t' := tsilent).
+      ++ intros m' Hpref' Hpsem'.
+         apply Hmax; auto;
+         now destruct (fstopped_prefix_fpr m m' Hnstopped Hpref').
+    + (* ~ diverges t *)
+      unfold semantics_safety_like in HK.
+      specialize (HK t W H Ht Ht').
+      destruct HK as [m [ebad [Hpsem [Hpref Hnpsem]]]].
+      exists m. repeat (split; auto).
+      ++ apply fpr_pref_pref with (m2 := (fsnoc m ebad)).
+         apply fpr_snoc_fpr. now apply fpr_reflexivity. assumption.
+      ++ intros m' Hpref' Hpsem'.
+         destruct (same_ext m' m t); auto.
+         apply fpr_pref_pref with (m2 := (fsnoc m ebad)).
+         apply fpr_snoc_fpr. now apply fpr_reflexivity. assumption.
+         destruct (same_ext m' (fsnoc m ebad) t); try now auto.
+         +++ destruct (continuum_lemma m m' ebad H0 H1); subst.
+             now apply fpr_reflexivity.
+             contradiction.
+         +++ exfalso. apply Hnpsem.
+             unfold psem in Hpsem'. destruct Hpsem' as [t' [Hm't' H'']].
+             exists t'. split; try now auto.
+             now apply fpr_pref_pref with (m2 := m').
+Qed.
 
   

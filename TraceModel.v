@@ -922,3 +922,15 @@ Proof.
       exists ((ftbd (cons e p))).
       split; now subst.
 Qed.
+
+Lemma tapp_fin_pref : forall (t : trace),
+    fin t -> exists (m : finpref), t = tapp m tstop.
+Proof.
+  intros t Ht.
+  induction Ht.
+  - now (exists (fstop nil)).
+  - destruct IHHt as [m Hm].
+    destruct m as [p | p].
+    + exists (fstop (cons e p)). simpl in *. now subst.
+    + exists (ftbd (cons e p)). simpl in *. now subst.
+Qed.
