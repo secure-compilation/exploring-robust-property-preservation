@@ -934,3 +934,25 @@ Proof.
     + exists (fstop (cons e p)). simpl in *. now subst.
     + exists (ftbd (cons e p)). simpl in *. now subst.
 Qed.
+
+Lemma pref_inf_ndiv_pref : forall (m : finpref) (t : trace),
+  prefix m t -> inf t -> ~diverges t -> exists e, prefix (fsnoc m e) t.
+Proof.
+  induction finpref m as e p IHp; intros t H H0 H1; try now eauto.
+  - destruct t; try now auto.
+    + exfalso; apply H0. now constructor.
+    + exfalso; apply H1. now constructor.
+    + now (exists e).
+  - destruct t; try now auto.
+    simpl in *. destruct H; subst.
+    specialize (IHp t H2 (inf_tcons e0 t H0)).
+    assert (~ diverges (tcons e0 t) -> ~ diverges t).
+    { clear.
+      destruct t; try now auto.
+      - intros H. exfalso. apply H. constructor. constructor.
+      - intros H. intros H'. apply H. now constructor. }
+    specialize (IHp (H H1)).
+    destruct IHp as [e He]. now (exists e).
+  Unshelve.
+  exact an_event. exact an_event.  
+Qed.

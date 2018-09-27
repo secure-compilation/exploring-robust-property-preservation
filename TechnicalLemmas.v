@@ -363,25 +363,8 @@ Proof.
   intros t W Hnsem Hinf Hndiv.
   specialize (HK W t Hnsem).
   destruct HK as [m [Hpref [Hpsem Hmax]]].
-  assert (prefix m t -> inf t -> ~diverges t -> exists e, prefix (fsnoc m e) t).
-  { clear. generalize dependent t.
-    induction finpref m as e p IHp; intros t H H0 H1; try now eauto.
-    - destruct t; try now eauto.
-      + exfalso; apply H0. now constructor.
-      + exfalso; apply H1. now constructor.
-      + now (exists e).
-    - destruct t; try now eauto.
-      simpl in *. destruct H; subst.
-      specialize (IHp t H2 (inf_tcons e0 t H0)).
-      assert (~ diverges (tcons e0 t) -> ~ diverges t).
-      { clear.
-        destruct t; try now auto.
-        - intros H. exfalso. apply H. constructor. constructor.
-        - intros H. intros H'. apply H. now constructor. }
-      specialize (IHp (H H1)).
-      destruct IHp as [e He]. now (exists e).
-  }
-  destruct (H Hpref Hinf Hndiv) as [e He].
+
+  destruct (pref_inf_ndiv_pref m t Hpref Hinf Hndiv) as [e He].
   exists m, e. repeat split; auto.
   intros Hn.
   specialize (Hmax (fsnoc m e) He Hn).
@@ -402,12 +385,7 @@ Proof.
       simpl in *. destruct H0; subst.
       apply (IHp t (inf_tcons e0 t H) H1).
   }
-  now apply (H0 (H1 Hinf Hpref) Hmax).
-  Unshelve. 
-  exact an_event.
-  exact an_event.
-  exact an_event.
-  exact an_event.
+  now apply (H (H0 Hinf Hpref) Hmax).
 Qed.
 
 Theorem semantics_safety_like_equiv_longest_prefix : forall (K : language),
