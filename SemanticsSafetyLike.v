@@ -134,7 +134,7 @@ Proof.
   - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
     simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
     inversion Hsem. subst. simpl in Hnot_stopped.
-    destruct (IHm c' t' H3 Hpref Hnot_stopped) as [c'' HH].
+    destruct (IHm c' t' H4 Hpref Hnot_stopped) as [c'' HH].
     exists c''. eapply SSCons; eassumption.
 Qed.
 
