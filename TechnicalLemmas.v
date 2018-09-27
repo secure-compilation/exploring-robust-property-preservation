@@ -352,4 +352,70 @@ Proof.
              now apply fpr_pref_pref with (m2 := m').
 Qed.
 
-  
+Lemma longest_prefix_safety_like : forall (K : language),
+    (forall W t, ~ sem K W t ->
+           (exists m, prefix m t /\ psem W m /\
+                 (forall m', prefix m' t -> psem W m' -> fpr m' m)))
+    -> semantics_safety_like K.
+Proof.
+  intros K HK.
+  unfold semantics_safety_like.
+  intros t W Hnsem Hinf Hndiv.
+  specialize (HK W t Hnsem).
+  destruct HK as [m [Hpref [Hpsem Hmax]]].
+  assert (prefix m t -> inf t -> ~diverges t -> exists e, prefix (fsnoc m e) t).
+  { clear. generalize dependent t.
+    induction finpref m as e p IHp; intros t H H0 H1; try now eauto.
+    - destruct t; try now eauto.
+      + exfalso; apply H0. now constructor.
+      + exfalso; apply H1. now constructor.
+      + now (exists e).
+    - destruct t; try now eauto.
+      simpl in *. destruct H; subst.
+      specialize (IHp t H2 (inf_tcons e0 t H0)).
+      assert (~ diverges (tcons e0 t) -> ~ diverges t).
+      { clear.
+        destruct t; try now auto.
+        - intros H. exfalso. apply H. constructor. constructor.
+        - intros H. intros H'. apply H. now constructor. }
+      specialize (IHp (H H1)).
+      destruct IHp as [e He]. now (exists e).
+  }
+  destruct (H Hpref Hinf Hndiv) as [e He].
+  exists m, e. repeat split; auto.
+  intros Hn.
+  specialize (Hmax (fsnoc m e) He Hn).
+  assert (fstopped m = false -> fpr (fsnoc m e) m -> False).
+  { clear.
+    generalize dependent e.
+    induction finpref m as e p IHp; intros; try now auto.
+    simpl in *. destruct H0 as [_ H0].
+    apply (IHp e0 H H0).
+  }
+  assert (inf t -> prefix m t -> fstopped m = false).
+  { clear.
+    generalize dependent t.
+    induction finpref m as e p IHp; intros; try now auto.
+    - destruct t; try now auto.
+      exfalso. apply H. constructor.
+    - destruct t; try now auto.
+      simpl in *. destruct H0; subst.
+      apply (IHp t (inf_tcons e0 t H) H1).
+  }
+  now apply (H0 (H1 Hinf Hpref) Hmax).
+  Unshelve. 
+  exact an_event.
+  exact an_event.
+  exact an_event.
+  exact an_event.
+Qed.
+
+Theorem semantics_safety_like_equiv_longest_prefix : forall (K : language),
+    semantics_safety_like K <-> (forall W t, ~ sem K W t ->
+           (exists m, prefix m t /\ psem W m /\
+                 (forall m', prefix m' t -> psem W m' -> fpr m' m))).
+Proof.
+  intros K; split.
+  - intros HK; apply (@longest_prefix K HK).
+  - intros HK; apply (longest_prefix_safety_like K HK).
+Qed.
