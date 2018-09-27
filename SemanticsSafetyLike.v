@@ -154,11 +154,11 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  - 
+  -
 Admitted. (* 2018-09-27 Broken when updating definitions
 inversion Hsteps.
     + now simpl.
-    + subst. apply tapp_pref. 
+    + subst. apply tapp_pref.
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
 Qed.
 *)
@@ -272,7 +272,7 @@ Proof.
   intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv.
   intros m1 m2 c' H0 H1. specialize (H (ftbd (m1++m2)) H0).
   apply psem_steps in H; [| reflexivity]. exists c'.
-Admitted.  
+Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
