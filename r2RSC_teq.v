@@ -35,8 +35,8 @@ Definition myr ( m1 m2 : finpref) : Prop :=
                fstopped m = false).
 
 (*
-   is we choose myr we can porve that 
-   the premises in teq_preservation hold 
+   is we choose myr we can porve that
+   the premises in teq_preservation hold
 *)
 Lemma teq_premises_myr_holds : forall P1 P2,
     (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
@@ -50,7 +50,7 @@ Proof.
   + destruct H0 as [b1 [H11 H12]].  destruct H1 as [b2 [H21 H22]].
     rewrite <- (H Cs b2) in H22. assert (Hdiff : b1 <> b2).
     { intros ff. subst. apply H2. now apply (same_ext m1 m2 b2). }
-    right. right. 
+    right. right.
     destruct (determinacy_src (Cs [P1]) b1 b2 H12 H22) as [ff | K]; try now auto.
     destruct K as [m [e1 [e2 [He1 [He2 [Hdist [Hstop [Hp1 Hp2]]]]]]]].
     assert (Hcomp1 : fpr m1 (fsnoc m e1) \/ fpr (fsnoc m e1) m1) by now apply (same_ext _ _ b1).
@@ -76,7 +76,7 @@ Qed.
 
 Lemma longest_in_psem : forall (P' : prg tgt) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\
-          (fstopped mm = false) /\ 
+          (fstopped mm = false) /\
           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
 Proof.
   intros P'.
@@ -155,7 +155,7 @@ Qed.
 (* Informal proof: *)
 (* By induction on the length of m, |m|.
 
-  - Base case: |m| = 0. 
+  - Base case: |m| = 0.
     Then either m = ftbd or m = fstop.
     Let mm = ftbd. It is clear that (fpr ftbd m), that psem P' ftbd (because the semantics are not
     empty), that ftbd is not stopped.
@@ -163,11 +163,11 @@ Qed.
     Hence the result.
   - Inductive case: let m be a finite prefix of length n + 1. Suppose the property is true
     for any finite prefix m' of length n' <= n.
-    
+
     First, we can see that since m is of length n + 1, there exists m' such that |m'| = n,
     m' = m_1 ftbd, and m = m_1 e fstop or m = m_1 e ftbd.
-    By induction hypothesis on m' of length n, there exists mm' such that fpr mm' m', 
-    psem P' mm', fstopped mm' = false, and 
+    By induction hypothesis on m' of length n, there exists mm' such that fpr mm' m',
+    psem P' mm', fstopped mm' = false, and
     (∀ m'', fpr m'' m' -> psem P' m''->  fstopped m'' = false -> fpr m'' mm').
 
     Let us consider two cases:
@@ -187,7 +187,7 @@ Qed.
       ++ let m'' be such that fpr m'' m, psem P' m'', fstopped m'' = false.
          let us show that fpr m'' mm'.
          first, since ~(psem P' (m_1 e ftbd)), (psem P' mm'), and (fpr m'' m), we have that
-         (fpr m'' (m_1 ftbd)) i.e. (fpr m'' m') By the induction hypothesis, 
+         (fpr m'' (m_1 ftbd)) i.e. (fpr m'' m') By the induction hypothesis,
          we obtain the result, fpr m'' mm.
     Hence, the theorem is proved for any finite prefix m.
 *)
@@ -233,7 +233,7 @@ Proof.
          ** exists t. split; try now auto. now apply equal_prefix.
          ** exists t2. split; try now auto. rewrite <- Ht2t. now apply with_stop_prefix_embedding.
          ** apply H. apply (equal_stopped m t) in Hm.
-            now apply equal_with_stop_same_embedding. 
+            now apply equal_with_stop_same_embedding.
          ** destruct H1 as [H1 | H1].
             *** apply H. assert (Heq : mm[fstop/ftbd] = m).
                 { apply (fpr_stop_equal (mm[fstop/ftbd]) m); try now auto.
@@ -246,12 +246,12 @@ Proof.
                   as [Hfalse | Hfalse]; try now auto.
                 now apply (snoc_m_event_equal m0 i1 i2) in Hfalse; auto.
                 apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence.
-                now apply snoc_stop.        
+                now apply snoc_stop.
        * destruct (proper_prefix mm t2) as [e He]; try now auto.
          eapply no_divergence; eassumption.
          assert (Hnot : ~ fpr (fsnoc mm e) m).
          { intros ff. assert (Hfoo1 : psem (Ct [P2 ↓]) (fsnoc mm e)) by now exists t2.
-           assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. 
+           assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop.
            specialize (Hmax (fsnoc mm e) ff Hfoo1 Hfoo2).
            now apply (not_stop_not_snoc_pref mm e). }
          destruct (twoR Ct m (fsnoc mm e)) as [K1 | [K2 | K3]]; try now auto.
@@ -264,17 +264,17 @@ Proof.
              now apply (compare_with_snoc (fsnoc m0 i2) mm e).
          destruct H1.
          ** apply (fpr_transitivity (fsnoc m0 i2) mm m) in H1; try now auto.
-            apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1.      
+            apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1.
             destruct H1; apply Hdiffi;
               [now apply (snoc_diff m0 i1 i2) | symmetry; now apply (snoc_diff m0 i2 i1) ].
-         ** apply same_snoc_same_pointwise in H1; try now auto.            
-            destruct H1 as [Heq1 Heq2].                       
+         ** apply same_snoc_same_pointwise in H1; try now auto.
+            destruct H1 as [Heq1 Heq2].
             subst.
             assert (psem (Ct [P2 ↓]) (fsnoc mm i1)).
             { apply (input_totality_tgt ((Ct [P2 ↓])) mm e i1); try now auto.
             now exists t2. }
-            rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).  
-            now apply (not_stop_not_snoc_pref mm i1). 
+            rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).
+            now apply (not_stop_not_snoc_pref mm i1).
     ++ destruct (non_empty_sem tgt (Ct [P2 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
@@ -307,7 +307,7 @@ Proof.
             apply snoc_m_event_equal in H. now subst. assumption.
             destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
             destruct (same_snoc_same_finpref m m' egood ebad i2 i1); try now auto.
-            intros ff. now subst. 
+            intros ff. now subst.
             apply snoc_diff in Hp1; try now auto.
             apply snoc_diff in Hp2; try now auto.  subst.
              specialize (input_totality_tgt (Ct [P2 ↓]) m' egood ebad); try now auto.
@@ -336,7 +336,7 @@ Proof.
              now apply not_stop_not_snoc_pref in Hp2.
            - apply no_divergence in k23. contradiction.
  + assert (Hsymm0 : forall (Cs : ctx src) (t : trace), sem src (Cs [P2]) t <-> sem src (Cs [P1]) t)
-          by now firstorder. 
+          by now firstorder.
    specialize (twoR myr P2 P1 (teq_premises_myr_holds P2 P1 Hsymm0)).
      destruct (fin_or_inf t) as [Hfin | Hinf].
     ++ apply fin_equal in Hfin. destruct Hfin as [m Hm].
@@ -350,7 +350,7 @@ Proof.
          ** exists t. split; try now auto. now apply equal_prefix.
          ** exists t2. split; try now auto. rewrite <- Ht2t. now apply with_stop_prefix_embedding.
          ** apply H. apply (equal_stopped m t) in Hm.
-            now apply equal_with_stop_same_embedding. 
+            now apply equal_with_stop_same_embedding.
          ** destruct H1 as [H1 | H1].
             *** apply H. assert (Heq : mm[fstop/ftbd] = m).
                 { apply (fpr_stop_equal (mm[fstop/ftbd]) m); try now auto.
@@ -363,12 +363,12 @@ Proof.
                   as [Hfalse | Hfalse]; try now auto.
                 now apply (snoc_m_event_equal m0 i1 i2) in Hfalse; auto.
                 apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence.
-                now apply snoc_stop.        
+                now apply snoc_stop.
        * destruct (proper_prefix mm t2) as [e He]; try now auto.
          eapply no_divergence; eassumption.
          assert (Hnot : ~ fpr (fsnoc mm e) m).
          { intros ff. assert (Hfoo1 : psem (Ct [P1 ↓]) (fsnoc mm e)) by now exists t2.
-           assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. 
+           assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop.
            specialize (Hmax (fsnoc mm e) ff Hfoo1 Hfoo2).
            now apply (not_stop_not_snoc_pref mm e). }
          destruct (twoR Ct m (fsnoc mm e)) as [K1 | [K2 | K3]]; try now auto.
@@ -381,17 +381,17 @@ Proof.
              now apply (compare_with_snoc (fsnoc m0 i2) mm e).
          destruct H1.
          ** apply (fpr_transitivity (fsnoc m0 i2) mm m) in H1; try now auto.
-            apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1.      
+            apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1.
             destruct H1; apply Hdiffi;
               [now apply (snoc_diff m0 i1 i2) | symmetry; now apply (snoc_diff m0 i2 i1) ].
-         ** apply same_snoc_same_pointwise in H1; try now auto.            
-            destruct H1 as [Heq1 Heq2].                       
+         ** apply same_snoc_same_pointwise in H1; try now auto.
+            destruct H1 as [Heq1 Heq2].
             subst.
             assert (psem (Ct [P1 ↓]) (fsnoc mm i1)).
             { apply (input_totality_tgt ((Ct [P1 ↓])) mm e i1); try now auto.
             now exists t2. }
-            rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).  
-            now apply (not_stop_not_snoc_pref mm i1). 
+            rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0).
+            now apply (not_stop_not_snoc_pref mm i1).
     ++ destruct (non_empty_sem tgt (Ct [P1 ↓])) as [b Hb].
        destruct t,b; try now auto.
        * eapply no_divergence in Hb. apply Hb. constructor.
@@ -424,7 +424,7 @@ Proof.
             apply snoc_m_event_equal in H. now subst. assumption.
             destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].
             destruct (same_snoc_same_finpref m m' egood ebad i2 i1); try now auto.
-            intros ff. now subst. 
+            intros ff. now subst.
             apply snoc_diff in Hp1; try now auto.
             apply snoc_diff in Hp2; try now auto.  subst.
              specialize (input_totality_tgt (Ct [P1 ↓]) m' egood ebad); try now auto.
@@ -452,4 +452,4 @@ Proof.
              destruct K2 as [K21 K22]. rewrite K21 in Hp2.
              now apply not_stop_not_snoc_pref in Hp2.
            - apply no_divergence in k23. contradiction.
-Qed. 
+Qed.

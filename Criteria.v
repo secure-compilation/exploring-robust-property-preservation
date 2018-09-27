@@ -24,7 +24,7 @@ Definition RC : Prop :=
    classical logic we can move the existential in RC
    after the implication.
  *)
-Axiom some_ctx : ctx src. 
+Axiom some_ctx_src : ctx src.
 
 Lemma RC' : RC <-> (forall P C' t, sem tgt  (C' [ P ↓ ] ) t ->
                         exists C, sem src  (C  [ P  ] ) t).
@@ -38,7 +38,7 @@ Proof.
     destruct K as [k | k].
     + destruct (rc' P C' t k) as [C H]. clear rc'.
       exists C. auto.
-    + exists some_ctx. intros H. exfalso. apply (k H).
+    + exists some_ctx_src. intros H. exfalso. apply (k H).
 Qed.
 
 (* RC is equivalent to the preservation of robust satisfaction of every property *)
@@ -53,6 +53,17 @@ Proof.
     exists C',t. auto. apply NNPP in H1. subst t'. now exists C.
 Qed.
 
+Theorem RC_RPP_maybe_simpler : RC <-> (forall P π, RP P π).
+Proof.
+  unfold RP, rsat, sat. split.
+  - unfold RC.
+    intros HRTC P π HsatCP Ct t HsemCtPC. destruct (HRTC P Ct t) as [Cs HTRC']. eauto.
+  - rewrite RC'. intros HRTP P. apply HRTP. eauto.
+    (* here's a more detailed forwards proof *)
+    (* pose proof (HRTP P (fun t => exists Cs, sem src (Cs[P]) t)) as HRTP'. simpl in HRTP'. *)
+    (* assert(G : forall Cs t, sem src (Cs [P]) t -> exists Cs, sem src (Cs [P]) t) by eauto. *)
+    (* specialize (HRTP' G). assumption. *)
+Qed.
 
 (*********************************************************)
 (* Criterium for Safety Properties Preservation          *)
@@ -119,7 +130,7 @@ Proof.
     destruct K as [k | k].
     + destruct (rc' P C' t Hi k) as [C H]. clear rc'.
       exists C. auto.
-    + exists some_ctx. intros H. exfalso. apply (k H).
+    + exists some_ctx_src. intros H. exfalso. apply (k H).
 Qed.
 
 Theorem RLC_RLP : RLC <-> (forall P π, Liveness π -> RP P π).
@@ -137,14 +148,14 @@ Proof.
 Qed.
 
 (*********************************************************)
-(* Criterium for Observable Properties Preservation  
+(* Criterium for Observable Properties Preservation
     it's the same as all Properties Preservation         *)
 (*********************************************************)
 
 
-(* CA: this condition is trace equality 
-       if one of the two traces is finite then 
-       also the other one is finite. 
+(* CA: this condition is trace equality
+       if one of the two traces is finite then
+       also the other one is finite.
  *)
 Lemma rewriting_lemma : forall t1 t2,
     (forall m, prefix m t1 -> prefix m t2) ->
@@ -158,22 +169,22 @@ Proof.
   split; try now firstorder.
   intros hr P π. rewrite contra_RP.
   intros [C' [t [hsem ht]]].
-  specialize (hr P (fun b => exists m, prefix m b /\ ~ prefix m t)). 
+  specialize (hr P (fun b => exists m, prefix m b /\ ~ prefix m t)).
   assert (Observable (fun b => exists m, prefix m b /\ ~ prefix m t)).
   { unfold Observable. intros t0 [m [h1 h2]].
     exists m. split; try now auto.
     intros t' h'. now exists m. }
-  rewrite contra_RP in hr. destruct (hr H) as [C [t' [k1 k2]]]; clear H. 
-  exists C',t. split; try now auto. intros [m [hc1 hc2]]. now auto. 
+  rewrite contra_RP in hr. destruct (hr H) as [C [t' [k1 k2]]]; clear H.
+  exists C',t. split; try now auto. intros [m [hc1 hc2]]. now auto.
   exists C, t'. split; try now auto.
   intros ff. apply ht.
   apply (rewriting_lemma t' t). intros m hm.
   rewrite not_ex_forall_not in k2. specialize (k2 m). rewrite <- not_imp in k2.
   apply NNPP in k2. now auto. assumption.
-Qed. 
+Qed.
 
 Theorem RobsP_RC : (forall P π, Observable π -> RP P π) <-> RC.
-Proof. now rewrite RobsP_RPP, RC_RPP. Qed. 
+Proof. now rewrite RobsP_RPP, RC_RPP. Qed.
 
 (******************************************************************************)
 
@@ -198,7 +209,7 @@ Proof.
   { apply functional_extensionality.
     intros t. specialize (H0 t). now apply prop_ext. }
   now subst.
-Qed.  
+Qed.
 
 
 Theorem HRC_RHP : HRC <-> forall P H, RHP P H.
@@ -213,7 +224,7 @@ Proof.
     rewrite contra_RHP in hrp. destruct hrp as [C H0].
     exists C'. rewrite <- dne. now auto.
     rewrite <- dne in H0. exists C. intros t.
-    now  rewrite <- H0. 
+    now  rewrite <- H0.
 Qed.
 
 (*********************************************************)
@@ -221,7 +232,7 @@ Qed.
 (*********************************************************)
 
 Definition ssc_cr : Prop :=
-  forall P C', 
+  forall P C',
   exists C, forall b,  sem tgt ( C' [ P ↓ ]) b ->  sem src ( C [ P ]) b.
 
 Lemma SSC_criterium :
@@ -232,10 +243,10 @@ Proof.
     assert  (s : SSC (fun π => ~(forall b,  sem tgt ( C' [ P ↓ ]) b -> π b))).
     { unfold SSC. intros π h1 k Hk ff.
       assert (foo : forall b,  sem tgt ( C' [ P ↓ ]) b -> π b) by now auto.
-      now apply (h1 foo). }   
+      now apply (h1 foo). }
     specialize (h0 P (fun π => ~(forall b,  sem tgt ( C' [ P ↓ ]) b -> π b)) s).
     rewrite contra_RHP in h0.
-    destruct h0 as [C h1]. exists C'. 
+    destruct h0 as [C h1]. exists C'.
     now rewrite <- dne. rewrite <- dne in h1.
     now exists C.
   - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
@@ -253,7 +264,7 @@ Definition twoSC (H : hprop) : Prop :=
   exists t1 t2, forall b, ~ (H b) <->  b t1 /\ b t2.
 
 Definition twoSCC :=
-  forall P Ct t1 t2, 
+  forall P Ct t1 t2,
       (sem tgt (Ct [P ↓]) t1 /\ sem tgt (Ct [P ↓]) t2)
       -> exists Cs, (sem src (Cs [P ]) t1 /\ sem src (Cs [P ]) t2).
 
@@ -302,10 +313,10 @@ Proof.
     { unfold HSafe. intros T hm. rewrite <- dne in hm.
       exists M. split; now auto. }
     specialize (h P (fun π => ~ spref M π) hs). rewrite contra_RHP in h.
-    destruct h as [C hh]. now exists C'. exists C. now apply NNPP. 
+    destruct h as [C hh]. now exists C'. exists C. now apply NNPP.
   - intros hsrc P H hs. rewrite contra_RHP. intros [C' h0].
     destruct (hs (fun b : trace => sem tgt ( C' [ P ↓ ]) b)) as [M [hm0 [hm1 hm2]]].
-    assumption. destruct (hsrc P C' M) as [C hh]; auto. 
+    assumption. destruct (hsrc P C' M) as [C hh]; auto.
     exists C. now apply hm2.
 Qed.
 
@@ -340,8 +351,8 @@ Qed.
 
 
 (*********************************************************)
-(* Criterium for HyperLiveness Preservation      
-   is the same as the one for 
+(* Criterium for HyperLiveness Preservation
+   is the same as the one for
    all Hyperproperties Preservation                      *)
 (*********************************************************)
 
@@ -354,7 +365,7 @@ Proof.
   assert (inf (constant_trace an_event)) by now apply inf_constant_trace.
   assert (fin (embedding x)) by now apply embed_fin.
   rewrite <- h2 in H0.  now apply (H H0).
-Qed.  
+Qed.
 
 Lemma bad_HyperLiv : forall C' P,
     HLiv (fun π : prop => π <> (sem tgt ( C' [ P ↓ ] ))).
@@ -367,18 +378,18 @@ Proof.
     split.
     ++ unfold spref. intros m hm. exists (embedding m).
        split.
-       +++ left. now exists m. 
+       +++ left. now exists m.
        +++ now apply embed_pref.
-     ++ intros hf. apply (infinite_trace_not_in_embed M). 
+     ++ intros hf. apply (infinite_trace_not_in_embed M).
         rewrite <- hf. now right.
   + exists (Embedding M). split; try now auto.
     unfold spref, Embedding. intros m hm.
     exists (embedding m). split.
     ++ now exists m.
-    ++ now apply embed_pref. 
-Qed. 
+    ++ now apply embed_pref.
+Qed.
 
-Theorem RHLP_RHP : 
+Theorem RHLP_RHP :
     (forall P H, HLiv H -> RHP P H) <-> (forall P H, RHP P H).
 Proof.
  split; try now firstorder.
@@ -389,7 +400,7 @@ Proof.
  exists C. now rewrite KK.
 Qed.
 
-Theorem RHLP_HRC : 
+Theorem RHLP_HRC :
     (forall P H, HLiv H -> RHP P H) <-> HRC.
 Proof. now rewrite (RHLP_RHP), (HRC_RHP). Qed.
 
@@ -419,7 +430,7 @@ Proof.
 Qed.
 
 (* Robust Preservation of relations over properties =>
-   Robust Property Preservation 
+   Robust Property Preservation
 *)
 Lemma r2RPP_RPP : r2RPP -> forall P π, RP P π.
 Proof.
@@ -488,7 +499,7 @@ Definition two_rRSC : Prop :=
 Theorem r2RSP_r2RSC : r2RSP <-> r2RSC.
 Proof.
   rewrite r2RSP'.
-  unfold r2RSP, r2RSC. split.  
+  unfold r2RSP, r2RSC. split.
   - intros H Ct P1 P2 m1 m2 H1 H2.
     specialize (H P1 P2 (fun t1' t2' => ~ (prefix m1 t1') \/ ~(prefix m2 t2'))).
     assert (Hsafety : safety2 (fun t1' t2' => ~ (prefix m1 t1') \/ ~(prefix m2 t2'))).
@@ -502,7 +513,7 @@ Proof.
     { apply and_not_or. split; firstorder. }
     specialize (H Htriv).
     destruct H as [Cs [t1' [t2' [Ht1' [Ht2' H]]]]].
-    exists Cs. 
+    exists Cs.
     assert (Htriv' : ~ (fun t1' t2' : trace => ~ prefix m1 t1' \/ ~ prefix m2 t2') t1' t2').
     { apply and_not_or. split; firstorder. }
     simpl in Htriv'. apply not_or_and in Htriv'. destruct Htriv' as [Htriv1' Htriv2'].
@@ -568,7 +579,7 @@ Proof.
     { clear. unfold hrsat2. intros. exists C. intros. split; now auto. }
     specialize (H2hrp hh Ct); clear hh.
     unfold hrsat2 in H2hrp. destruct H2hrp as [Cs h].
-    specialize (ff Cs). 
+    specialize (ff Cs).
     assert (sem src (Cs [P1]) = sem tgt (Ct [P1 ↓])).
     { apply functional_extensionality. intros t. specialize (h t).
       destruct h as [h1 h2]. auto. }
@@ -607,18 +618,18 @@ Section source_determinism.
 
   Theorem two_RSC_teq_preservation : r2RC -> teq_preservation.
   Proof.
-    unfold r2RC. rewrite teq'. intros H P1 P2 [Ct [t' H']].   
+    unfold r2RC. rewrite teq'. intros H P1 P2 [Ct [t' H']].
     rewrite not_iff in H'. destruct H' as [[H1' nH2'] | [nH1' H2']].
-    - destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2']. 
+    - destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2'].
       destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
       exists Cs, t2. intros Hf. rewrite <- Hf in H2.
-      specialize (src_det (Cs [P1] ) t' t2 H1 H2). now subst. 
-    - destruct (non_empty_sem tgt (Ct [P1 ↓])) as [t1 H1']. 
+      specialize (src_det (Cs [P1] ) t' t2 H1 H2). now subst.
+    - destruct (non_empty_sem tgt (Ct [P1 ↓])) as [t1 H1'].
       destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
-      exists Cs, t'. intros Hf. rewrite <- Hf in H2. 
+      exists Cs, t'. intros Hf. rewrite <- Hf in H2.
       specialize (src_det (Cs [P1] ) t1 t' H1 H2). now subst.
    Qed.
-  
+
 End source_determinism.
 
 
@@ -627,7 +638,7 @@ End source_determinism.
     r2RC =>  trace equivalence preservation                          *)
 (*************************************************************************)
 
-Hypothesis src_d : determinacy src. 
+Hypothesis src_d : determinacy src.
 
 (** TODO: Check if this is correct i.e. if the lemmas are satisfied *)
 
@@ -667,7 +678,7 @@ Lemma improved : forall t t' (h : diverges t),
     prefix (tsilent_ftbd t h) t' ->
     forall m, prefix m t -> prefix m t'.
 Admitted.
-  
+
 Lemma premises_hold : forall P1 P2,
      (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
      (forall Cs t1 t2, sem src (Cs [P1]) t1 -> sem src (Cs [P2]) t2 ->
@@ -675,33 +686,33 @@ Lemma premises_hold : forall P1 P2,
 Proof.
   intros P1 P2 H Cs t1 t2 h1 h2.
   (* it needs : determinacy src *)
-Admitted. 
+Admitted.
 
 
  Theorem r2RC_teq_preservation : r2RPP -> teq_preservation.
- Proof. 
+ Proof.
    unfold r2RPP, rsat2, sat2, teq_preservation.
-   intros H P1 P2 hsrc Ct t.   
-   specialize (H P1 P2 traces_match (premises_hold P1 P2 hsrc)). 
+   intros H P1 P2 hsrc Ct t.
+   specialize (H P1 P2 traces_match (premises_hold P1 P2 hsrc)).
    apply NNPP. rewrite not_equiv. intros [[K1 K2] | [K1 K2]].
    + destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2].
      assert ((exists m e, prefix (fsnoc m e) t /\ psem (Ct [P2 ↓]) m /\
                      ~  psem (Ct [P2 ↓]) ( fsnoc m e)) \/
              (((forall m, prefix m t -> psem (Ct [P2 ↓]) m) /\  diverges t))) by admit.
-     destruct H0 as [K | K]. 
+     destruct H0 as [K | K].
      ++ admit. (* "usual" proof *)
      ++ destruct K as [hh1 hh2].
         specialize (hh1 (tsilent_ftbd t hh2)).
         specialize (hh1 (correct t hh2 )).
-        destruct hh1 as [t' [hpref hsem2]]. (* t' and t must match but if they are not equal we 
-        have a contradiction *)  
+        destruct hh1 as [t' [hpref hsem2]]. (* t' and t must match but if they are not equal we
+        have a contradiction *)
         specialize (H Ct t t' K1 hsem2). destruct H as [h | h]; try now subst.
         destruct h as [m [e1 [e2 [he1 [he2 [hdes [hstop [hpref1 hpref2]]]]]]]].
-        apply (improved t t' hh2 hpref _) in hpref1. 
-        apply (same_ext (fsnoc m e1) (fsnoc m e2) t' hpref1) in hpref2.  
-        destruct hpref2 as [H | H]; apply (snoc_diff _ _ _ ) in H; now auto. 
+        apply (improved t t' hh2 hpref _) in hpref1.
+        apply (same_ext (fsnoc m e1) (fsnoc m e2) t' hpref1) in hpref2.
+        destruct hpref2 as [H | H]; apply (snoc_diff _ _ _ ) in H; now auto.
 
-        
+
    (* t' is longer than t!! *)
    + admit. (*symmetric case *)
   Admitted.
@@ -716,9 +727,9 @@ Admitted.
 
 (** *Robust Relational Hyperproperty Preservation*)
 Definition rRHP : Prop :=
-  forall R : (par src  ->  prop) -> Prop, 
+  forall R : (par src  ->  prop) -> Prop,
     (forall Cs, R (fun P  => sem src (Cs [ P] ) )) ->
-    (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )). 
+    (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )).
 
 (** *Relational Hyperproperty Robust Compilation *)
 Definition rRHC : Prop :=
@@ -728,14 +739,14 @@ Theorem rRHP_rRHC : rRHP <-> rRHC.
 Proof.
   unfold rRHP, rRHC. split.
   - intros hrrhp Ct. apply NNPP. intros ff.
-    rewrite not_ex_forall_not in ff.  
-    specialize (hrrhp (fun f => exists Cs, forall P, f P = sem src (Cs [ P ]) )). 
-    simpl in *. 
-    assert (hh : (forall Cs, exists Cs0, forall P, sem src (Cs [P]) = sem src (Cs0 [ P ]))).    
-    { intros Cs. now exists Cs. }   
-    specialize (hrrhp hh); clear hh.  
-    destruct (hrrhp Ct) as [Cs h]. 
-    specialize (ff Cs). now apply ff.        
+    rewrite not_ex_forall_not in ff.
+    specialize (hrrhp (fun f => exists Cs, forall P, f P = sem src (Cs [ P ]) )).
+    simpl in *.
+    assert (hh : (forall Cs, exists Cs0, forall P, sem src (Cs [P]) = sem src (Cs0 [ P ]))).
+    { intros Cs. now exists Cs. }
+    specialize (hrrhp hh); clear hh.
+    destruct (hrrhp Ct) as [Cs h].
+    specialize (ff Cs). now apply ff.
   - intros h R hcs Ct. destruct (h Ct) as [Cs h0]; clear h.
     specialize (hcs Cs).
     assert (hh :  (fun P : par src => sem src (Cs [P])) =
@@ -757,7 +768,7 @@ Definition rRSP : Prop :=
 
 (** *Relational Safety Robust Compilation *)
 Definition rRSC : Prop :=
-  forall Ct (f : par src -> (finpref -> Prop)), 
+  forall Ct (f : par src -> (finpref -> Prop)),
    (forall P, spref (f P) (sem tgt (Ct [P↓]))) ->
    exists Cs,
      (forall P, spref (f P) (sem src (Cs [P]))).
@@ -765,8 +776,8 @@ Definition rRSC : Prop :=
 Theorem rRSP_rRSC : rRSP <-> rRSC.
 Proof.
   unfold rRSP, rRSC. split.
-  - intros h Ct f h0. apply NNPP. intros ff. 
-    rewrite not_ex_forall_not in ff. 
+  - intros h Ct f h0. apply NNPP. intros ff.
+    rewrite not_ex_forall_not in ff.
     specialize (h (fun g => exists Cs, forall P, spref (g P) (sem src (Cs [P])))).
     simpl in *.
     assert(hh :  (forall (Cs : ctx src) (f : par src -> fprop),
@@ -775,15 +786,7 @@ Proof.
          forall P : par src, spref (f P) (sem src (Cs0 [P])))).
     { intros Cs f0 hhh. now exists Cs. }
     destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
-    specialize (ff Cs). now auto.     
+    specialize (ff Cs). now auto.
   - intros h R h0 Ct f h1. specialize (h Ct f h1).
     destruct h as [Cs h]. now apply (h0 Cs f h).
 Qed.
-
-
-
-
-  
-
-    
-    

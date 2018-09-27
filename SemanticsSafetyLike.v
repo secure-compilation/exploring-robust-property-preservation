@@ -9,9 +9,9 @@ Variable partial : Set.
 Variable program : Set.
 Variable context : Set.
 Variable plug : partial -> context -> program.
-  
+
 Variable cfg : Set.
-Variable init : program -> cfg. 
+Variable init : program -> cfg.
 Variable step : cfg -> event -> cfg -> Prop.
 
 Definition stuck (c:cfg) : Prop :=  forall e c', ~step c e c'.
@@ -91,7 +91,7 @@ Admitted.
 Lemma non_empty_sem : forall W, exists t, sem W t.
 Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of. Qed.
 
-Definition lang : level := @Build_level partial
+Definition lang : language := @Build_language partial
                                         program
                                         context
                                         plug
@@ -104,12 +104,11 @@ Inductive steps : cfg -> finpref -> cfg -> Prop :=
                                 steps c' (ftbd m) c'' ->
                                 steps c (ftbd (cons e m)) c''.
 
-Axiom tapp : finpref -> trace -> trace. (* Where have all the flowers gone? *)
-
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
+Proof.
 Admitted.
 
 Lemma steps_psem : forall P m c,
@@ -118,9 +117,11 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  - admit. (* trivial with a real tapp *)
+  - inversion Hsteps.
+    + now simpl.
+    + subst. apply tapp_pref. 
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
-Admitted.
+Qed.
 
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->

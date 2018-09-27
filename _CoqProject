@@ -13,3 +13,5 @@ Criteria.v
 r2RSC_teq.v
 SemanticsSafetyLike.v
 separation.v
+tep_teq.v
+TechnicalLemmas.v

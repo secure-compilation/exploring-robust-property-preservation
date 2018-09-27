@@ -41,8 +41,8 @@ Proof.
     + destruct H' as [m [H1 H2]]. apply H2. assumption.
   - intros t H0. destruct H as [π' H].
     rewrite H in H0. destruct H0 as [m [H1 H2]].
-    exists m. split; try now auto. 
-    intros. rewrite H. now exists m. 
+    exists m. split; try now auto.
+    intros. rewrite H. now exists m.
 Qed.
 
 Lemma safety_bad_finite_prefix : forall π, Safety π ->
@@ -136,10 +136,10 @@ Notation "X << Y" := (subset X Y) ( at level 50).
 Lemma subset_trans : forall X Y Z,
     X << Y -> Y << Z -> X << Z.
 Proof.
-  intros X Y Z H1 H2. unfold subset in *.  
+  intros X Y Z H1 H2. unfold subset in *.
   intros t xt. now apply (H2 t (H1 t xt)).
 Qed.
-  
+
 Definition SSC (H : hprop) : Prop :=
   forall h, H h ->
        (forall k, k << h -> H k).
@@ -154,7 +154,7 @@ Lemma SSC_equiv :
   forall H π, SSC H ->
    H π <-> (fun k => exists h, H h /\ (lifting h) k) π. (* U { [h] | h ∈ H } *)
 Proof.
-  intros H π sscH. split. 
+  intros H π sscH. split.
   - intros HH. exists π. split.
     + assumption.
     + unfold lifting, subset. auto.
@@ -163,8 +163,8 @@ Proof.
 Qed.
 
 
-(* The union of the lifting of 
-   properties is a SSC Hyperproperty 
+(* The union of the lifting of
+   properties is a SSC Hyperproperty
  *)
 
 Lemma Union_Lift_SSC : forall H,
@@ -189,7 +189,7 @@ Proof.
   intros H. split.
   - intros ssc. exists H.
     intros π. now rewrite <- (SSC_equiv H π ssc).
-  - unfold SSC. intros [H' HH] h Hh k subkh. 
+  - unfold SSC. intros [H' HH] h Hh k subkh.
     destruct (HH k) as [K0 K1].
     destruct (HH h) as [H0 H1].
     apply K0. destruct (H1 Hh) as [π [X0 X1]].
@@ -216,7 +216,7 @@ Proof.
     destruct K as [K | [b [K1 K2]]].
     + exfalso. apply h0. unfold lifting, "<<". intros t ff.
       exfalso. apply (K t ff).
-    + destruct (h b K2) as [m [h1 h2]]. 
+    + destruct (h b K2) as [m [h1 h2]].
       exists (fun m' => False \/  m' = m). split.
       ++ repeat constructor.
       ++ split. unfold spref, "<<". intros x [hx | hx]; inversion hx.

@@ -2,14 +2,14 @@ Require Import ClassicalExtras.
 Require Import Events.
 Require Import TraceModel.
 Require Import Properties.
-Require Import Topology. 
+Require Import Topology.
 
 
 (*************************************************************************)
 Lemma empty_observable : Observable (fun t => False).
 Proof. easy. Qed.
 
-Lemma full_observable : Observable  (fun t => True). 
+Lemma full_observable : Observable  (fun t => True).
 Proof.
   unfold Observable. intros t ff.
   now exists (ftbd nil).
@@ -21,7 +21,7 @@ Lemma union_observable : forall H : hprop,
 Proof.
   unfold Observable. intros H h t [A [ha At]].
   destruct (h A ha t At) as [m [h1 h2]].
-  exists m. split; try now auto. 
+  exists m. split; try now auto.
   intros t' pmt'. specialize (h2 t' pmt'). now exists A.
 Qed.
 
@@ -34,8 +34,8 @@ Proof.
   destruct (h2 t at2) as [m2 [h21 h22]].
   assert (sh : fpr m1 m2 \/ fpr m2 m1)
     by now apply (same_ext m1 m2 t).
-  destruct sh; [exists m2| exists m1 ]; split; auto; intros t' K;  
-  [ specialize (h12 t' (fpr_pref_pref m1 m2 t' H K)) 
+  destruct sh; [exists m2| exists m1 ]; split; auto; intros t' K;
+  [ specialize (h12 t' (fpr_pref_pref m1 m2 t' H K))
   | specialize (h22 t' (fpr_pref_pref m2 m1 t' H K))]; now auto.
 Qed.
 
@@ -48,7 +48,7 @@ Definition trace_topology := Build_Topology trace
 
 Lemma safety_closed : forall π, Safety π <-> (closed trace_topology) π.
 Proof. easy. Qed.
-    
+
 Lemma liveness_dense : forall π, Liveness π <-> (dense trace_topology) π.
 Proof.
   intros π. unfold dense. split.
@@ -71,15 +71,9 @@ Qed.
 Theorem decomposition_safety_liveness :
   forall π, exists S L, (Safety S /\ Liveness L /\
                (forall t, π t <-> S t /\ L t)).
-Proof. 
+Proof.
   intros π.
   destruct  (decomposition_theorem trace_topology π) as [S [L H]].
-  rewrite <- safety_closed, <- liveness_dense in H. 
-  now exists S, L.  
-Qed. 
-
-
-                       
-    
- 
-
+  rewrite <- safety_closed, <- liveness_dense in H.
+  now exists S, L.
+Qed.
