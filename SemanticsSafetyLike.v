@@ -135,6 +135,13 @@ Definition lang : language := @Build_language partial
                                         non_empty_sem.
 
 
+Lemma steps'_sem' : forall c m c' t,
+  steps' c m c' ->
+  sem' c' t ->
+  sem' c (tapp (ftbd m) t).
+Proof.
+Admitted.
+
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
@@ -225,7 +232,27 @@ Theorem finpref_ind_snoc :
     forall m, P m.
 Proof. Admitted.
 
-Definition semantics_ : forall t P,
+Lemma not_diverges_cons : forall e t, ~ diverges (tcons e t) -> ~ diverges t.
+Admitted.
+
+Lemma more_general_coinduction_hypothesis : forall t c,
+  ~ diverges t ->
+  (forall m, prefix (ftbd m) t -> exists c', steps' c m c') -> sem' c t.
+Proof.
+  cofix. intros t c Hndiv H.
+  destruct t as [| | e t'].
+  - specialize (H nil I). destruct H as [c' H]. admit.
+  - apply False_ind. apply Hndiv. now constructor.
+  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
+    pose proof H as H'. specialize (H (cons e nil) (conj eq_refl I)).
+    destruct H as [c' H]. eapply steps'_sem' in H. exact H.
+    eapply more_general_coinduction_hypothesis. eapply not_diverges_cons; eassumption.
+    intros m H1. specialize (H' (cons e m) (conj eq_refl H1)).
+    destruct H' as [c'' H']. exists c''.
+Admitted. (* TODO: progress, but if language non-deterministic parts still don't fit *)
+
+ (* TODO: generalized the induction hypothesis above *)
+Lemma semantics_safety_like_right : forall t P,
   ~ diverges t ->
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
@@ -239,25 +266,6 @@ Proof.
     apply psem_steps in H; [| reflexivity].
     destruct H as [c H]. eapply steps_sem' in H. exact H.
     (* eapply semantics_safety_like_right. *)
-Admitted. (* TODO: generalized the induction hypothesis *)
-
-Definition semantics_safety_like_right : forall t P,
-  ~ diverges t ->
-  (forall m, prefix m t -> @psem lang P m) -> sem P t.
-Proof.
-  cofix. intros t P Hndiv H.
-  destruct t as [| | e t'].
-  - specialize (H (fstop nil) I).
-    destruct H as [[ | | ] [H1 H2]]. assumption. now inversion H1. now inversion H1.
-  - apply False_ind. apply Hndiv. now constructor.
-  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
-    specialize (H (ftbd (cons e nil)) (conj eq_refl I)).
-    apply psem_steps in H; [| reflexivity].
-    destruct H as [c H]. eapply steps_sem' in H. exact H.
-    eapply semantics_safety_like_right.
-simpl in H.
-    
-
 Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
