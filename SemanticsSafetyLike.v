@@ -21,10 +21,39 @@ Variable silent : event -> Prop.
 CoInductive can_loop_silent : cfg -> Prop :=
 | FSilent : forall c e c', step c e c' -> silent e -> can_loop_silent c' -> can_loop_silent c.
 
+Inductive steps' : cfg -> pref -> cfg -> Prop :=
+| SSTbd : forall c, steps' c nil c
+| SSCons : forall c e c' m c'', step c e c' -> ~silent e -> steps' c' m c'' ->
+                                                            steps' c (cons e m) c''
+| SSSilent : forall c e c' c'' m, step c e c' -> silent e -> steps' c' m c'' -> steps' c m c''.
+
+Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
+  match m with
+  | ftbd m' => steps' c m' c'
+  | fstop m' => steps' c m' c' /\ stuck c'
+  end.
+
+(* must terminate or cause non-silent event ... TODO: but that's not
+   what we can easily write, folowing definition may termination *)
+Definition cannot_loop_silent (c:cfg) : Prop :=
+  forall c', steps' c nil c' -> exists e c'', steps' c' (cons e nil) c''.
+
+Definition does_event_or_goes_wrong (c:cfg) :=
+  {exists e c', steps' c (cons e nil) c'} + {exists c', steps' c nil c' /\ stuck c'}.
+
+Require Import ClassicalExtras.
+
+Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
+Proof.
+  (* intro c. rewrite contra. intro Hc. rewrite <- dne. cofix. -- no longer works with + *)
+Admitted.
+
 CoInductive sem' : cfg -> trace -> Prop :=
 | SStop : forall c, stuck c -> sem' c tstop
 | SCons : forall c e c' t, step c e c' -> ~silent e -> sem' c' t -> sem' c (tcons e t)
-| SSilent : forall c, can_loop_silent c -> sem' c tsilent.
+| SSilent : forall c e c' t, step c e c' -> silent e -> sem' c' t -> sem' c t
+            (* TODO: Q: Do we need to prevent that this applies infinitely for an arbitrary t? Can we prevent it? *)
+| SSilentDiv : forall c, can_loop_silent c -> sem' c tsilent.
 
 Definition sem (p:program) : trace -> Prop := sem' (init p).
 
@@ -41,14 +70,21 @@ CoFixpoint trace_of (c:cfg) : trace.
   apply indefinite_description in H. destruct H as [c' H].
   apply NNPP in H.
   destruct (classicT (silent e)) as [He | He].
-  - exact (tcons e (trace_of c')).
   - destruct (classicT (can_loop_silent c')) as [Hc | Hc].
     + exact tsilent.
-    + admit. (* exact (trace_of c'). -- but still need to convince Coq *)
-Admitted.
+    + apply not_can_loop_silent in Hc. destruct Hc as [Hc | Hc].
+      * apply indefinite_description in Hc. destruct Hc as [e' Hc].
+        apply indefinite_description in Hc. destruct Hc as [c'' Hs].
+        exact (tcons e' (trace_of c'')).
+      * apply indefinite_description in Hc. destruct Hc as [c'' [Hs1 Hs2]].
+        exact tstop.
+  - exact (tcons e (trace_of c')).
+Defined.
 
 (* The usual hack to unfold CoFixpoints, but it ain't pretty and
-   it still doesn't compute because of all the axioms *)
+   it still doesn't compute because of all the axioms
+   TODO: update this
+ *)
 Lemma trace_of_eta : forall c,
   trace_of c =
         match classicT (stuck c) with
@@ -98,11 +134,6 @@ Definition lang : language := @Build_language partial
                                         sem
                                         non_empty_sem.
 
-Inductive steps : cfg -> finpref -> cfg -> Prop :=
-| SSTbd : forall c, steps c (ftbd nil) c
-| SSCons : forall c e c' m c'', step c e c' ->
-                                steps c' (ftbd m) c'' ->
-                                steps c (ftbd (cons e m)) c''.
 
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
@@ -117,11 +148,14 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  - inversion Hsteps.
+  - 
+Admitted. (* 2018-09-27 Broken when updating definitions
+inversion Hsteps.
     + now simpl.
     + subst. apply tapp_pref. 
   - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
 Qed.
+*)
 
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
@@ -136,7 +170,8 @@ Proof.
     inversion Hsem. subst. simpl in Hnot_stopped.
     destruct (IHm c' t' H4 Hpref Hnot_stopped) as [c'' HH].
     exists c''. eapply SSCons; eassumption.
-Qed.
+Admitted. (* 2018-09-27 Broken when updating definitions
+Qed. *)
 
 Lemma sem_prefix : forall m P t,
   sem P t ->
@@ -147,6 +182,12 @@ Lemma sem_prefix : forall m P t,
 (* A better way to state this might be to avoid t_eq and use
    an operation to remove m from t -- for now removed that part since not needed *)
 Proof. intros m P. now apply (sem'_prefix m (init P)). Qed.
+
+Lemma psem_steps : forall m P,
+  @psem lang P m ->
+  fstopped m = false ->
+  exists c, steps (init P) m c.
+Proof. intros m P [t [H1 H2]] Hstopped. eapply sem_prefix; eassumption. Qed.
 
 (* CH: ouch, this is actually trivial *)
 Definition semantics_safety_like_reverse : forall t P m,
@@ -184,8 +225,39 @@ Theorem finpref_ind_snoc :
     forall m, P m.
 Proof. Admitted.
 
-Definition semantics_safety_like_right : forall t P,
+Definition semantics_ : forall t P,
+  ~ diverges t ->
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
+Proof.
+  cofix. intros t P Hndiv H.
+  destruct t as [| | e t'].
+  - specialize (H (fstop nil) I).
+    destruct H as [[ | | ] [H1 H2]]. assumption. now inversion H1. now inversion H1.
+  - apply False_ind. apply Hndiv. now constructor.
+  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
+    specialize (H (ftbd (cons e nil)) (conj eq_refl I)).
+    apply psem_steps in H; [| reflexivity].
+    destruct H as [c H]. eapply steps_sem' in H. exact H.
+    (* eapply semantics_safety_like_right. *)
+Admitted. (* TODO: generalized the induction hypothesis *)
+
+Definition semantics_safety_like_right : forall t P,
+  ~ diverges t ->
+  (forall m, prefix m t -> @psem lang P m) -> sem P t.
+Proof.
+  cofix. intros t P Hndiv H.
+  destruct t as [| | e t'].
+  - specialize (H (fstop nil) I).
+    destruct H as [[ | | ] [H1 H2]]. assumption. now inversion H1. now inversion H1.
+  - apply False_ind. apply Hndiv. now constructor.
+  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
+    specialize (H (ftbd (cons e nil)) (conj eq_refl I)).
+    apply psem_steps in H; [| reflexivity].
+    destruct H as [c H]. eapply steps_sem' in H. exact H.
+    eapply semantics_safety_like_right.
+simpl in H.
+    
+
 Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
@@ -203,9 +275,8 @@ Lemma tgt_sem : semantics_safety_like lang.
 
 Proof.
   unfold semantics_safety_like. simpl.
-  intros t P Hsem Hinf.
-  intros Hndiv.
-  pose proof semantics_safety_like_right. specialize (H t P).
+  intros t P Hsem Hinf Hndiv.
+  pose proof (semantics_safety_like_right t P).
   rewrite -> contra in H.
   specialize (H Hsem). apply not_all_ex_not in H.
   destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
@@ -246,5 +317,3 @@ Qed.
 
 
 End Main.
-
-
