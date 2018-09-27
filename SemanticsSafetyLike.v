@@ -2,6 +2,9 @@ Require Import Events.
 Require Import TraceModel.
 Require Import Properties.
 Require Import CommonST.
+Require Import ClassicalExtras.
+Require Import List.
+Import ListNotations.
 
 Section Main.
 
@@ -41,8 +44,6 @@ Definition cannot_loop_silent (c:cfg) : Prop :=
 Definition does_event_or_goes_wrong (c:cfg) :=
   {exists e c', steps' c (cons e nil) c'} + {exists c', steps' c nil c' /\ stuck c'}.
 
-Require Import ClassicalExtras.
-
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
 Proof.
   (* intro c. rewrite contra. intro Hc. rewrite <- dne. cofix. -- no longer works with + *)
@@ -56,8 +57,6 @@ CoInductive sem' : cfg -> trace -> Prop :=
 | SSilentDiv : forall c, can_loop_silent c -> sem' c tsilent.
 
 Definition sem (p:program) : trace -> Prop := sem' (init p).
-
-Require Import ClassicalExtras.
 
 Axiom classicT : forall (P : Prop), {P} + {~ P}.
 Axiom indefinite_description : forall (A : Type) (P : A->Prop),
@@ -235,38 +234,45 @@ Proof. Admitted.
 Lemma not_diverges_cons : forall e t, ~ diverges (tcons e t) -> ~ diverges t.
 Admitted.
 
-Lemma more_general_coinduction_hypothesis : forall t c,
+Lemma steps'_trans : forall c1 c2 c3 m m',
+  steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
+Admitted.
+
+(* TODO: Was forced into generalizing the induction hypothesis too much for semantics_safety_like_right:
+         - the stronger hypothesis only works if the language is determinate
+         - for the purposes of Carmine's proofs that's fine though!*)
+Lemma too_general_coinduction_hypothesis : forall t c,
   ~ diverges t ->
-  (forall m, prefix (ftbd m) t -> exists c', steps' c m c') -> sem' c t.
+  (forall m1 m2 c', prefix (ftbd (app m1 m2)) t -> steps' c m1 c' -> exists c'', steps' c' m2 c'') -> sem' c t.
 Proof.
   cofix. intros t c Hndiv H.
   destruct t as [| | e t'].
-  - specialize (H nil I). destruct H as [c' H]. admit.
+  - specialize (H nil nil c I (SSTbd c)). destruct H as [c' H]. admit.
   - apply False_ind. apply Hndiv. now constructor.
   - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
-    pose proof H as H'. specialize (H (cons e nil) (conj eq_refl I)).
+    pose proof H as H'. specialize (H nil (cons e nil) c (conj eq_refl I) (SSTbd c)).
     destruct H as [c' H]. eapply steps'_sem' in H. exact H.
-    eapply more_general_coinduction_hypothesis. eapply not_diverges_cons; eassumption.
-    intros m H1. specialize (H' (cons e m) (conj eq_refl H1)).
-    destruct H' as [c'' H']. exists c''.
-Admitted. (* TODO: progress, but if language non-deterministic parts still don't fit *)
+    eapply too_general_coinduction_hypothesis. eapply not_diverges_cons; eassumption.
+    intros m1 m2 c'' H1 H2. specialize (H' (cons e m1) m2 c'' (conj eq_refl H1)).
+    destruct H' as [c''' H'].
+    replace (cons e m1) with (app (cons e nil) m1) by reflexivity. eapply steps'_trans; eassumption.
+    exists c'''. apply H'.
+    (* Guarded. *)
+    (* -> Recursive definition of more_general_coinduction_hypothesis is ill-formed.
+       -- so far so good, but we still need to convince Coq that this is well-founded
+       -- should probably specialize steps'_sem' for the singleton case and make the
+          application of SCons explicit *)
+Admitted.
 
- (* TODO: generalized the induction hypothesis above *)
+(* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right : forall t P,
   ~ diverges t ->
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
-  cofix. intros t P Hndiv H.
-  destruct t as [| | e t'].
-  - specialize (H (fstop nil) I).
-    destruct H as [[ | | ] [H1 H2]]. assumption. now inversion H1. now inversion H1.
-  - apply False_ind. apply Hndiv. now constructor.
-  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
-    specialize (H (ftbd (cons e nil)) (conj eq_refl I)).
-    apply psem_steps in H; [| reflexivity].
-    destruct H as [c H]. eapply steps_sem' in H. exact H.
-    (* eapply semantics_safety_like_right. *)
-Admitted.
+  intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv.
+  intros m1 m2 c' H0 H1. specialize (H (ftbd (m1++m2)) H0).
+  apply psem_steps in H; [| reflexivity]. exists c'.
+Admitted.  
 
 Lemma tgt_sem : semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
@@ -284,7 +290,7 @@ Lemma tgt_sem : semantics_safety_like lang.
 Proof.
   unfold semantics_safety_like. simpl.
   intros t P Hsem Hinf Hndiv.
-  pose proof (semantics_safety_like_right t P).
+  pose proof (semantics_safety_like_right t P Hndiv).
   rewrite -> contra in H.
   specialize (H Hsem). apply not_all_ex_not in H.
   destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
@@ -322,6 +328,5 @@ Proof.
          apply H0 in Hm1. assumption.
          assumption.
 Qed.
-
 
 End Main.
