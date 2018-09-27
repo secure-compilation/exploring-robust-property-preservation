@@ -134,10 +134,10 @@ Definition lang : language := @Build_language partial
                                         non_empty_sem.
 
 
-Lemma steps'_sem' : forall c m c' t,
-  steps' c m c' ->
+Lemma steps'_sem' : forall c e c' t,
+  steps' c [e] c' ->
   sem' c' t ->
-  sem' c (tapp (ftbd m) t).
+  sem' c (tcons e t).
 Proof.
 Admitted.
 
@@ -251,7 +251,7 @@ Proof.
   - apply False_ind. apply Hndiv. now constructor.
   - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
     pose proof H as H'. specialize (H nil (cons e nil) c (conj eq_refl I) (SSTbd c)).
-    destruct H as [c' H]. eapply steps'_sem' in H. exact H.
+    destruct H as [c' H]. eapply steps'_sem'. eassumption.
     eapply too_general_coinduction_hypothesis. eapply not_diverges_cons; eassumption.
     intros m1 m2 c'' H1 H2. specialize (H' (cons e m1) m2 c'' (conj eq_refl H1)).
     destruct H' as [c''' H'].
@@ -270,8 +270,8 @@ Lemma semantics_safety_like_right : forall t P,
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
   intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv.
-  intros m1 m2 c' H0 H1. specialize (H (ftbd (m1++m2)) H0).
-  apply psem_steps in H; [| reflexivity]. exists c'.
+  intros m1 m2 c H0 H1. specialize (H (ftbd (m1++m2)) H0).
+  apply psem_steps in H; [| reflexivity]. destruct H as [c' H]. exists c'.
 Admitted.
 
 Lemma tgt_sem : semantics_safety_like lang.
