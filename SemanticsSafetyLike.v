@@ -264,15 +264,48 @@ Proof.
           application of SCons explicit *)
 Admitted.
 
+Lemma steps'_cons_smaller : forall c1 c3 m e,
+    steps' c1 (e :: m) c3 -> exists c2, steps' c1 [e] c2 /\ steps' c2 m c3.
+Proof.
+  intros c1 c3 m e H.
+  remember (e :: m) as p.
+  induction H.
+  - inversion Heqp.
+  - inversion Heqp; subst. clear Heqp.
+    exists c'; split. apply SSCons with (c' := c'); auto. constructor. assumption.
+  - inversion Heqp; subst. specialize (IHsteps' H2).
+    destruct IHsteps' as [c2 [Hc2 Hc2']].
+    exists c2. split.
+    apply SSSilent with (e := e0) (c' := c'); auto.
+    assumption.
+Qed.
+
+Lemma less_general_coinduction_hypothesis : forall t c,
+    ~ diverges t ->
+    (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
+Proof.
+Admitted.
+
+
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right : forall t P,
   ~ diverges t ->
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
-  intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv.
-  intros m1 m2 c H0 H1. specialize (H (ftbd (m1++m2)) H0).
-  apply psem_steps in H; [| reflexivity]. destruct H as [c' H]. exists c'.
-Admitted.
+  (* intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv. *)
+  (* intros m1 m2 c H0 H1. specialize (H (ftbd (m1++m2)) H0). *)
+  (* apply psem_steps in H; [| reflexivity]. destruct H as [c' H]. exists c'. *)
+  intros t P Hndiv H.
+  apply less_general_coinduction_hypothesis. apply Hndiv.
+  intros e m H'.
+  specialize (H (ftbd (e :: m)) H').
+  apply psem_steps in H; [| reflexivity].
+  destruct H as [c2 H].
+  simpl in H.
+  apply (steps'_cons_smaller (init P) c2 m e) in H.
+  destruct H as [c3 [Hc3 Hc3']].
+  exists c3, c2. split; assumption.
+Qed.
 
 Lemma tgt_sem : semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
