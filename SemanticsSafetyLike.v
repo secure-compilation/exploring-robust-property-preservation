@@ -292,15 +292,39 @@ Proof.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
-  - assert (~silent e) by admit.
+  - assert (~silent e) by admit. pose proof H as H'.
     specialize (H e []).
     assert (Hpref: prefix (ftbd [e]) (tcons e t')) by now split.
     specialize (H Hpref).
     destruct H as [c' [c'' [H1 H2]]].
-    apply SCons with (c' := c').
+    
+    inversion H1; subst.
+    + assert (Hndiv' : ~ diverges t') by admit.
+      assert (Hnstopped' : ~ stopped t') by admit.
+      specialize (less_general_coinduction_hypothesis t' c'0).
+      specialize (less_general_coinduction_hypothesis Hndiv' Hnstopped').
+      
+      assert (forall (e : event) (m : list event),
+                 prefix (ftbd (e :: m)) t' ->
+                 exists c' c'' : cfg, steps' c'0 [e] c' /\ steps' c' m c'').
+      {
+        intros e0 m He0m.
+        specialize (H' e (e0 :: m)).
+        assert (forall m t e, prefix (ftbd m) t -> prefix (ftbd (e :: m)) (tcons e t)).
+        { clear.
+          intros m t e H.
+          now split. }
+        specialize (H' (H (e0 :: m) t' e He0m)).
+        clear H.
+        destruct H' as [c1 [c2 [Hc1 Hc2]]].
+        
+        
+        admit.
+      }
+      specialize (less_general_coinduction_hypothesis H).
+      apply SCons with (c' := c'0); now assumption.          
     + admit.
-    + assumption.
-    + admit.
+      Guarded.
 Admitted.
 
 
