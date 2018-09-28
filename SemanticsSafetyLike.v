@@ -285,26 +285,34 @@ Inductive stopped : trace -> Prop :=
   | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
 
 Lemma less_general_coinduction_hypothesis : forall t c,
-    ~ diverges t -> t <> tstop ->
+    ~ diverges t -> ~ stopped t ->
     (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
 Proof.
   cofix. intros t c Hndiv Hnstopped H.
   destruct t as [| | e t'].
-  - now exfalso.
+  - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
-  - admit.
+  - assert (~silent e) by admit.
+    specialize (H e []).
+    assert (Hpref: prefix (ftbd [e]) (tcons e t')) by now split.
+    specialize (H Hpref).
+    destruct H as [c' [c'' [H1 H2]]].
+    apply SCons with (c' := c').
+    + admit.
+    + assumption.
+    + admit.
 Admitted.
 
 
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right : forall t P,
-  ~ diverges t ->
+  ~ diverges t -> ~ stopped t -> 
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
   (* intros t P Hndiv H. apply too_general_coinduction_hypothesis. apply Hndiv. *)
   (* intros m1 m2 c H0 H1. specialize (H (ftbd (m1++m2)) H0). *)
   (* apply psem_steps in H; [| reflexivity]. destruct H as [c' H]. exists c'. *)
-  intros t P Hndiv H.
+  intros t P Hndiv Hnstopped H.
   destruct t as [| | e0 t0].
   - specialize (H (fstop nil) I). unfold psem in H.
     destruct H as [t [H1 H2]].
@@ -312,9 +320,7 @@ Proof.
   - exfalso. apply Hndiv. now constructor.
   - remember (tcons e0 t0) as t.
     apply less_general_coinduction_hypothesis. apply Hndiv.
-    assert (Hntstop: t <> tstop).
-    { subst. intros Hn. inversion Hn. }
-    apply Hntstop.
+    apply Hnstopped.
     intros e m H'.
     specialize (H (ftbd (e :: m)) H').
     apply psem_steps in H; [| reflexivity].
@@ -341,7 +347,14 @@ Lemma tgt_sem : semantics_safety_like lang.
 Proof.
   unfold semantics_safety_like. simpl.
   intros t P Hsem Hinf Hndiv.
-  pose proof (semantics_safety_like_right t P Hndiv).
+  destruct (classic (stopped t)) as [Hstopped | Hnstopped].
+  (* t stopped *)
+  assert (Hstopinf : stopped t -> fin t).
+  { clear.
+    intros H.
+    induction H; now constructor. }
+  specialize (Hinf (Hstopinf Hstopped)). now contradiction.
+  pose proof (semantics_safety_like_right t P Hndiv Hnstopped).
   rewrite -> contra in H.
   specialize (H Hsem). apply not_all_ex_not in H.
   destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
