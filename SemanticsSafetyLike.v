@@ -280,10 +280,19 @@ Proof.
     assumption.
 Qed.
 
+Inductive stopped : trace -> Prop :=
+  | stopped_stop : stopped tstop
+  | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
+
 Lemma less_general_coinduction_hypothesis : forall t c,
-    ~ diverges t ->
+    ~ diverges t -> t <> tstop ->
     (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
 Proof.
+  cofix. intros t c Hndiv Hnstopped H.
+  destruct t as [| | e t'].
+  - now exfalso.
+  - apply False_ind. apply Hndiv. now constructor.
+  - admit.
 Admitted.
 
 
@@ -296,15 +305,24 @@ Proof.
   (* intros m1 m2 c H0 H1. specialize (H (ftbd (m1++m2)) H0). *)
   (* apply psem_steps in H; [| reflexivity]. destruct H as [c' H]. exists c'. *)
   intros t P Hndiv H.
-  apply less_general_coinduction_hypothesis. apply Hndiv.
-  intros e m H'.
-  specialize (H (ftbd (e :: m)) H').
-  apply psem_steps in H; [| reflexivity].
-  destruct H as [c2 H].
-  simpl in H.
-  apply (steps'_cons_smaller (init P) c2 m e) in H.
-  destruct H as [c3 [Hc3 Hc3']].
-  exists c3, c2. split; assumption.
+  destruct t as [| | e0 t0].
+  - specialize (H (fstop nil) I). unfold psem in H.
+    destruct H as [t [H1 H2]].
+    now destruct t.
+  - exfalso. apply Hndiv. now constructor.
+  - remember (tcons e0 t0) as t.
+    apply less_general_coinduction_hypothesis. apply Hndiv.
+    assert (Hntstop: t <> tstop).
+    { subst. intros Hn. inversion Hn. }
+    apply Hntstop.
+    intros e m H'.
+    specialize (H (ftbd (e :: m)) H').
+    apply psem_steps in H; [| reflexivity].
+    destruct H as [c2 H].
+    simpl in H.
+    apply (steps'_cons_smaller (init P) c2 m e) in H.
+    destruct H as [c3 [Hc3 Hc3']].
+    exists c3, c2. split; assumption.
 Qed.
 
 Lemma tgt_sem : semantics_safety_like lang.
