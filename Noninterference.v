@@ -179,8 +179,41 @@ Proof.
           reflexivity. }
         simpl. rewrite H0, H1. apply (IHp1 p2).
         exists t'. now split.
-  - admit.
-Admitted.
+  - intros H'.
+    exists (tapp (fstop (List.filter Pf p1)) tstop).
+    generalize dependent p2.
+    induction p1; induction p2; intros H'; try now auto.
+    + split; try now auto.
+      simpl in *.
+      destruct (Pf a) eqn: Heq; try now auto.
+      specialize (IHp2 H'). destruct IHp2. constructor.
+      assumption.
+      intros Hn. apply H in Hn. rewrite Heq in Hn. inversion Hn.
+    + simpl in *.
+      destruct (Pf a) eqn:Heq; try now auto.
+      specialize (IHp1 nil H'). destruct IHp1.
+      split. constructor. assumption. intros Hn; apply H in Hn; rewrite Hn in Heq; inversion Heq.
+      simpl in H1; assumption.
+    + simpl in *.
+      destruct (Pf a) eqn:Heq; destruct (Pf a0) eqn:Heq'; try now auto.
+      * inversion H'; subst.
+        specialize (IHp1 p2 H2). destruct IHp1.
+        split; constructor; try now apply H. assumption. assumption.
+      * specialize (IHp2 H'). destruct IHp2.
+        split; constructor; try assumption. destruct p2; try now auto.
+        simpl in *. inversion H0; subst; try now auto. apply H in Heq. contradiction.
+        now apply H in Heq.
+        intros Hn; apply H in Hn. rewrite Hn in Heq'; inversion Heq'.
+      * assert (List.filter Pf p1 = List.filter Pf (a0 :: p2)).
+        { simpl. rewrite Heq'. assumption. }
+        specialize (IHp1 (cons a0 p2) H0). destruct IHp1.
+        split. constructor. assumption. intros Hn; apply H in Hn; rewrite Hn in Heq; inversion Heq.
+        simpl in H2. assumption.
+      * specialize (IHp2 H').
+        destruct IHp2.
+        split. assumption. constructor. assumption.
+        intros Hn; apply H in Hn; rewrite Hn in Heq'; inversion Heq'.
+Qed.
 
 
 Theorem NI_NI_fun : forall (b : prop), NI b <-> NI_fun b.
