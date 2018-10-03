@@ -935,6 +935,16 @@ Proof.
     + exists (ftbd (cons e p)). simpl in *. now subst.
 Qed.
 
+Lemma tapp_fin_pref' : forall (t : trace),
+    fin t -> exists (p : pref), t = tapp (fstop p) tstop.
+Proof.
+  intros t Ht.
+  induction Ht.
+  - now (exists nil).
+  - destruct IHHt as [p Hp].
+    exists (cons e p). simpl in *. now subst.
+Qed.
+
 Lemma pref_inf_ndiv_pref : forall (m : finpref) (t : trace),
   prefix m t -> inf t -> ~diverges t -> exists e, prefix (fsnoc m e) t.
 Proof.

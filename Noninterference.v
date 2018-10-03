@@ -235,6 +235,9 @@ Proof.
     specialize (H H').
     now apply (filter_filter_rel pub pubb pub_pubb p1 p2) in H.
   - intros H t1 t2 Ht1 Ht2 [H1 [H2 H3]].
-    admit.
-    
-Admitted.
+    apply tapp_fin_pref' in H1. destruct H1 as [p1 Hp1].
+    apply tapp_fin_pref' in H2. destruct H2 as [p2 Hp2]. subst.
+    apply (filter_filter_rel pub_input pub_inputb pub_input_pub_inputb p1 p2) in H3.
+    specialize (H p1 p2 Ht1 Ht2 H3).
+    now apply (filter_filter_rel pub pubb pub_pubb p1 p2).
+Qed.
