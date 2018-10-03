@@ -27,6 +27,12 @@ Definition pub_input : event -> Prop :=
 
 Definition stopped := fin.
 
+(* Definition ni : hprop := *)
+(*   fun b => forall (p1 p2 : list event), b (fstop p1) -> b (ftop p2) -> *)
+(*                                 (filter pi p1) = (filter pi p2) -> *)
+(*                                 (filter pub p1) = (filter pub p2). *)
+
+
 (* First definition of noninterference, with filter *)
 Definition NI : hprop :=
   fun b => forall (t1 t2 : trace), b t1 -> b t2 ->
