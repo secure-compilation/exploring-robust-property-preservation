@@ -222,6 +222,19 @@ Proof.
   intros b. split.
   - intros H p1 p2 Hp1 Hp2 Hfilter.
     specialize (H (tapp (fstop p1) tstop) (tapp (fstop p2) tstop) Hp1 Hp2).
-    assert .
-  - admit.
+    apply (filter_filter_rel pub_input pub_inputb pub_input_pub_inputb p1 p2) in Hfilter.
+    assert (fin (tapp (fstop p1) tstop)).
+    { clear. simpl. induction p1; simpl; try now constructor. }
+    assert (fin (tapp (fstop p2) tstop)).
+    { clear. simpl. induction p2; simpl; try now constructor. }
+    assert (H' : fin (tapp (fstop p1) tstop) /\
+      fin (tapp (fstop p2) tstop) /\
+      (exists t' : trace,
+          filter pub_input (tapp (fstop p1) tstop) t' /\ filter pub_input (tapp (fstop p2) tstop) t')).
+    { repeat split; assumption. }
+    specialize (H H').
+    now apply (filter_filter_rel pub pubb pub_pubb p1 p2) in H.
+  - intros H t1 t2 Ht1 Ht2 [H1 [H2 H3]].
+    admit.
+    
 Admitted.
