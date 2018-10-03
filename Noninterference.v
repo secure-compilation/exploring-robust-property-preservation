@@ -4,6 +4,9 @@ Require Import Properties.
 Require Import CommonST.
 Require Import ClassicalExtras.
 Require Import Coq.Logic.FunctionalExtensionality.
+Require Import Coq.Logic.ClassicalFacts.
+
+Axiom Prop_Ext : prop_extensionality.
 
 Inductive filter (P : event -> Prop) : trace -> trace -> Prop :=
 | filter_tstop : filter P tstop tstop
@@ -20,17 +23,88 @@ Inductive filter (P : event -> Prop) : trace -> trace -> Prop :=
 Hint Constructors filter.
 
 Axiom pub : event -> Prop.
+Axiom pubb : event -> bool.
+Axiom pub_pubb : forall (e : event), pub e <-> pubb e = true.
+
 Axiom input : event -> Prop.
+Axiom inputb : event -> bool.
+Axiom input_inputb : forall (e : event), input e <-> inputb e = true.
 
 Definition pub_input : event -> Prop :=
   fun i => pub i /\ input i.
+Definition pub_inputb : event -> bool :=
+  fun i => andb (pubb i) (inputb i).
+Lemma pub_input_pub_inputb : forall (e : event),
+    pub_input e <-> pub_inputb e = true.
+Proof.
+  intros e; split; unfold pub_input; unfold pub_inputb.
+  - intros H.
+    destruct H as [H1 H2].
+    apply pub_pubb in H1.
+    apply input_inputb in H2.
+    now rewrite H1; rewrite H2.
+  - intros H.
+    apply andb_prop in H.
+    destruct H; split. now apply pub_pubb. now apply input_inputb.
+Qed.
 
 Definition stopped := fin.
 
-(* Definition ni : hprop := *)
-(*   fun b => forall (p1 p2 : list event), b (fstop p1) -> b (ftop p2) -> *)
-(*                                 (filter pi p1) = (filter pi p2) -> *)
-(*                                 (filter pub p1) = (filter pub p2). *)
+Definition NI_fun : hprop :=
+  fun b => forall (p1 p2 : pref),
+      b (tapp (fstop p1) tstop) -> b (tapp (fstop p2) tstop) ->
+      (List.filter pub_inputb p1) = (List.filter pub_inputb p2) ->
+      (List.filter pubb p1) = (List.filter pubb p2).
+
+Theorem HS_NI_fun : HSafe NI_fun.
+Proof.
+  unfold HSafe, NI_fun.
+  intros b HnNI.
+  rewrite not_forall_ex_not in HnNI.
+  destruct HnNI as [p1 HnNI].
+  rewrite not_forall_ex_not in HnNI.
+  destruct HnNI as [p2 HnNI].
+  rewrite not_imp in HnNI; destruct HnNI as [Hbt1 HnNI].
+  rewrite not_imp in HnNI; destruct HnNI as [Hbt2 HnNI].
+  rewrite not_imp in HnNI. destruct HnNI as [H1 H2].
+  exists (fun m => m = (fstop p1) \/ m = (fstop p2)).
+  repeat split.
+  - constructor.
+    assert ((fun x : finpref => x = fstop p1) = (fun x : finpref => False \/ x = fstop p1)).
+    { clear.
+      apply functional_extensionality.
+      intros m.
+      assert (forall P: Prop, (False \/ P) <-> P).
+      { intros; split; intros.
+        destruct H; now auto.
+        right. apply H.
+      }
+      specialize (H (m = fstop p1)).
+      apply Prop_Ext. now symmetry.
+    }
+    rewrite H. constructor. constructor.
+  - unfold spref.
+    intros m Hm.
+    destruct Hm as [Hm | Hm]; subst.
+    exists (tapp (fstop p1) tstop); split; auto. apply tapp_pref.
+    exists (tapp (fstop p2) tstop); split; auto. apply tapp_pref.
+  - intros b' Hb'.
+    unfold spref in Hb'.
+    pose proof Hb' as Hb''.
+    specialize (Hb' (fstop p1)).
+    assert (fstop p1 = fstop p1 \/ fstop p1 = fstop p2) by now left.
+    specialize (Hb' H). destruct Hb' as [t1 [Ht1 Ht1']]. clear H.
+    specialize (Hb'' (fstop p2)).
+    assert (fstop p2 = fstop p1 \/ fstop p2 = fstop p2) by now right.
+    specialize (Hb'' H). destruct Hb'' as [t2 [Ht2 Ht2']]. clear H.
+    intros Hn.
+    assert (forall p t, prefix (fstop p) t -> t = tapp (fstop p) tstop).
+    { clear. induction p; destruct t; intros H; try now auto.
+      simpl in *. destruct H; subst. specialize (IHp t H0). now subst. }
+    assert (H1' : b' (tapp (fstop p1) tstop)) by now specialize (H p1 t1 Ht1'); subst.
+    assert (H2' : b' (tapp (fstop p2) tstop)) by now specialize (H p2 t2 Ht2'); subst.
+    specialize (Hn p1 p2 H1' H2' H1). now contradiction.
+Qed.
 
 
 (* First definition of noninterference, with filter *)
@@ -40,94 +114,10 @@ Definition NI : hprop :=
                             exists t', filter pub_input t1 t' /\ filter pub_input t2 t') ->
                            exists t', filter pub t1 t' /\ filter pub t2 t'.
 
-
-Inductive eq_prop (P : event -> Prop) : trace -> trace -> Prop :=
-| eq_prop_tstop : eq_prop P tstop tstop
-| eq_prop_tsilent : eq_prop P tsilent tsilent
-| eq_prop_tcons_true : forall (e : event) (t t' : trace),
-    eq_prop P t t' ->
-    eq_prop P (tcons e t) (tcons e t')
-| eq_prop_tcons_false_left : forall (e : event) (t t' : trace),
-    eq_prop P t t' ->
-    ~ (P e) ->
-    eq_prop P (tcons e t) t'
-| eq_prop_tcons_false_right : forall (e : event) (t t' : trace),
-    eq_prop P t t' ->
-    ~ (P e) ->
-    eq_prop P t (tcons e t')
-.
-
-
-(* Second definition of noninterference, with eq_prop *)
-Definition NI' : hprop :=
-  fun b => forall (t1 t2 : trace), b t1 -> b t2 ->
-                           (fin t1 /\ fin t2 /\ @eq_prop pub_input t1 t2) ->
-                           @eq_prop pub t1 t2.
-
-Theorem NI_hypersafety : HSafe NI.
+Theorem NI_NI_fun : forall (b : prop), NI b <-> NI_fun b.
 Proof.
-  unfold HSafe.
-  intros b HnNI.
-  unfold NI in HnNI.
-  rewrite not_forall_ex_not in HnNI.
-  destruct HnNI as [t1 HnNI].
-  rewrite not_forall_ex_not in HnNI.
-  destruct HnNI as [t2 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [Hbt1 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [Hbt2 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [[H1 [H2 H3]] HnNI].
-  destruct H3 as [t' [Ht'1 Ht'2]].
-  rewrite not_ex_forall_not in HnNI.
-  assert (H: forall (t1 t2 : trace), fin t1 -> fin t2 -> 
-             (forall (t : trace), ~(filter pub t1 t /\ filter pub t2 t)) ->
-             exists (m1 m2 : finpref), prefix m1 t1 /\ prefix m2 t2 /\
-                                  (forall t1' t2', prefix m1 t1' -> prefix m2 t2' ->
-                                              forall (t' : trace), ~(filter pub t1' t' /\ filter pub t2' t'))
-         ).
-  { clear.
-    intros t1 t2 Hfin1 Hfin2.
-    induction Hfin1; induction Hfin2; intros H; try now auto.
-    - exfalso. apply (H tstop). now split.
-    - admit.
-    - admit.
-    - admit.
-  }
-  specialize (H t1 t2 H1 H2 HnNI).
-  destruct H as [m1 [m2 [Hpref1 [Hpref2 H]]]].
-  exists (fun x => x = m1 \/ x = m2).
-  repeat split.
-  - admit.
-  - unfold spref. intros m Hm. destruct Hm as [Hm | Hm]; subst; now eauto.
-  - admit.
-Admitted.
-
-Theorem NI'_hypersafety : HSafe NI'.
-Proof.
-  unfold HSafe, NI'.
-  intros b HnNI.
-  rewrite not_forall_ex_not in HnNI.
-  destruct HnNI as [t1 HnNI].
-  rewrite not_forall_ex_not in HnNI.
-  destruct HnNI as [t2 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [Hbt1 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [Hbt2 HnNI].
-  rewrite not_imp in HnNI; destruct HnNI as [[Hfin1 [Hfin2 Heq]] HnNI].
-  (* I should probably use a custom induction theorem *)
-  induction Heq. 
-  - exfalso; apply HnNI. now constructor.
-  - exfalso; apply HnNI. now constructor.
-  - (* how to proceed? we need `b t` to apply the induction hypothesis, but have only
-       `b (tcons e t)` *)
-    assert (H1: b t) by admit.
-    assert (H2: b t') by admit.
-    assert (H3: fin t) by now inversion Hfin1.
-    assert (H4: fin t') by now inversion Hfin2.
-    assert (H5: ~ eq_prop pub t t').
-    { intros Hn. apply HnNI. now constructor. }
-    specialize (IHHeq H1 H2 H3 H4 H5).
-    destruct IHHeq as [M [HM [HMb H]]].
-    (* This becomes too easy now... probably because the induction hypothesis is too strong *)
-    exists M. repeat split; try now auto.
+  unfold NI, NI_fun.
+  intros b. split.
   - admit.
   - admit.
 Admitted.
