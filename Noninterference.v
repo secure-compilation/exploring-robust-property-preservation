@@ -114,10 +114,81 @@ Definition NI : hprop :=
                             exists t', filter pub_input t1 t' /\ filter pub_input t2 t') ->
                            exists t', filter pub t1 t' /\ filter pub t2 t'.
 
+Lemma filter_filter_rel : forall (P : event -> Prop) (Pf : event -> bool) (H: forall e, P e <-> Pf e = true)
+                            (p1 p2 : pref), 
+    (exists t', filter P (tapp (fstop p1) tstop) t' /\ filter P (tapp (fstop p2) tstop) t')
+    <-> (List.filter Pf p1 = List.filter Pf p2).
+Proof.
+  intros P Pf H p1 p2.
+  split.
+  - generalize dependent p2.
+    induction p1; induction p2; try now auto.
+    + intros [t' [Ht'1 Ht'2]].
+      inversion Ht'2; subst; try now auto.
+      assert (Pf a = false).
+      { specialize (H a). destruct (Pf a). exfalso. apply H4. apply H. reflexivity.
+        reflexivity. }
+      simpl; rewrite H0.
+      assert (exists t' : trace, filter P (tapp (fstop nil) tstop) t' /\
+                            filter P (tapp (fstop p2) tstop) t').
+      { exists t'. split. assumption.
+        inversion Ht'2; subst; now auto. }
+      now specialize (IHp2 H1).
+    + intros [t' [Ht'1 Ht'2]].
+      inversion Ht'1; subst; try now auto.
+      assert (Pf a = false).
+      { specialize (H a). destruct (Pf a). exfalso. apply H4. apply H. reflexivity.
+        reflexivity. }
+      simpl; rewrite H0. specialize (IHp1 nil).
+      assert (exists t' : trace,
+                 filter P (tapp (fstop p1) tstop) t' /\ filter P (tapp (fstop nil) tstop) t').
+      { exists t'. split; assumption. }
+      now specialize (IHp1 H1).
+    + intros [t' [Ht'1 Ht'2]].
+      inversion Ht'1; inversion Ht'2; subst.
+      * inversion H8; subst. apply H in H4. simpl; rewrite H4; simpl.
+        specialize (IHp1 p2).
+        assert (exists t' : trace, filter P (tapp (fstop p1) tstop) t' /\
+                              filter P (tapp (fstop p2) tstop) t').
+        { exists t'0. split; assumption. }
+        specialize (IHp1 H0). now rewrite IHp1.
+      * apply H in H4.
+        assert (Pf a0 = false).
+        { specialize (H a0). destruct (Pf a0). exfalso. apply H9. apply H. reflexivity.
+          reflexivity. }
+        simpl; rewrite H4, H0.
+        assert (exists t' : trace, filter P (tapp (fstop (a :: p1)%list) tstop) t' /\
+                              filter P (tapp (fstop p2) tstop) t').
+        { exists (tcons a t'0). split; assumption. }
+        specialize (IHp2 H1). rewrite <- IHp2. simpl. rewrite H4. reflexivity.
+      * apply H in H9.
+        assert (Pf a = false).
+        { specialize (H a). destruct (Pf a). exfalso. apply H4. apply H. reflexivity.
+          reflexivity. }
+        simpl; rewrite H9, H0.
+        specialize (IHp1 (cons a0 p2)).
+        assert (exists t' : trace, filter P (tapp (fstop p1) tstop) t' /\
+                              filter P (tapp (fstop (a0 :: p2)%list) tstop) t').
+        { exists (tcons a0 t'1). split; assumption. }
+        specialize (IHp1 H1). rewrite IHp1. simpl. rewrite H9. reflexivity.
+      * assert (Pf a0 = false).
+        { specialize (H a0). destruct (Pf a0). exfalso. apply H9. apply H. reflexivity.
+          reflexivity. }
+        assert (Pf a = false).
+        { specialize (H a). destruct (Pf a). exfalso. apply H4. apply H. reflexivity.
+          reflexivity. }
+        simpl. rewrite H0, H1. apply (IHp1 p2).
+        exists t'. now split.
+  - admit.
+Admitted.
+
+
 Theorem NI_NI_fun : forall (b : prop), NI b <-> NI_fun b.
 Proof.
   unfold NI, NI_fun.
   intros b. split.
-  - admit.
+  - intros H p1 p2 Hp1 Hp2 Hfilter.
+    specialize (H (tapp (fstop p1) tstop) (tapp (fstop p2) tstop) Hp1 Hp2).
+    assert .
   - admit.
 Admitted.
