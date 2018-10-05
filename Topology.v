@@ -1,4 +1,4 @@
-Require Import Events.
+Require Import Events. 
 Require Import ClassicalExtras.
 Require Import TraceModel.
 Require Import Properties.
@@ -102,6 +102,7 @@ Qed.
 
 Lemma closure_includes {X : Set} (S: X -> Prop) (τ : @Topology X) :
   forall x, (S x -> (closure S τ) x).
+
 Proof. unfold closure. now auto. Qed.
 
 Lemma closure_smallest {X : Set} (S : X -> Prop) (τ : @Topology X) :
@@ -202,3 +203,23 @@ Proof.
       ++ intros [Hc Hconj]. rewrite de_morgan1 in Hconj.
          destruct Hconj; try now auto. now rewrite dne.
 Qed.
+
+Lemma dense_closure_true (X : Set)
+                         (τ : @Topology X)
+                         (D : X -> Prop) :
+  (forall x : X, (closure D τ) x) -> dense τ D.
+Proof.
+  intros H_closure A HA [a Aa].
+  apply NNPP. intros Hf. rewrite not_ex_forall_not in Hf. 
+  assert (H_meet : forall t, D t -> (fun t => ~ A t) t).
+  { intros t. specialize (Hf t). rewrite de_morgan1 in Hf.
+    intros Hdt. now destruct Hf. }  
+  assert (HC : closed τ (fun t0 => ~ A t0)).
+  { unfold closed. assert ((fun x : X => ~ ~ A x) = A).
+    apply functional_extensionality. intros x.
+    apply prop_ext. symmetry. now apply dne. 
+    now rewrite H. }    
+  specialize (closure_smallest D τ (fun t0 => ~ A t0) HC H_meet).
+  intros ff. specialize (H_closure a). specialize (ff a H_closure).
+  now simpl in ff. 
+Qed.   
