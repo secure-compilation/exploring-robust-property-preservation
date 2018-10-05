@@ -292,39 +292,39 @@ Proof.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
-  - assert (~silent e) by admit. pose proof H as H'.
+  - assert (~silent e) by admit.
+
+    (* Try 1 -- Bad *)
+    pose proof H as H'.
     specialize (H e []).
     assert (Hpref: prefix (ftbd [e]) (tcons e t')) by now split.
     specialize (H Hpref).
     destruct H as [c' [c'' [H1 H2]]].
+    assert (Hndiv' : ~ diverges t') by admit.
+    assert (Hnstopped' : ~ stopped t') by admit.
+    specialize (less_general_coinduction_hypothesis t' c'). (* need to apply to c' to make progress *)
+    specialize (less_general_coinduction_hypothesis Hndiv' Hnstopped').
+    assert (forall (e : event) (m : list event),
+               prefix (ftbd (e :: m)) t' ->
+               exists c1 c2 : cfg, steps' c' [e] c1 /\ steps' c1 m c2).
+    {
+      intros e0 m He0m.
+      specialize (H' e (e0 :: m)).
+      assert (forall m t e, prefix (ftbd m) t -> prefix (ftbd (e :: m)) (tcons e t)).
+      { clear.
+        intros m t e H.
+        now split. }
+      specialize (H' (H (e0 :: m) t' e He0m)).
+      clear H.
+      destruct H' as [c1 [c2 [Hc1 Hc2]]].
+      apply steps'_cons_smaller in Hc2.
+      destruct Hc2 as [c3 [Hc31 Hc32]].
+      (* steps c [e] c1, steps c [e] c', but no steps c' [e0] c3 *)
+      (* can't prove that :( *)
+      admit.
+    }
+    admit.
     
-    inversion H1; subst.
-    + assert (Hndiv' : ~ diverges t') by admit.
-      assert (Hnstopped' : ~ stopped t') by admit.
-      specialize (less_general_coinduction_hypothesis t' c'0).
-      specialize (less_general_coinduction_hypothesis Hndiv' Hnstopped').
-      
-      assert (forall (e : event) (m : list event),
-                 prefix (ftbd (e :: m)) t' ->
-                 exists c' c'' : cfg, steps' c'0 [e] c' /\ steps' c' m c'').
-      {
-        intros e0 m He0m.
-        specialize (H' e (e0 :: m)).
-        assert (forall m t e, prefix (ftbd m) t -> prefix (ftbd (e :: m)) (tcons e t)).
-        { clear.
-          intros m t e H.
-          now split. }
-        specialize (H' (H (e0 :: m) t' e He0m)).
-        clear H.
-        destruct H' as [c1 [c2 [Hc1 Hc2]]].
-        
-        
-        admit.
-      }
-      specialize (less_general_coinduction_hypothesis H).
-      apply SCons with (c' := c'0); now assumption.          
-    + admit.
-      Guarded.
 Admitted.
 
 
