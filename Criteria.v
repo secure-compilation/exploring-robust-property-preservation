@@ -255,6 +255,8 @@ Qed.
 
 (* 2SC Hyperproperties *)
 
+(* CA: unclear def *)
+
 (* forall (b : prop), ~ (H b) ->
                 (exists (m1 m2 : finpref),
                     spref (fun m => m = m1 \/ m = m2) b /\
