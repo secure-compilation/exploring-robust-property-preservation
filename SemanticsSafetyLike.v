@@ -241,6 +241,9 @@ Admitted.
 Definition configuration_determinacy := forall (c c1 c2 : cfg) (m : pref),
     steps' c m c1 -> steps' c m c2 -> steps' c1 [] c2 \/ steps' c2 [] c1.
 
+Definition very_strong_determinacy := forall (c c1 c2 : cfg) (e1 e2 : event),
+    steps' c [e1] c1 -> steps' c [e2] c2 -> (c1 = c2 \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
+
 Definition strong_determinacy := forall (c c1 c2 : cfg) (e1 e2 : event),
     step c e1 c1 -> step c e2 c2 -> (c1 = c2 \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
 
@@ -264,32 +267,9 @@ Qed.
 Definition weak_determinacy := forall (c1 c1' c2 c2' : cfg) (m : pref),
     rel_cfg c1 c1' -> steps' c1 m c2 -> steps' c1' m c2' -> rel_cfg c2 c2'.
 
-
 (* TODO: Was forced into generalizing the induction hypothesis too much for semantics_safety_like_right:
          - the stronger hypothesis only works if the language is determinate
          - for the purposes of Carmine's proofs that's fine though!*)
-Lemma too_general_coinduction_hypothesis : forall t c,
-  ~ diverges t ->
-  (forall m1 m2 c', prefix (ftbd (app m1 m2)) t -> steps' c m1 c' -> exists c'', steps' c' m2 c'') -> sem' c t.
-Proof.
-  cofix. intros t c Hndiv H.
-  destruct t as [| | e t'].
-  - specialize (H nil nil c I (SSTbd c)). destruct H as [c' H]. admit.
-  - apply False_ind. apply Hndiv. now constructor.
-  - assert(~silent e) by admit. (* TODO: prove that sem' only adds non-silent events to the trace *)
-    pose proof H as H'. specialize (H nil (cons e nil) c (conj eq_refl I) (SSTbd c)).
-    destruct H as [c' H]. eapply steps'_sem'. eassumption.
-    eapply too_general_coinduction_hypothesis. eapply not_diverges_cons; eassumption.
-    intros m1 m2 c'' H1 H2. specialize (H' (cons e m1) m2 c'' (conj eq_refl H1)).
-    destruct H' as [c''' H'].
-    replace (cons e m1) with (app (cons e nil) m1) by reflexivity. eapply steps'_trans; eassumption.
-    exists c'''. apply H'.
-    (* Guarded. *)
-    (* -> Recursive definition of more_general_coinduction_hypothesis is ill-formed.
-       -- so far so good, but we still need to convince Coq that this is well-founded
-       -- should probably specialize steps'_sem' for the singleton case and make the
-          application of SCons explicit *)
-Admitted.
 
 Lemma steps'_cons_smaller : forall c1 c3 m e,
     steps' c1 (e :: m) c3 -> exists c2, steps' c1 [e] c2 /\ steps' c2 m c3.
@@ -311,18 +291,20 @@ Inductive stopped : trace -> Prop :=
   | stopped_stop : stopped tstop
   | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
 
-Lemma less_general_coinduction_hypothesis (det : configuration_determinacy): forall t c,
+Lemma less_general_coinduction_hypothesis (det : very_strong_determinacy) : forall t c,
     ~ diverges t -> ~ stopped t ->
-    (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
+    (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') ->
+    sem' c t.
 Proof.
   cofix. intros t c Hndiv Hnstopped H.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
   - assert (~silent e) by admit.
-
-    (* Try 2 -- Still not enough??? the configuration determinacy seems to be not strong
-       enough to prove this... but maybe I missed something? *)
+    
+    
+    (* Try 3 -- Very strong determinacy.
+       It works, but maybe too strong. Left to check if it is reasonnable *)
     pose proof H as H'.
     assert (H1: prefix (ftbd [e]) (tcons e t')) by now split.
     specialize (H e [] H1); clear H1; destruct H as [c' [c'' [Hc' Hc'']]].
@@ -331,6 +313,44 @@ Proof.
     assert (Hndiv' : ~ diverges t') by admit.
     assert (Hnstopped' : ~ stopped t') by admit.
     apply less_general_coinduction_hypothesis.
+    assumption. assumption.
+    intros e0 m Hpref.
+    assert (H: prefix (ftbd (e :: e0 :: m)) (tcons e t')) by now split.
+    specialize (H' e (e0 :: m) H); clear H.
+    destruct H' as [c1 [c2 [Hc1 Hc2]]].
+    pose proof (det c c' c1 e e Hc' Hc1) as H.
+    destruct H.
+    + subst. apply steps'_cons_smaller in Hc2. destruct Hc2 as [c3 [H1 H2]].
+      exists c3. exists c2. now split.
+    + destruct H as [_ [_ H]]. now contradiction.
+      (* Guarded *) (* it's still not guarded. but maybe this is ok, because here at least
+                       I can convince myself that something is decreasing, which was not the case
+                       in strong coinduction hypothesis *)
+Admitted.
+
+
+Lemma less_general_coinduction_hypothesis' (det : configuration_determinacy): forall t c,
+    ~ diverges t -> ~ stopped t ->
+    (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
+Proof.
+  cofix. intros t c Hndiv Hnstopped H.
+  destruct t as [| | e t'].
+  - apply False_ind. apply Hnstopped. now constructor.
+  - apply False_ind. apply Hndiv. now constructor.
+  - assert (~silent e) by admit.
+    
+    
+    (* Try 2 -- configuration determinacy -- 
+       Still not enough??? the configuration determinacy seems to be not strong
+       enough to prove this... but maybe I missed something? *)
+    pose proof H as H'.
+    assert (H1: prefix (ftbd [e]) (tcons e t')) by now split.
+    specialize (H e [] H1); clear H1; destruct H as [c' [c'' [Hc' Hc'']]].
+    apply steps'_sem' with (c' := c').
+    assumption.
+    assert (Hndiv' : ~ diverges t') by admit.
+    assert (Hnstopped' : ~ stopped t') by admit.
+    apply less_general_coinduction_hypothesis'.
     assumption. assumption.
     intros e0 m Hpref.
     assert (H: prefix (ftbd (e :: e0 :: m)) (tcons e t')) by now split.
@@ -384,7 +404,7 @@ Admitted.
 (* admit. *)
 
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
-Lemma semantics_safety_like_right (det : configuration_determinacy): forall t P,
+Lemma semantics_safety_like_right (det : very_strong_determinacy): forall t P,
   ~ diverges t -> ~ stopped t -> 
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
@@ -412,7 +432,7 @@ Proof.
     exists c3, c2. split; assumption.
 Qed.
 
-Lemma tgt_sem (det : configuration_determinacy) :semantics_safety_like lang.
+Lemma tgt_sem (det : very_strong_determinacy) :semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
      signified with a dependent type for the sake of simplicity), that
      does not belong to psem P. The argument can be that if every prefix
