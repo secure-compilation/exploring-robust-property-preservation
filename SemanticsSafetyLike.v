@@ -241,6 +241,29 @@ Admitted.
 Definition configuration_determinacy := forall (c c1 c2 : cfg) (m : pref),
     steps' c m c1 -> steps' c m c2 -> steps' c1 [] c2 \/ steps' c2 [] c1.
 
+Definition strong_determinacy := forall (c c1 c2 : cfg) (e1 e2 : event),
+    step c e1 c1 -> step c e2 c2 -> (c1 = c2 \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
+
+Definition rel_cfg (c1 c2 : cfg) : Prop := forall (t : trace), sem' c1 t <-> sem' c2 t.
+
+Lemma rel_cfg_reflexivity : forall (c : cfg), rel_cfg c c.
+Proof.
+  now unfold rel_cfg.
+Qed.
+
+Lemma rel_cfg_transitivity : forall (c1 c2 c3 : cfg), rel_cfg c1 c2 -> rel_cfg c2 c3 -> rel_cfg c1 c3.
+Proof.
+  now firstorder.
+Qed.
+
+Lemma rel_cfg_symmetry : forall (c1 c2 : cfg), rel_cfg c1 c2 -> rel_cfg c2 c1.
+Proof.
+  now firstorder.
+Qed.
+
+Definition weak_determinacy := forall (c1 c1' c2 c2' : cfg) (m : pref),
+    rel_cfg c1 c1' -> steps' c1 m c2 -> steps' c1' m c2' -> rel_cfg c2 c2'.
+
 
 (* TODO: Was forced into generalizing the induction hypothesis too much for semantics_safety_like_right:
          - the stronger hypothesis only works if the language is determinate
