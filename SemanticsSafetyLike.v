@@ -238,6 +238,10 @@ Lemma steps'_trans : forall c1 c2 c3 m m',
   steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
 Admitted.
 
+Definition configuration_determinacy := forall (c c1 c2 : cfg) (m : pref),
+    steps' c m c1 -> steps' c m c2 -> steps' c1 [] c2 \/ steps' c2 [] c1.
+
+
 (* TODO: Was forced into generalizing the induction hypothesis too much for semantics_safety_like_right:
          - the stronger hypothesis only works if the language is determinate
          - for the purposes of Carmine's proofs that's fine though!*)
@@ -284,7 +288,7 @@ Inductive stopped : trace -> Prop :=
   | stopped_stop : stopped tstop
   | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
 
-Lemma less_general_coinduction_hypothesis : forall t c,
+Lemma less_general_coinduction_hypothesis (det : configuration_determinacy): forall t c,
     ~ diverges t -> ~ stopped t ->
     (forall e m, prefix (ftbd (cons e m)) t -> exists c' c'', steps' c [e] c' /\ steps' c' m c'') -> sem' c t.
 Proof.
@@ -294,42 +298,70 @@ Proof.
   - apply False_ind. apply Hndiv. now constructor.
   - assert (~silent e) by admit.
 
-    (* Try 1 -- Bad *)
+    (* Try 2 -- Still not enough??? the configuration determinacy seems to be not strong
+       enough to prove this... but maybe I missed something? *)
     pose proof H as H'.
-    specialize (H e []).
-    assert (Hpref: prefix (ftbd [e]) (tcons e t')) by now split.
-    specialize (H Hpref).
-    destruct H as [c' [c'' [H1 H2]]].
+    assert (H1: prefix (ftbd [e]) (tcons e t')) by now split.
+    specialize (H e [] H1); clear H1; destruct H as [c' [c'' [Hc' Hc'']]].
+    apply steps'_sem' with (c' := c').
+    assumption.
     assert (Hndiv' : ~ diverges t') by admit.
     assert (Hnstopped' : ~ stopped t') by admit.
-    specialize (less_general_coinduction_hypothesis t' c'). (* need to apply to c' to make progress *)
-    specialize (less_general_coinduction_hypothesis Hndiv' Hnstopped').
-    assert (forall (e : event) (m : list event),
-               prefix (ftbd (e :: m)) t' ->
-               exists c1 c2 : cfg, steps' c' [e] c1 /\ steps' c1 m c2).
-    {
-      intros e0 m He0m.
-      specialize (H' e (e0 :: m)).
-      assert (forall m t e, prefix (ftbd m) t -> prefix (ftbd (e :: m)) (tcons e t)).
-      { clear.
-        intros m t e H.
-        now split. }
-      specialize (H' (H (e0 :: m) t' e He0m)).
-      clear H.
-      destruct H' as [c1 [c2 [Hc1 Hc2]]].
-      apply steps'_cons_smaller in Hc2.
-      destruct Hc2 as [c3 [Hc31 Hc32]].
-      (* steps c [e] c1, steps c [e] c', but no steps c' [e0] c3 *)
-      (* can't prove that :( *)
-      admit.
-    }
-    admit.
-    
+    apply less_general_coinduction_hypothesis.
+    assumption. assumption.
+    intros e0 m Hpref.
+    assert (H: prefix (ftbd (e :: e0 :: m)) (tcons e t')) by now split.
+    specialize (H' e (e0 :: m) H); clear H.
+    destruct H' as [c1 [c2 [Hc1 Hc2]]].
+    pose proof (det c c' c1 [e] Hc' Hc1) as H.
+    destruct H.
+    + apply steps'_cons_smaller in Hc2. destruct Hc2 as [c3 [Hc1c3 Hc3c2]].
+      exists c3. exists c2. split.
+      apply steps'_trans with (c2 := c1) (m := []); assumption.
+      assumption.
+    + apply steps'_cons_smaller in Hc2. destruct Hc2 as [c3 [Hc1c3 Hc3C2]].
 Admitted.
 
 
+
+(* (* Try 1 -- Bad *) *)
+(* pose proof H as H'. *)
+(* specialize (H e []). *)
+(* assert (Hpref: prefix (ftbd [e]) (tcons e t')) by now split. *)
+(* specialize (H Hpref). *)
+(* destruct H as [c' [c'' [H1 H2]]]. *)
+(* assert (Hndiv' : ~ diverges t') by admit. *)
+(* assert (Hnstopped' : ~ stopped t') by admit. *)
+(* specialize (less_general_coinduction_hypothesis t' c'). (* need to apply to c' to make progress *) *)
+(* specialize (less_general_coinduction_hypothesis Hndiv' Hnstopped'). *)
+(* assert (forall (e : event) (m : list event), *)
+(*            prefix (ftbd (e :: m)) t' -> *)
+(*            exists c1 c2 : cfg, steps' c' [e] c1 /\ steps' c1 m c2). *)
+(* { *)
+(*   intros e0 m He0m. *)
+(*   specialize (H' e (e0 :: m)). *)
+(*   assert (forall m t e, prefix (ftbd m) t -> prefix (ftbd (e :: m)) (tcons e t)). *)
+(*   { clear. *)
+(*     intros m t e H. *)
+(*     now split. } *)
+(*   specialize (H' (H (e0 :: m) t' e He0m)). *)
+(*   clear H. *)
+(*   destruct H' as [c1 [c2 [Hc1 Hc2]]]. *)
+(*   apply steps'_cons_smaller in Hc2. *)
+(*   destruct Hc2 as [c3 [Hc31 Hc32]]. *)
+(*   pose proof (det c c' c1 [e] H1 Hc1). *)
+(*   destruct H as [H | H]. *)
+(*   - exists c3, c2. split. apply steps'_trans with (c2 := c1) (m := []) (m' := [e0]). *)
+(*     assumption. assumption. assumption. *)
+(*   - exists  *)
+(*   (* steps c [e] c1, steps c [e] c', but no steps c' [e0] c3 *) *)
+(*   (* can't prove that :( *) *)
+(*   admit. *)
+(* } *)
+(* admit. *)
+
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
-Lemma semantics_safety_like_right : forall t P,
+Lemma semantics_safety_like_right (det : configuration_determinacy): forall t P,
   ~ diverges t -> ~ stopped t -> 
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
@@ -343,7 +375,9 @@ Proof.
     now destruct t.
   - exfalso. apply Hndiv. now constructor.
   - remember (tcons e0 t0) as t.
-    apply less_general_coinduction_hypothesis. apply Hndiv.
+    apply less_general_coinduction_hypothesis.
+    apply det.
+    apply Hndiv.
     apply Hnstopped.
     intros e m H'.
     specialize (H (ftbd (e :: m)) H').
@@ -355,7 +389,7 @@ Proof.
     exists c3, c2. split; assumption.
 Qed.
 
-Lemma tgt_sem : semantics_safety_like lang.
+Lemma tgt_sem (det : configuration_determinacy) :semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
      signified with a dependent type for the sake of simplicity), that
      does not belong to psem P. The argument can be that if every prefix
@@ -378,7 +412,7 @@ Proof.
     intros H.
     induction H; now constructor. }
   specialize (Hinf (Hstopinf Hstopped)). now contradiction.
-  pose proof (semantics_safety_like_right t P Hndiv Hnstopped).
+  pose proof (semantics_safety_like_right det t P Hndiv Hnstopped).
   rewrite -> contra in H.
   specialize (H Hsem). apply not_all_ex_not in H.
   destruct H as [m Hm]. rewrite not_imp in Hm. destruct Hm as [Hm1 Hm2].
