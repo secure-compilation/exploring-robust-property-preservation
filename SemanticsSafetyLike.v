@@ -242,10 +242,10 @@ Definition configuration_determinacy := forall (c c1 c2 : cfg) (m : pref),
     steps' c m c1 -> steps' c m c2 -> steps' c1 [] c2 \/ steps' c2 [] c1.
 
 Definition very_strong_determinacy := forall (c c1 c2 : cfg) (e1 e2 : event),
-    steps' c [e1] c1 -> steps' c [e2] c2 -> (c1 = c2 \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
+    steps' c [e1] c1 -> steps' c [e2] c2 -> ((e1 = e2 /\ c1 = c2) \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
 
 Definition strong_determinacy := forall (c c1 c2 : cfg) (e1 e2 : event),
-    step c e1 c1 -> step c e2 c2 -> (c1 = c2 \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
+    step c e1 c1 -> step c e2 c2 -> ((e1 = e2 /\ c1 = c2) \/ (is_input e1 /\ is_input e2 /\ e1 <> e2)).
 
 Definition rel_cfg (c1 c2 : cfg) : Prop := forall (t : trace), sem' c1 t <-> sem' c2 t.
 
