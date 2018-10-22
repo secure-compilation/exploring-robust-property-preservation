@@ -73,6 +73,8 @@ Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
   | fstop m' => steps' c m' c' /\ stuck c'
   end.
 
+Hint Unfold steps.
+
 (* must terminate or cause non-silent event ... TODO: but that's not
    what we can easily write, folowing definition may termination *)
 Definition cannot_loop_silent (c:cfg) : Prop :=
@@ -212,24 +214,50 @@ Qed.
 
 Local Hint Resolve steps'_sem'.
 
-(* TODO *)
-Lemma steps_sem' : forall c m c' t,
+Lemma steps_sem'_app : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
 Proof.
   cofix Hfix.
   intros c m c' t H H0.
-  destruct t.
-  - clear Hfix.
-    generalize dependent c'.
-    induction finpref m as e p IHp; intros; eauto.
-    + destruct H; eauto.
-    + simpl in *. destruct H; eauto. specialize (IHp 
-  cofix.
-  admit.
-Admitted.
-
+  destruct t; destruct m.
+  - inversion H; subst; try now auto.
+    inversion H1; subst; try now auto.
+    simpl in *. apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop m) c' tstop (conj H5 H2) H0).
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop p) c' tstop (conj H5 H2) H0).    
+  - inversion H; subst; try now auto.
+    simpl in *. apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd m) c' tstop H3 H0). 
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd p) c' tstop H3 H0).
+  - inversion H; subst; try now auto.
+    inversion H1; subst; try now auto.
+    simpl in *. now constructor.
+    simpl in *. apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop m) c' tsilent (conj H5 H2) H0).
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop p) c' tsilent (conj H5 H2) H0).
+  - inversion H; subst; try now auto.
+    simpl in *. apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd m) c' tsilent H3 H0). 
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd p) c' tsilent H3 H0).
+  - inversion H; subst; try now auto.
+    inversion H1; subst; try now auto.
+    simpl in *. now constructor.
+    apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop m) c' (tcons e t) (conj H5 H2) H0).
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (fstop p) c' (tcons e t) (conj H5 H2) H0).
+  - inversion H; subst; try now auto.
+    simpl in *. apply SCons with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd m) c' (tcons e t) H3 H0).
+    simpl in *. eapply SSilent with (c' := c'0); eauto.
+    now specialize (Hfix c'0 (ftbd p) c' (tcons e t) H3 H0).
+Qed.
 
 Lemma steps_psem : forall P m c,
   steps (init P) m c ->
@@ -246,9 +274,10 @@ Proof.
       ++ apply tapp_pref.
       ++ apply tapp_pref.
   - unfold sem.
-    eapply steps_sem'. eassumption.
+    eapply steps_sem'_app. eassumption.
     now apply sem'_trace_of.
 Qed.
+
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
   prefix m t ->
@@ -363,11 +392,11 @@ Proof.
   intros c m t H H0.
   generalize dependent t. generalize dependent c.
   induction m; intros.
-  - exists c; now constructor.
+  - now eauto.
   - destruct t.
     + inversion H.
     + inversion H.
-    + inversion H; subst.
+    + inversion H; subst. 
 Admitted.
 
 
@@ -393,21 +422,22 @@ Qed.
 Definition weak_determinacy := forall (c1 c1' c2 c2' : cfg) (m : pref),
     rel_cfg c1 c1' -> steps' c1 m c2 -> steps' c1' m c2' -> rel_cfg c2 c2'.
 
-Lemma steps'_cons_smaller : forall c1 c3 m e,
-    steps' c1 (e :: m) c3 -> exists c2, steps' c1 [e] c2 /\ steps' c2 m c3.
-Proof.
-  intros c1 c3 m e H.
-  remember (e :: m) as p.
-  induction H.
-  - inversion Heqp.
-  - inversion Heqp; subst. clear Heqp.
-    exists c'; split. apply SSCons with (c' := c'); auto. constructor. assumption.
-  - inversion Heqp; subst. specialize (IHsteps' H2).
-    destruct IHsteps' as [c2 [Hc2 Hc2']].
-    exists c2. split.
-    apply SSSilent with (e := e0) (c' := c'); auto.
-    assumption.
-Qed.
+(* Lemma steps'_cons_smaller : forall c1 c3 m e, *)
+(*     steps' c1 (e :: m) c3 -> exists c2, steps' c1 [e] c2 /\ steps' c2 m c3. *)
+(* Proof. *)
+(*   intros c1 c3 m e H. *)
+(*   remember (e :: m) as p. *)
+(*   induction H. *)
+(*   - inversion Heqp. *)
+(*   - inversion Heqp; subst. clear Heqp. *)
+(*     exists c'; split. apply SSCons with (c' := c'); auto. *)
+(*     constructor. assumption. *)
+(*   - inversion Heqp; subst. specialize (IHsteps' H2). *)
+(*     destruct IHsteps' as [c2 [Hc2 Hc2']]. *)
+(*     exists c2. split. *)
+(*     apply SSSilent with (e := e0) (c' := c'); auto. *)
+(*     assumption. *)
+(* Qed. *)
 
 Inductive stopped : trace -> Prop :=
   | stopped_stop : stopped tstop
@@ -437,7 +467,7 @@ Proof.
     specialize (H (e :: m) H'); clear H'.
     unfold weak_determinacy in det.
     destruct H as [c'' Hc''].
-    apply steps'_cons_smaller in Hc''.
+    apply steps'_cons in Hc''.
     destruct Hc'' as [cc [Hcc1 Hcc2]].
     specialize (det c c c' cc [e] (rel_cfg_reflexivity c) Hc' Hcc1).
     apply rel_cfg_to_rel_cfg_pref in det. unfold rel_cfg_pref in det.
@@ -448,10 +478,6 @@ Proof.
     apply det.
     (* Still not guarded. But should intuitively work *)
 Admitted.
-    
-    
-
-
 
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right (det : weak_determinacy): forall t P,
