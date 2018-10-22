@@ -198,21 +198,22 @@ Proof.
     eapply steps_sem'. eassumption.
     now apply sem'_trace_of.
 Qed.
-
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
   prefix m t ->
   fstopped m = false ->
   exists c, steps c0 m c.
 Proof.
-  destruct m as [m | m]; induction m; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
+  induction finpref m as e p IHp; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
   - exists c0. apply SSTbd.
-  - destruct t as [| | e' t']. now inversion Hpref. now inversion Hpref.
-    simpl in Hpref. destruct Hpref as [Heq Hpref]. subst e'.
-    inversion Hsem. subst. simpl in Hnot_stopped.
-    destruct (IHm c' t' H4 Hpref Hnot_stopped) as [c'' HH].
-    exists c''. eapply SSCons; eassumption.
-Admitted. (* 2018-09-27 Broken when updating definitions
+  - destruct t as [| | e' t']; try now inversion Hpref.
+    destruct Hpref as [Heq Hpref]; subst.
+    inversion Hsem; subst; simpl in *.
+    + destruct (IHp c' t' H4 Hpref Hnot_stopped) as [c'' HH].
+      exists c''. eapply SSCons; eassumption.
+    + admit.
+Admitted.
+(* 2018-09-27 Broken when updating definitions
 Qed. *)
 
 Lemma sem_prefix : forall m P t,
@@ -231,7 +232,6 @@ Lemma psem_steps : forall m P,
   exists c, steps (init P) m c.
 Proof. intros m P [t [H1 H2]] Hstopped. eapply sem_prefix; eassumption. Qed.
 
-(* CH: ouch, this is actually trivial *)
 Definition semantics_safety_like_reverse : forall t P m,
   sem P t ->
   prefix m t ->
@@ -239,19 +239,6 @@ Definition semantics_safety_like_reverse : forall t P m,
 Proof.
   intros t P m H H0. unfold psem. exists t. split; assumption.
 Qed.
-(* CH: old proof
-  intros t P m Hsem Hpref.
-  remember (fstopped m) as b. symmetry in Heqb. destruct b.
-  - pose proof Heqb as H'.
-    apply embed_eq in H'. unfold psem. exists (embedding m). simpl.
-    split. apply embed_pref.
-    assert (t = embedding m).
-      eapply stop_sngle_continuation; eauto. apply embed_pref.
-    subst t. assumption.
-  - destruct (sem_prefix m P t Hsem Hpref Heqb) as [c Hsteps].
-    eapply steps_psem. eassumption.
-Qed.
- *)
 
 Fixpoint fsnoc' (m : finpref) (e : event) : finpref :=
   match m with
@@ -265,10 +252,14 @@ Theorem finpref_ind_snoc :
     (forall (m : pref), P (fstop m)) ->
     (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
     forall m, P m.
-Proof. Admitted.
+Proof.
+  admit.
+Admitted.
 
 Lemma not_diverges_cons : forall e t, ~ diverges (tcons e t) -> ~ diverges t.
-Admitted.
+  intros e t H Hn.
+  apply H. now constructor.
+Qed.
 
 Lemma steps'_trans : forall c1 c2 c3 m m',
   steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
