@@ -43,7 +43,7 @@ Definition cannot_loop_silent (c:cfg) : Prop :=
 
 Definition does_event_or_goes_wrong (c:cfg) :=
   {exists e c', steps' c (cons e nil) c'} + {exists c', steps' c nil c' /\ stuck c'}.
-
+  
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
 Proof.
   (* intro c. rewrite contra. intro Hc. rewrite <- dne. cofix. -- no longer works with + *)
@@ -133,20 +133,52 @@ Definition lang : language := @Build_language partial
                                         sem
                                         non_empty_sem.
 
+Lemma steps'_sem'_single : forall c c' t,
+    steps' c [] c' ->
+    sem' c' t ->
+    sem' c t.
+Proof.
+  cofix Hfix.
+  intros c c' t H H0.
+  destruct t; inversion H; subst; try now auto;
+    eapply SSilent; try now eauto.
+Qed.
+
+Local Hint Resolve steps'_sem'_single.
 
 Lemma steps'_sem' : forall c e c' t,
   steps' c [e] c' ->
   sem' c' t ->
   sem' c (tcons e t).
 Proof.
-Admitted.
+  cofix Hfix.
+  intros c e c' t H H0.
+  destruct t.
+  - inversion H; subst; try now auto.
+    apply SCons with (c' := c'0); eauto.
+    specialize (Hfix c'0 e c' tstop H3 H0).
+    apply SSilent with (c' := c'0) (e := e0); eauto.
+  - inversion H; subst; try now auto.
+    apply SCons with (c' := c'0); eauto.
+    specialize (Hfix c'0 e c' tsilent H3 H0).
+    apply SSilent with (c' := c'0) (e := e0); eauto.
+  - inversion H; subst; try now auto.
+    apply SCons with (c' := c'0); eauto.
+    specialize (Hfix c'0 e c' (tcons e0 t) H3 H0).
+    apply SSilent with (c' := c'0) (e := e1); eauto.
+Qed.
 
+Local Hint Resolve steps'_sem'.
+
+(* TODO *)
 Lemma steps_sem' : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
 Proof.
+  admit.
 Admitted.
+
 
 Lemma steps_psem : forall P m c,
   steps (init P) m c ->
@@ -154,14 +186,18 @@ Lemma steps_psem : forall P m c,
 Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
-  -
-Admitted. (* 2018-09-27 Broken when updating definitions
-inversion Hsteps.
-    + now simpl.
-    + subst. apply tapp_pref.
-  - unfold sem. eapply steps_sem'. eassumption. now apply sem'_trace_of.
+  - destruct m.
+    + destruct Hsteps.
+      apply tapp_pref.
+    + unfold sem.
+      inversion Hsteps; subst.
+      ++ now split.
+      ++ apply tapp_pref.
+      ++ apply tapp_pref.
+  - unfold sem.
+    eapply steps_sem'. eassumption.
+    now apply sem'_trace_of.
 Qed.
-*)
 
 Lemma sem'_prefix : forall m c0 t,
   sem' c0 t ->
@@ -294,7 +330,6 @@ Proof.
     + inversion H.
     + inversion H.
     + inversion H; subst.
-      specialize (IHm c t H2).
 Admitted.
 
 
