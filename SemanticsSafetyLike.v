@@ -24,11 +24,48 @@ Variable silent : event -> Prop.
 CoInductive can_loop_silent : cfg -> Prop :=
 | FSilent : forall c e c', step c e c' -> silent e -> can_loop_silent c' -> can_loop_silent c.
 
+(** Reflexive Transitive Closure of the step relation*)
 Inductive steps' : cfg -> pref -> cfg -> Prop :=
 | SSTbd : forall c, steps' c nil c
 | SSCons : forall c e c' m c'', step c e c' -> ~silent e -> steps' c' m c'' ->
                                                             steps' c (cons e m) c''
 | SSSilent : forall c e c' c'' m, step c e c' -> silent e -> steps' c' m c'' -> steps' c m c''.
+
+Hint Constructors steps'.
+
+Lemma steps'_trans : forall c1 c2 c3 m m',
+    steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
+Proof.
+  intros c1 c2 c3 m m' H H0. generalize dependent c3. generalize dependent m'.
+  induction H; intros; simpl; eauto.
+Qed.
+
+Hint Resolve steps'_trans.
+
+Lemma steps'_refl : forall c,
+    steps' c [] c.
+Proof.
+  eauto.
+Qed.
+
+Hint Resolve steps'_refl.
+
+Lemma steps'_cons : forall c c' e m,
+    steps' c (e :: m) c' -> exists c'', steps' c [e] c'' /\ steps' c'' m c'.
+Proof.
+  intros c c' e m H.
+  remember (e :: m) as mm.
+  induction H.
+  - inversion Heqmm.
+  - inversion Heqmm; subst.
+    exists c'. split; eauto.
+  - inversion Heqmm; subst.
+    specialize (IHsteps' H2).
+    destruct IHsteps' as [c0 [Hc01 Hc02]].
+    exists c0; eauto.
+Qed.
+
+Hint Resolve steps'_cons.
 
 Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
   match m with
@@ -49,6 +86,7 @@ Proof.
   (* intro c. rewrite contra. intro Hc. rewrite <- dne. cofix. -- no longer works with + *)
 Admitted.
 
+(** Semantics: the semantics produce full traces, not finite prefixes. *)
 CoInductive sem' : cfg -> trace -> Prop :=
 | SStop : forall c, stuck c -> sem' c tstop
 | SCons : forall c e c' t, step c e c' -> ~silent e -> sem' c' t -> sem' c (tcons e t)
@@ -110,6 +148,7 @@ Lemma trace_of_eta : forall c,
               indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H1 in
             tcons e (trace_of c')
         end.
+Proof.
 Admitted.
 
 CoFixpoint sem'_trace_of (c:cfg) : sem' c (trace_of c).
@@ -126,6 +165,7 @@ Admitted.
 Lemma non_empty_sem : forall W, exists t, sem W t.
 Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of. Qed.
 
+(** Definition of the language *)
 Definition lang : language := @Build_language partial
                                         program
                                         context
@@ -133,13 +173,15 @@ Definition lang : language := @Build_language partial
                                         sem
                                         non_empty_sem.
 
+(** Build links between the semantics of the language and the
+    step by step relation *)
 Lemma steps'_sem'_single : forall c c' t,
     steps' c [] c' ->
     sem' c' t ->
     sem' c t.
 Proof.
   cofix Hfix.
-  intros c c' t H H0.
+  intros c c' t H H0. 
   destruct t; inversion H; subst; try now auto;
     eapply SSilent; try now eauto.
 Qed.
@@ -176,6 +218,15 @@ Lemma steps_sem' : forall c m c' t,
   sem' c' t ->
   sem' c (tapp m t).
 Proof.
+  cofix Hfix.
+  intros c m c' t H H0.
+  destruct t.
+  - clear Hfix.
+    generalize dependent c'.
+    induction finpref m as e p IHp; intros; eauto.
+    + destruct H; eauto.
+    + simpl in *. destruct H; eauto. specialize (IHp 
+  cofix.
   admit.
 Admitted.
 
@@ -260,10 +311,6 @@ Lemma not_diverges_cons : forall e t, ~ diverges (tcons e t) -> ~ diverges t.
   intros e t H Hn.
   apply H. now constructor.
 Qed.
-
-Lemma steps'_trans : forall c1 c2 c3 m m',
-  steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
-Admitted.
 
 Definition configuration_determinacy := forall (c c1 c2 : cfg) (m : pref),
     steps' c m c1 -> steps' c m c2 -> steps' c1 [] c2 \/ steps' c2 [] c1.
