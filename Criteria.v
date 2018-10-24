@@ -133,7 +133,7 @@ Proof.
     + exists some_ctx_src. intros H. exfalso. apply (k H).
 Qed.
 
-Theorem RLC_RLP : RLC <-> (forall P π, Liveness π -> RP P π).
+Theorem RDC_RDP : RLC <-> (forall P π, Liveness π -> RP P π).
 Proof.
   rewrite RLC'. split.
   - intros rlc P π Hl. rewrite contra_RP. intros [C' [t [H0 H1]]].
