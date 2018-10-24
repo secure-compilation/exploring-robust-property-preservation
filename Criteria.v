@@ -351,6 +351,13 @@ Proof.
     exists C. now apply H2.
 Qed.
 
+Lemma R2HSP_RSP : H2SRC -> RSC. 
+Proof.
+  intros H P Ct t Ht m Hpref.
+  destruct (H P Ct m m) as [Cs Hspref].
+  intros m' [K | K]; subst; now exists t.
+  exists Cs. destruct (Hspref m) as [t' H']; auto.
+Qed. 
 
 (*********************************************************)
 (* Criterium for HyperLiveness Preservation
@@ -768,4 +775,50 @@ Proof.
     destruct h as [Cs h]. now apply (h0 Cs f h).
 Qed.
  
- 
+(*************************************************************************)
+(* Robust Relational Subset Closed                                       *)
+(*************************************************************************)
+
+Infix "⊆" := subset (at level 50).
+
+Definition two_sc (r : prop -> prop -> Prop) :=
+  forall b1 b2 b1' b2', r b1 b2 -> subset b1' b1 -> subset b2' b2 -> r b1' b2'.
+
+Lemma two_scP' :
+  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)) <->
+  (forall P1 P2 r, two_sc r -> ((exists Ct, ~ r (beh (Ct [P1↓])) (beh (Ct [P2↓]))) ->
+                            (exists Cs, ~ r (beh (Cs [P1])) (beh (Cs [P2]))))).
+Proof.
+  split.
+  + intros r2p P1 P2 r Hr [Ct nr].
+    rewrite <- not_forall_ex_not.
+    intros H. specialize (r2p P1 P2 r Hr H). now apply nr. 
+  + intros r2pc P1 P2 r Hr H. unfold hrsat2.  
+    intros Ct. rewrite dne. intros Hf.
+    destruct (r2pc P1 P2 r Hr) as [Cs Hc].
+    now exists Ct. now apply Hc.
+Qed.     
+    
+Lemma two_scC :
+  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)) <->
+  (forall (P1 P2 : par src) Ct, exists Cs,
+        (beh (Ct [P1↓])) ⊆  (beh (Cs [P1])) /\
+        (beh (Ct [P2↓])) ⊆  (beh (Cs [P2]))).
+Proof.
+  rewrite two_scP'. split. 
+  + intros r2sscP P1 P2 Ct.
+    destruct (r2sscP P1 P2
+                (fun π1 π2 => ~ subset (beh (Ct [P1 ↓])) π1 \/ ~ subset (beh (Ct [P2 ↓])) π2)) as [Cs Hcs].
+    { intros b1 b2 b1' b2' [nsup1 | nsup2] s1 s2. 
+      + left. unfold "⊆" in *. rewrite not_forall_ex_not in *.
+        destruct nsup1 as [t Hn1]. exists t. 
+        rewrite not_imp in *. split; firstorder.
+      + right. unfold "⊆" in *; rewrite not_forall_ex_not in *. 
+        destruct nsup2 as [t Hn2]. exists t. 
+        rewrite not_imp in *. split; firstorder. }  
+    exists Ct. rewrite de_morgan2. split; now rewrite <- dne. 
+    rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs). 
+    now exists Cs.
+  + intros scC P1 P2 r r2ssc [Ct nr]. destruct (scC P1 P2 Ct) as [Cs [K1 K2]].
+    exists Cs. intros Hf. apply nr. unfold two_sc in r2ssc. eapply r2ssc; eassumption. 
+Qed.     
