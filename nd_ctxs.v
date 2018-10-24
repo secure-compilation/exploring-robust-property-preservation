@@ -16,7 +16,7 @@ Require Import ClassicalExtras.
              /            /        \
     |       /            /          \
            /            /           RrSP
-   RHP    /            /             |
+   RHP--- /            /             |
          /            /              |
     |   /            /               |
        /            /                | 
@@ -110,5 +110,4 @@ Abort.
   Assuming finitary non determinism the implication can be proved.  
 
  *)
-
 

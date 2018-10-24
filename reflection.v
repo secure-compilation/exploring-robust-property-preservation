@@ -12,10 +12,10 @@ Require Import Coq.Logic.ClassicalFacts.
 
        RrHP  ---  
                  \ 
-        |         RrSCP --- 
-                            \ 
-     RHP (<-> RFrSCP)        RrTP ---
-               /           /         \  
+        |  ----- RrSCP --- 
+          /      /         \ 
+       RHP      /          RrTP ---
+(<-> RFrSCP)   /           /       \  
         |     /---------- /          RrSP
                          /          /
      RSCP (<-> RFrTP)   /          /
