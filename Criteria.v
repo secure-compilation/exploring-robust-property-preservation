@@ -14,7 +14,7 @@ Require Import Topology.
 (* Criterium for all Properties Preservation             *)
 (*********************************************************)
 
-Definition RC : Prop :=
+Definition RTC : Prop :=
   forall P C' t, exists C,
       sem tgt  (C' [ P ↓ ] ) t ->
       sem src  (C  [ P  ] ) t.
@@ -26,10 +26,10 @@ Definition RC : Prop :=
  *)
 Axiom some_ctx_src : ctx src.
 
-Lemma RC' : RC <-> (forall P C' t, sem tgt  (C' [ P ↓ ] ) t ->
-                        exists C, sem src  (C  [ P  ] ) t).
+Lemma RTC' : RTC <-> (forall P C' t, sem tgt  (C' [ P ↓ ] ) t ->
+                         exists C, sem src  (C  [ P  ] ) t).
 Proof.
-  unfold RC. split.
+  unfold RTC. split.
   - intros rc P C' t H0. destruct (rc P C' t) as [C H1]. clear rc.
     exists C. apply (H1 H0).
   - intros rc' P C' t.
@@ -41,10 +41,10 @@ Proof.
     + exists some_ctx_src. intros H. exfalso. apply (k H).
 Qed.
 
-(* RC is equivalent to the preservation of robust satisfaction of every property *)
-Theorem RC_RPP : RC <-> (forall P π, RP P π).
+(* RTC is equivalent to the preservation of robust satisfaction of every property *)
+Theorem RTC_RPP : RTC <-> (forall P π, RP P π).
 Proof.
-  rewrite RC'. split.
+  rewrite RTC'. split.
   - intros rc P π. rewrite contra_RP.
     intros [C' [t' [H0 H1]]].
     destruct (rc P C' t' H0) as [C H]. clear rc. exists C,t'. auto.
@@ -53,12 +53,12 @@ Proof.
     exists C',t. auto. apply NNPP in H1. subst t'. now exists C.
 Qed.
 
-Theorem RC_RPP_maybe_simpler : RC <-> (forall P π, RP P π).
+Theorem RTC_RPP_maybe_simpler : RTC <-> (forall P π, RP P π).
 Proof.
   unfold RP, rsat, sat. split.
-  - unfold RC.
+  - unfold RTC.
     intros HRTC P π HsatCP Ct t HsemCtPC. destruct (HRTC P Ct t) as [Cs HTRC']. eauto.
-  - rewrite RC'. intros HRTP P. apply HRTP. eauto.
+  - rewrite RTC'. intros HRTP P. apply HRTP. eauto.
     (* here's a more detailed forwards proof *)
     (* pose proof (HRTP P (fun t => exists Cs, sem src (Cs[P]) t)) as HRTP'. simpl in HRTP'. *)
     (* assert(G : forall Cs t, sem src (Cs [P]) t -> exists Cs, sem src (Cs [P]) t) by eauto. *)
@@ -183,8 +183,8 @@ Proof.
   apply NNPP in k2. now auto. assumption.
 Qed.
 
-Theorem RobsP_RC : (forall P π, Observable π -> RP P π) <-> RC.
-Proof. now rewrite RobsP_RPP, RC_RPP. Qed.
+Theorem RobsP_RTC : (forall P π, Observable π -> RP P π) <-> RTC.
+Proof. now rewrite RobsP_RPP, RTC_RPP. Qed.
 
 (******************************************************************************)
 
