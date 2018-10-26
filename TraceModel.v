@@ -765,7 +765,7 @@ Proof.
     cofix Hfix.
     intros t1 t2 H.
     destruct t1 as [| | e1' t1']; destruct t2 as [| | e2' t2'].
-    + admit.
+    + constructor.
     + exfalso; apply H.
       exists (fstop nil). exists (ftbd nil).
       repeat split; try now auto.
@@ -775,7 +775,7 @@ Proof.
     + exfalso; apply H.
       exists (ftbd nil). exists (fstop nil).
       repeat split; try now auto.
-    + admit.
+    + constructor.
     + exfalso; apply H.
       exists (ftbd nil). exists (ftbd (cons e2' nil)).
       repeat split; try now auto.
@@ -818,7 +818,7 @@ Proof.
   - intros [m1 [m2 [h1 [h2 hn]]]] hf. apply hn. split.
     + now apply (same_finite_prefixes t1 t2).
     + apply t_eq_symm in hf. now apply (same_finite_prefixes t2 t1).
-Admitted.
+Qed.
 
 (*******************************************************************************)
 

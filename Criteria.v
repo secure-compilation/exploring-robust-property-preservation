@@ -150,18 +150,14 @@ Qed.
 (*********************************************************)
 (* Criterium for Observable Properties Preservation
     it's the same as all Properties Preservation         *)
-(*********************************************************)
+(* 
 
-
-(* CA: this condition is trace equality
-       if one of the two traces is finite then
-       also the other one is finite.
- *)
-Lemma rewriting_lemma : forall t1 t2,
-    (forall m, prefix m t1 -> prefix m t2) ->
-    (forall π, π t1 -> π t2).
-Proof.
-Admitted.
+Without the constructor tsilent for traces 
+(or equivalently when silent divergence is observable)
+it is possible to show that the robsust preservation of 
+all observable properties implies the robust preservation 
+of all arbitrary properties. 
+When silent divergence is not observable this is no more true 
 
 Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) <->
                     (forall P π, RP P π).
@@ -169,22 +165,19 @@ Proof.
   split; try now firstorder.
   intros hr P π. rewrite contra_RP.
   intros [C' [t [hsem ht]]].
-  specialize (hr P (fun b => exists m, prefix m b /\ ~ prefix m t)).
-  assert (Observable (fun b => exists m, prefix m b /\ ~ prefix m t)).
-  { unfold Observable. intros t0 [m [h1 h2]].
-    exists m. split; try now auto.
-    intros t' h'. now exists m. }
-  rewrite contra_RP in hr. destruct (hr H) as [C [t' [k1 k2]]]; clear H.
-  exists C',t. split; try now auto. intros [m [hc1 hc2]]. now auto.
-  exists C, t'. split; try now auto.
-  intros ff. apply ht.
-  apply (rewriting_lemma t' t). intros m hm.
-  rewrite not_ex_forall_not in k2. specialize (k2 m). rewrite <- not_imp in k2.
-  apply NNPP in k2. now auto. assumption.
-Qed.
+  specialize (hr P (fun b => ~ t_eq t b)).
+  assert (Observable (fun b => ~ t_eq t b)).
+    (* This is False!! 
+       e.g. when t = tstop 
+       then the trace tsilent is in the property 
+       but its only prefix, (ftbd nil) is also a prefix of tstop 
+    *) 
+     
 
 Theorem RobsP_RC : (forall P π, Observable π -> RP P π) <-> RC.
 Proof. now rewrite RobsP_RPP, RC_RPP. Qed.
+
+*)
 
 (******************************************************************************)
 
