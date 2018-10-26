@@ -283,6 +283,20 @@ Qed.
 Definition my_pi2 : prop :=
   fun t => t_eq t an_omega.
 
+
+(* the trick to unfold cofixpoint *)
+Definition frob (t : trace) : trace :=
+  match t with
+  | tstop => tstop
+  | tsilent => tsilent
+  | tcons e t' => tcons e t'
+  end.
+
+Theorem frob_eq : forall (t : trace), t = frob t.
+  destruct t; reflexivity.
+Qed.
+
+
 Theorem separation_RLP_RPP :
   (forall P π, Liveness π -> c2_RPP P π) /\
   ~  (forall P π, c2_RPP P π).
@@ -301,6 +315,13 @@ Proof.
     repeat (split; try now auto). simpl. exists an_omega.
     split; try now auto. now apply (h some_ctx_L).
     specialize (ff H0). unfold my_pi2 in ff. inversion ff.
+    unfold an_omega in H1.
+    assert (forall e, constant_trace e = tcons e (constant_trace e)).
+    { clear.
+      intros e. remember (constant_trace e) as t.
+      rewrite (frob_eq t) at 1. subst. reflexivity.
+    }
+    specialize (H2 an_event). rewrite H2 in H1. inversion H1.      
 Qed.
 
 Require Import TopologyTrace.
