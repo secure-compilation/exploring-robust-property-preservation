@@ -212,7 +212,7 @@ Proof.
 Qed.
 
 
-Theorem HRC_HRP : HRC <-> forall P H, RHP P H.
+Theorem RHC_RHP : HRC <-> forall P H, RHP P H.
 Proof.
   split.
   - intros H0 P H. rewrite contra_RHP. intros [C' H1].
@@ -354,7 +354,7 @@ Proof.
     exists C. now apply H2.
 Qed.
 
-Lemma R2HSP_RSP : H2SRC -> RSC. 
+Lemma R2HSP_RSP : R2HSC -> RSC. 
 Proof.
   intros H P Ct t Ht m Hpref.
   destruct (H P Ct m m) as [Cs Hspref].
@@ -414,7 +414,7 @@ Qed.
 
 Theorem RHLP_HRC :
     (forall P H, HLiv H -> RHP P H) <-> HRC.
-Proof. now rewrite (RHLP_RHP), (HRC_HRP). Qed.
+Proof. now rewrite (RHLP_RHP), (RHC_RHP). Qed.
 
 
 (*************************************************************************)
@@ -577,7 +577,7 @@ Definition alternative := forall P1 P2 S1 S2,
     (forall Ct, sat (Ct [P1↓]) S1 \/ sat (Ct[P2↓]) S2)
  *)
 
-Lemma alternative_r2RSC : alternative <-> r2RSC.
+Lemma alternative_R2rSC : alternative <-> R2rSC.
 Proof.
   split; intros H.
   + intros Ct P1 P2 m1 m2 H1 H2.
@@ -621,9 +621,9 @@ Proof.
                [exists tt1 |exists tt2]; rewrite not_imp; now auto.                 
 Qed.
 
-Lemma alternative_r2RSP : alternative <-> r2RSP.
+Lemma alternative_R2rSP : alternative <-> R2rSP.
 Proof.
- now rewrite r2RSP_r2RSC, alternative_r2RSC.
+ now rewrite R2rSP_R2rSC, alternative_R2rSC.
 Qed. 
     
 (*************************************************************************)

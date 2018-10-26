@@ -42,9 +42,9 @@ Axiom beh_intro2 : forall P1 P2 (h : P1 <> P2) Cs1 Cs2,
     sem src ((code_intro h Cs1 Cs2) [P2]) t = sem src (Cs2 [P2]) t.                   
 
 (* R2HSP -> r2RSP and a similar argument for k >= 2 *)
-Lemma R2HSP_r2RSP : (forall P H, H2Safe H -> RHP P H) -> r2RSP.
+Lemma R2HSP_R2rSP : (forall P H, H2Safe H -> RHP P H) -> R2rSP.
 Proof.
-  rewrite R2HSP_H2SRC, r2RSP_r2RSC.
+  rewrite R2HSP_R2HSC, R2rSP_R2rSC.
   intros H2rsc Ct P1 P2 m1 m2 H1 H2.
   destruct H1 as [t1 [Hpref1 H1]]. 
   destruct H2 as [t2 [Hpref2 H2]].
@@ -72,9 +72,9 @@ Qed.
 
 Hypothesis prop_ext : prop_extensionality. 
 
-Lemma RHP_r2RHP : (forall P H, RHP P H) -> r2HRP.
+Lemma RHP_R2rHP : (forall P H, RHP P H) -> R2rHP.
 Proof.
-  rewrite <- HRC_RHP, r2HRP_r2HRC.
+  rewrite <- RHC_RHP, R2rHP_R2rHC.
   intros hrc P1 P2 Ct.
   destruct (hrc P1 Ct) as [Cs1 H1].
   destruct (hrc P2 Ct) as [Cs2 H2].
