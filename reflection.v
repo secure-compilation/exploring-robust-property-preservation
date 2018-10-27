@@ -26,7 +26,7 @@ Require Import Coq.Logic.ClassicalFacts.
                        \      /
       /   \             RHSP (<-> RFrSP)
                        /
-    RDP   RSP   ------- 
+    RDP   RSP   -------
 
 *)
 
