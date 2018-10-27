@@ -58,7 +58,7 @@ Proof.
                         now exists Cs, t'.
 Qed.
 
-Lemma RSP_r2RSP : RSC -> r2RSC. 
+Lemma RSP_R2rSP : RSC -> R2rSC. 
 Proof.
   rewrite RSC'. 
   intros rsc Ct P1 P2 m1 m2 H1 H2.
@@ -72,9 +72,9 @@ Qed.
 (** *RTP -> R2rTP *)
 (* and with a similar argument RTP -> R r_fin TP *)
 
-Lemma RTP_r2RTP : (forall P π, RP P π) -> r2RPP. 
+Lemma RTP_R2rTP : (forall P π, RP P π) -> r2RPP. 
 Proof.
-  rewrite <- RC_RPP, r2RPP_r2RC.
+  rewrite <- RTC_RTP, r2RPP_r2RC.
   intros Hrc Ct P1 P2 t1 t2 H1 H2.
   destruct (Hrc P1 Ct t1) as [Cs1 Hs1]. specialize (Hs1 H1).
   destruct (Hrc P2 Ct t2) as [Cs2 Hs2]. specialize (Hs2 H2).
@@ -97,7 +97,7 @@ Proof.
     now unfold "⊆". apply nd_beh2.
 Qed.
 
-Lemma RTP_R2SSCP : RC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)). 
+Lemma RTP_R2SSCP : RTC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)). 
 Proof.
   rewrite two_scC. 
   intros rc P1 P2 Ct.
