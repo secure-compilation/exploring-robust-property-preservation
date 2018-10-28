@@ -741,34 +741,46 @@ Lemma proper_prefix : forall m t,
     ~ diverges t ->
     (exists e, prefix (fsnoc m e) t).
 Proof.
-  destruct m as [m | m]; induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
+  destruct m as [m | m | m]; induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
   + destruct t.
     * now auto.
     * now pose proof div_silent.
+    * now pose proof div_silent.
+    * now exists e.
+  + destruct t.
+    * now auto.
+    * now pose proof div_silent.
+    * now pose proof div_silent.
+    * now exists e.
+  + destruct t; simpl in *; try now auto.
+    * admit.
+    * now pose proof div_silent.
     * now exists e.
   + destruct t; try now auto.
-    inversion Hpref. subst. destruct (IHm t) as [e' H]; try now auto.
+    inversion Hpref. subst. destruct (IHm t) as [e' h]; try now auto.
     * intros ff. apply Hembed. simpl. pose proof embed_cons (ftbd m) t e.
       now specialize (H ff).
     * intros ff. now pose proof div_cons e t ff.
     * now exists e'.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma fpr_stop_equal : forall m1 m2,
     fpr m1 m2 ->
     fstopped m1 = true ->
     m1 = m2.
 Proof.
-  intros [m1 | m1]; induction m1; intros [m2 | m2] Hpref Hstop.
+  intros [m1 | m1 | m1]; induction m1; intros [m2 | m2 | m2] Hpref Hstop;
+    try easy.
   + now destruct m2.
-  + inversion Hpref.
+  (* + inversion Hpref. *)
   + destruct m2; try now auto.
     inversion Hpref. now subst.
-  + destruct m2; try now auto.
-  + inversion Hstop.
-  + inversion Hstop.
-  + destruct m2; now auto.
-  + destruct m2; now auto.
+  (* + destruct m2; try now auto. *)
+  (* + inversion Hstop. *)
+  (* + inversion Hstop. *)
+  (* + destruct m2; now auto. *)
+  (* + destruct m2; now auto. *)
 Qed.
 
 
@@ -776,9 +788,11 @@ Qed.
 
 (** *m[fstop/ftbd] *)
 
+(* RB: TODO: Stuck hack? *)
 Definition same_events_with_stop (m : finpref) : finpref :=
   match m with
   | ftbd m => fstop m
+  | fstuck m => fstuck m
   | fstop m => fstop m
   end.
 
@@ -786,8 +800,9 @@ Notation "m [fstop/ftbd]" := (same_events_with_stop m)
                              (at level 50).
 
 Lemma with_stop_fstopped : forall m,
-    fstopped (m[fstop/ftbd]) = true.
-Proof. now destruct m. Qed.
+    fstopped (m[fstop/ftbd]) = true \/
+    fisstuck (m[fstop/ftbd]) = true.
+Proof. destruct m; auto. Qed.
 
 Lemma if_fstopped_equal : forall m,
     fstopped m = true ->
@@ -805,11 +820,11 @@ Qed.
 
 Lemma m_fpr_with_stop : forall m,
     fpr m (m[fstop/ftbd]).
-Proof. destruct m as [m | m]; now induction m. Qed.
+Proof. destruct m as [m | m | m]; now induction m. Qed.
 
 Lemma with_stop_prefix_embedding :forall m,
     prefix (m [fstop/ftbd]) (embedding m).
-Proof. destruct m as [m | m]; now induction m. Qed.
+Proof. destruct m as [m | m | m]; now induction m. Qed.
 
 Lemma equal_with_stop_same_embedding : forall m mm,
     fstopped m = true ->
@@ -817,12 +832,12 @@ Lemma equal_with_stop_same_embedding : forall m mm,
     fpr m (mm[fstop/ftbd]) ->
     embedding m = embedding mm.
 Proof.
-  destruct m as [m | m]; destruct m;
+  destruct m as [m | m | m]; destruct m;
     intros mm Hstop Hfpr HfprStop; try now destruct mm.
   simpl in *. 
   destruct mm; try now auto; simpl in *. inversion Hfpr; subst. reflexivity.
   simpl in *; now subst.
-  destruct mm as [mm | mm]; simpl in *; now subst.
+  destruct mm as [mm | mm | mm]; simpl in *; now subst.
 Qed.
 
 Lemma proper_fpr: forall m0 mm,
@@ -830,15 +845,18 @@ Lemma proper_fpr: forall m0 mm,
     fstopped m0 = false ->
     fpr m0 mm.
 Proof. 
-  destruct m0 as [m0 | m0]; induction m0; intros mm Hfpr Hstop; try now auto.
+  destruct m0 as [m0 | m0 | m0]; induction m0; intros mm Hfpr Hstop; try now auto.
   simpl in Hstop. destruct mm; try now auto.
-  now destruct mm as [mm | mm]. 
+  now destruct mm as [mm | mm | mm].
+  now destruct mm as [mm | mm | mm].
+  now destruct mm as [mm | mm | mm].
 Qed.
 
 (*******************************************************************************)
 
 CoInductive t_eq : trace -> trace -> Prop :=
 | estop : t_eq tstop tstop
+| estuck : t_eq tstuck tstuck
 | esilent : t_eq tsilent tsilent
 | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2).
 
@@ -852,9 +870,13 @@ Qed.
 
 Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2.
 Proof.
-  intros [m | m]; induction m; intros t1 t2 hpref heq; try now auto.
+  intros [m | m | m]; induction m; intros t1 t2 hpref heq; try now auto.
   + now destruct t1, t2. 
   + destruct t1, t2; try now auto. inversion hpref. subst.   
+    inversion heq. subst. simpl. split; try now auto.
+    now apply (IHm t1 t2).
+  + now destruct t1, t2. 
+  + destruct t1, t2; try now auto. inversion hpref. subst.
     inversion heq. subst. simpl. split; try now auto.
     now apply (IHm t1 t2).
   + destruct t1, t2; try now auto. inversion hpref. subst.
@@ -880,8 +902,11 @@ Proof.
     generalize dependent t2. generalize dependent t1.
     cofix Hfix.
     intros t1 t2 H.
-    destruct t1 as [| | e1' t1']; destruct t2 as [| | e2' t2'].
+    destruct t1 as [| | | e1' t1']; destruct t2 as [| | | e2' t2'].
     + constructor.
+    + exfalso; apply H.
+      exists (fstop nil). exists (ftbd nil).
+      repeat split; try now auto.
     + exfalso; apply H.
       exists (fstop nil). exists (ftbd nil).
       repeat split; try now auto.
@@ -893,10 +918,26 @@ Proof.
       repeat split; try now auto.
     + constructor.
     + exfalso; apply H.
+      exists (fstuck nil). exists (ftbd nil).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (fstuck nil). exists (ftbd (cons e2' nil)).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd nil). exists (fstop nil).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd nil). exists (fstuck nil).
+      repeat split; try now auto.
+    + constructor.
+    + exfalso; apply H.
       exists (ftbd nil). exists (ftbd (cons e2' nil)).
       repeat split; try now auto.
     + exfalso; apply H.
       exists (ftbd (cons e1' nil)). exists (fstop nil).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd (cons e1' nil)). exists (fstuck nil).
       repeat split; try now auto.
     + exfalso; apply H.
       exists (ftbd (cons e1' nil)). exists (ftbd nil).
@@ -912,11 +953,31 @@ Proof.
             repeat split; try now auto. intros Hn'.
             destruct Hn' as [Hn1 Hn2].
             inversion Hn1; inversion Hn2. now auto.
+          - exists (fstop (cons e2' p)). exists (fstuck (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
           - exists (fstop (cons e2' p)). exists (ftbd (cons e2' p0)).
             repeat split; try now auto. intros Hn'.
             destruct Hn' as [Hn1 Hn2].
             inversion Hn1; inversion Hn2. now auto.
+          - exists (fstuck (cons e2' p)). exists (fstop (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (fstuck (cons e2' p)). exists (fstuck (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (fstuck (cons e2' p)). exists (ftbd (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
           - exists (ftbd (cons e2' p)). exists (fstop (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (ftbd (cons e2' p)). exists (fstuck (cons e2' p0)).
             repeat split; try now auto. intros Hn'.
             destruct Hn' as [Hn1 Hn2].
             inversion Hn1; inversion Hn2. now auto.
@@ -944,7 +1005,7 @@ Definition traces_match (t1 t2 : trace) : Prop :=
  t1 = t2 \/
  (exists (m : finpref) (e1 e2 : event),
    is_input e1 /\ is_input e2 /\  e1 <> e2 /\
-   fstopped m = false /\ prefix (fsnoc m e1) t1 /\ prefix (fsnoc m e2) t2).
+   fstopped m = false /\ fisstuck m = false /\ prefix (fsnoc m e1) t1 /\ prefix (fsnoc m e2) t2).
 
 
 (* Various lemmas about snoc, fsnoc, and fpr *)
@@ -973,6 +1034,7 @@ Qed.
 Definition length (m : finpref) :=
   match m with
   | fstop m => Datatypes.length m
+  | fstuck m => Datatypes.length m
   | ftbd  m => Datatypes.length m
   end.
 
@@ -980,13 +1042,14 @@ Theorem finpref_ind_snoc :
   forall (P : finpref -> Prop),
     P (ftbd nil) ->
     (forall (m : pref), P (fstop m)) ->
+    (forall (m : pref), P (fstuck m)) ->
     (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
     forall m, P m.
 Proof.
-  intros P Hnil Hstop Hind.
+  intros P Hnil Hstop Hstuck Hind.
   assert (H: forall (n : nat) (m : finpref), length m = n -> P m).
   { induction n.
-    - intros [m | m] Hlen; try now auto.
+    - intros [m | m | m] Hlen; try now auto.
       destruct m; try now auto.
     - intros m Hlen.
       destruct m; try now auto.
@@ -1071,6 +1134,7 @@ Definition tapp (m : finpref) (t : trace) : trace :=
   match m with
   | fstop p => embedding (fstop p) (* justification:  
                            we can't really add anything after a stopped trace. *)
+  | fstuck p => embedding (fstuck p)
   | ftbd  p => tapp' p t
   end.
 
@@ -1082,29 +1146,36 @@ Proof.
 Qed.
 
 Lemma tapp_div_pref : forall (t : trace),
-    diverges t -> exists (m : finpref), fstopped m = false /\ t = tapp m tsilent.
+    diverges t -> exists (m : finpref), fstopped m = false /\ fisstuck m = false /\ t = tapp m tsilent.
 Proof.
   intros t Ht.
   induction Ht.
   - now (exists (ftbd nil)).
   - destruct IHHt as [m Hm].
-    destruct m as [p | p].
+    destruct m as [p | p | p].
     + now destruct Hm.
-    + destruct Hm.
+    + now destruct Hm.
+    + destruct Hm as [H1 [H2 H3]].
       exists ((ftbd (cons e p))).
       split; now subst.
 Qed.
 
 Lemma tapp_fin_pref : forall (t : trace),
-    fin t -> exists (m : finpref), t = tapp m tstop.
+    fin t -> exists (m : finpref), t = tapp m tstop \/ t = tapp m tstuck.
 Proof.
   intros t Ht.
   induction Ht.
-  - now (exists (fstop nil)).
-  - destruct IHHt as [m Hm].
-    destruct m as [p | p].
-    + exists (fstop (cons e p)). simpl in *. now subst.
-    + exists (ftbd (cons e p)). simpl in *. now subst.
+  - exists (fstop nil); auto.
+  - exists (fstuck nil); auto.
+  - destruct IHHt as [m [Hm | Hm]].
+    + destruct m as [p | p | p].
+      * exists (fstop (cons e p)). simpl in *. subst. auto.
+      * exists (fstuck (cons e p)). simpl in *. subst. auto.
+      * exists (ftbd (cons e p)). simpl in *. subst. auto.
+    + destruct m as [p | p | p].
+      * exists (fstop (cons e p)). simpl in *. subst. auto.
+      * exists (fstuck (cons e p)). simpl in *. subst. auto.
+      * exists (ftbd (cons e p)). simpl in *. subst. auto.
 Qed.
 
 Lemma pref_inf_ndiv_pref : forall (m : finpref) (t : trace),
@@ -1112,6 +1183,7 @@ Lemma pref_inf_ndiv_pref : forall (m : finpref) (t : trace),
 Proof.
   induction finpref m as e p IHp; intros t H H0 H1; try now eauto.
   - destruct t; try now auto.
+    + exfalso; apply H0. now constructor.
     + exfalso; apply H0. now constructor.
     + exfalso; apply H1. now constructor.
     + now (exists e).
@@ -1126,5 +1198,6 @@ Proof.
     specialize (IHp (H H1)).
     destruct IHp as [e He]. now (exists e).
   Unshelve.
-  exact an_event. exact an_event.  
+  exact an_event. exact an_event.
+  exact an_event. exact an_event.
 Qed.
