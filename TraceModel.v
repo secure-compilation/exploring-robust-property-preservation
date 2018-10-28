@@ -9,6 +9,7 @@ Require Import List.
 (** *traces  *)
 CoInductive trace : Set :=
   | tstop : trace
+  | tstuck : trace
   | tsilent : trace
   | tcons : event -> trace -> trace.
 
@@ -17,14 +18,15 @@ Definition pref := list event.
 
 Inductive finpref : Set :=
 | fstop : pref -> finpref
+| fstuck : pref -> finpref
 | ftbd  : pref -> finpref
 .
 
 Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(p) :=
-  destruct m as [[|e p] | [|e p]].
+  destruct m as [[| |e p] | [| |e p]].
 
 Tactic Notation "induction" "finpref" ident(m) "as" ident(e) ident(p) ident(Hp) :=
-  destruct m as [m | m]; induction m as [|e p Hp].
+  destruct m as [m | m | m]; induction m as [|e p Hp].
 
 (** *prefix relation *)
 Fixpoint fstop_prefix (m : pref) (t : trace) : Prop :=
@@ -32,6 +34,14 @@ Fixpoint fstop_prefix (m : pref) (t : trace) : Prop :=
     | nil, tstop => True
     | nil, _     => False
     | cons e1 m', tcons e2 t' => e1 = e2 /\ fstop_prefix m' t'
+    | _, _       => False
+  end.
+
+Fixpoint fstuck_prefix (m : pref) (t : trace) : Prop :=
+  match m, t with
+    | nil, tstuck => True
+    | nil, _     => False
+    | cons e1 m', tcons e2 t' => e1 = e2 /\ fstuck_prefix m' t'
     | _, _       => False
   end.
 
@@ -45,6 +55,7 @@ Fixpoint ftbd_prefix (m : pref) (t : trace) : Prop :=
 Definition prefix (m : finpref) (t : trace) : Prop :=
   match m with
   | fstop m => fstop_prefix m t    
+  | fstuck m => fstuck_prefix m t
   | ftbd m  => ftbd_prefix m t
   end.
 
@@ -54,6 +65,7 @@ Definition prefix (m : finpref) (t : trace) : Prop :=
    Eventually they may be given more memorable names than term/nonterm. *)
 Inductive fin : trace -> Prop :=
   | fin_stop : fin tstop
+  | fin_stuck : fin tstuck
   | fin_cons : forall e t, fin t -> fin (tcons e t).
 
 Definition inf (t : trace) : Prop := ~(fin t).
@@ -77,7 +89,20 @@ Proof.
   induction finpref m as e m IHm; intros ta Hinf.
   + exists tstop. split; try now auto.
     intros Hc; subst. apply Hinf. now constructor.
-  + destruct ta as [| | e' ta].
+  + destruct ta as [| | | e' ta].
+    ++ exfalso. apply Hinf. now constructor.
+    ++ exfalso. apply Hinf. now constructor.
+    ++ specialize (IHm tsilent Hinf).
+       destruct IHm as [t' [Hpref Hnsilent]].
+       exists (tcons e t'). now split.
+    ++ apply inf_tcons in Hinf. specialize (IHm ta Hinf).
+       destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
+       split; try now auto.
+       intros Hc. inversion Hc; now subst.
+  + exists tstuck. split; try now auto.
+    intros Hc; subst. apply Hinf. now constructor.
+  + destruct ta as [| | | e' ta].
+    ++ exfalso. apply Hinf. now constructor.
     ++ exfalso. apply Hinf. now constructor.
     ++ specialize (IHm tsilent Hinf).
        destruct IHm as [t' [Hpref Hnsilent]].
@@ -88,7 +113,8 @@ Proof.
        intros Hc. inversion Hc; now subst.
   + exists tstop. split; try now auto.
     intros Hc; subst. apply Hinf. now constructor.
-  + destruct ta as [| | e' ta].
+  + destruct ta as [| | | e' ta].
+    ++ exfalso. apply Hinf. now constructor.
     ++ exfalso. apply Hinf. now constructor.
     ++ specialize (IHm tsilent Hinf).
        destruct IHm as [t' [Hpref Hnsilent]].
@@ -108,11 +134,19 @@ Fixpoint fstop_equal (m : pref) (t : trace) : Prop :=
   | _, _ => False
   end.
 
+Fixpoint fstuck_equal (m : pref) (t : trace) : Prop :=
+  match m, t with
+  | nil, tstuck => True
+  | cons e1 m', tcons e2 t' => e1 = e2 /\ fstuck_equal m' t'
+  | _, _ => False
+  end.
+
 Definition ftbd_equal (m : pref) (t : trace) : Prop := False.
 
 Definition equal (m : finpref) (t : trace) : Prop :=
   match m with
   | fstop m => fstop_equal m t
+  | fstuck m => fstuck_equal m t
   | ftbd m  => ftbd_equal m t
   end.
 
@@ -124,21 +158,28 @@ Qed.
 Lemma fin_equal : forall t, fin t <-> exists m : finpref, equal m t.
 Proof.
   intro t. split.
-  - intro H. induction H as [| e t H [m IH]].
-    now (exists (fstop nil)). destruct m as [m | m].
-    now (exists (fstop (cons e m))).
-    now simpl in IH.                         
+  - intro H. induction H as [| | e t H [m IH]].
+    + now (exists (fstop nil)).
+    + now (exists (fstuck nil)).
+    + destruct m as [m | m | m].
+      * now (exists (fstop (cons e m))).
+      * now (exists (fstuck (cons e m))).
+      * now simpl in IH.
   - intros [m Heq]. generalize dependent t.
     induction finpref m as e m' IH; intros t Heq; try now auto.
     + destruct t; try now auto. now constructor.
-    + destruct t as [| | e' t']; inversion Heq.
+    + destruct t as [| | | e' t']; inversion Heq.
+      constructor. now apply IH.
+    + destruct t as [| | | e' t']; inversion Heq.
+      now constructor.
+    + destruct t as [| | | e' t']; inversion Heq.
       constructor. now apply IH.
 Qed.
 
 Lemma single_cont : forall m t t', equal m t -> prefix m t' -> t = t'.
 Proof.
-  induction finpref m as e p IHp; destruct t, t'; firstorder.
-  subst. now rewrite (IHp t t').
+  induction finpref m as e p IHp; destruct t, t'; firstorder;
+  subst; now rewrite (IHp t t').
 Qed.
 
 Lemma single_cont_consequence : forall t,
@@ -161,7 +202,7 @@ Lemma stop_sngle_continuation : forall m t1 t2,
     prefix m t1 -> prefix m t2 ->
     t1 = t2.
 Proof.
-  intros [m | m]; induction m; intros [] [] H H0 H1; try now auto.
+  intros [m | m | m]; induction m; intros [] [] H H0 H1; try now auto.
   + inversion H0. inversion H1. clear H0 H1.
     subst. simpl in H. specialize (IHm t t0 H H3 H5).
     now subst.
