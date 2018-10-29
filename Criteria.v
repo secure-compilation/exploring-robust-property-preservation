@@ -280,6 +280,9 @@ Qed.
                prop \ {t | t : trace} (the only inhabitant of lim_{k -> ∞ } k -SC)
 
 
+ CA: anycase nothing changes in the diagram, 
+     see theorem  R2SCHP_R2HSP 
+     
  *)
 
 Definition twoSC (H : hprop) : Prop :=
@@ -317,6 +320,7 @@ Proof.
     split; firstorder.
     exists C. firstorder.
 Qed.
+
 
 
 (*********************************************************)
@@ -379,8 +383,19 @@ Proof.
   destruct (H P Ct m m) as [Cs Hspref].
   intros m' [K | K]; subst; now exists t.
   exists Cs. destruct (Hspref m) as [t' H']; auto.
-Qed. 
+Qed.
 
+
+Lemma R2SCHP_R2HSP : (forall P H, twoSC H -> RHP P H) -> (forall P H, H2Safe H -> RHP P H).
+Proof.
+  rewrite  R2SCHP_R2SCHC, R2HSP_R2HSC. 
+  intros rsc P Ct m1 m2 H. unfold spref in *.
+  destruct (H m1) as [t1 [Ht1 Hpref1]]; auto.   
+  destruct (H m2) as [t2 [Ht2 Hpref2]]; auto.
+  specialize (rsc P Ct t1 t2). destruct rsc as [Cs [K1 K2]]; auto.
+  exists Cs. intros x [H1 | H2]; subst; [now exists t1 | now exists t2].
+Qed.
+  
 (*********************************************************)
 (* Criterium for HyperLiveness Preservation
    is the same as the one for
