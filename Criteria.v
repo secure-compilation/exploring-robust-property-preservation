@@ -267,10 +267,10 @@ Qed.
     H ∈ lim_{k -> ∞ } k -SC iff
     H = ∪_{t : trace} lifting (true \ t) = prop \ {t | t : trace}
 
-   As consequences : 
+   Consequences : 
    ---------------
 
-   (i)   such a limit is not the class SSC
+   (i)   such a limit is not the class SSC (and it contains only one hyperproperty)
 
    (ii)  H ∈ 2-SC does not imply H ∈ lim_{k -> ∞ } k -SC   
 
