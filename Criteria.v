@@ -249,15 +249,41 @@ Qed.
 
 (* 2SC Hyperproperties *)
 
-(* CA: unclear def *)
+(* CA : according to this definition
+         H ∈ k-SC iff 
+         ∃ t1 .. tk, H = lifting (true \ t1) ∪ .. ∪ lifting (true \ tk)
 
-(* forall (b : prop), ~ (H b) ->
-                (exists (m1 m2 : finpref),
-                    spref (fun m => m = m1 \/ m = m2) b /\
-                    forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
-*)
+   notice that
+
+   (1) H ∈ 2-SC -> H ∈ k-SC ∀ k >= 2   (just take t3 = .. = tk = t2)
+   
+   (2) H ∈ 2-SC -> H ∈ SC 
+       by a previous characterization of SC hyperproperties.
+
+   ------------------------------------------------------------------------------
+
+   for k -> ∞ 
+
+    H ∈ lim_{k -> ∞ } k -SC iff
+    H = ∪_{t : trace} lifting (true \ t) = prop \ {t | t : trace}
+
+   As consequences : 
+   ---------------
+
+   (i)   such a limit is not the class SSC
+
+   (ii)  H ∈ 2-SC does not imply H ∈ lim_{k -> ∞ } k -SC   
+
+         e.g. lifting (true \ t) for a fixed t is in 2-SC (as ∃ t, t ..)
+              
+               but it is different from 
+               prop \ {t | t : trace} (the only inhabitant of lim_{k -> ∞ } k -SC)
+
+
+ *)
+
 Definition twoSC (H : hprop) : Prop :=
-  exists t1 t2, forall b, ~ (H b) <->  b t1 /\ b t2.
+  exists t1 t2, forall b, ~ (H b) <->  (b t1 /\ b t2).
 
 Definition R2SCHC :=
   forall P Ct t1 t2,
@@ -658,7 +684,7 @@ Proof.
   - intros h P1 P2 r hcs Ct. destruct (h P1 P2 Ct) as [Cs [h0 h1]]; clear h.
     specialize (hcs Cs).
     rewrite h0, h1 in hcs. now assumption.
-Qed.
+Qed. 
 
 (*************************************************************************)
 (* Robust 2-rel HyperProperty Pres => trace equivalence pres             *)
