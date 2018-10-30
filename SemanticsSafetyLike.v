@@ -6,7 +6,15 @@ Require Import ClassicalExtras.
 Require Import List.
 Import ListNotations.
 
-Section Main.
+
+(** This file provides a abstract definition of small-step operational
+    semantics.  Then, we show that under certain assumptions of
+    *determinacy* of configurations, these semantics satisfy the
+    particular property that we call "Safety-Like". This property, along
+    with determinacy [TODO: finish this description]
+    
+ *)
+Section SmallSteps.
 
 Variable partial : Set.
 Variable program : Set.
@@ -23,6 +31,7 @@ Variable silent : event -> Prop.
 
 CoInductive can_loop_silent : cfg -> Prop :=
 | FSilent : forall c e c', step c e c' -> silent e -> can_loop_silent c' -> can_loop_silent c.
+Hint Constructors can_loop_silent.
 
 (** Reflexive Transitive Closure of the step relation*)
 Inductive steps' : cfg -> pref -> cfg -> Prop :=
@@ -30,8 +39,14 @@ Inductive steps' : cfg -> pref -> cfg -> Prop :=
 | SSCons : forall c e c' m c'', step c e c' -> ~silent e -> steps' c' m c'' ->
                                                             steps' c (cons e m) c''
 | SSSilent : forall c e c' c'' m, step c e c' -> silent e -> steps' c' m c'' -> steps' c m c''.
-
 Hint Constructors steps'.
+
+Lemma steps'_refl : forall c,
+    steps' c [] c.
+Proof.
+  eauto.
+Qed.
+Hint Resolve steps'_refl.
 
 Lemma steps'_trans : forall c1 c2 c3 m m',
     steps' c1 m c2 -> steps' c2 m' c3 -> steps' c1 (m ++ m') c3.
@@ -39,16 +54,7 @@ Proof.
   intros c1 c2 c3 m m' H H0. generalize dependent c3. generalize dependent m'.
   induction H; intros; simpl; eauto.
 Qed.
-
 Hint Resolve steps'_trans.
-
-Lemma steps'_refl : forall c,
-    steps' c [] c.
-Proof.
-  eauto.
-Qed.
-
-Hint Resolve steps'_refl.
 
 Lemma steps'_cons : forall c c' e m,
     steps' c (e :: m) c' -> exists c'', steps' c [e] c'' /\ steps' c'' m c'.
@@ -64,7 +70,6 @@ Proof.
     destruct IHsteps' as [c0 [Hc01 Hc02]].
     exists c0; eauto.
 Qed.
-
 Hint Resolve steps'_cons.
 
 Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
@@ -74,6 +79,33 @@ Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
   end.
 
 Hint Unfold steps.
+
+
+(* Keep that for later, maybe it will be useful *)
+(* Inductive steps_silent : cfg -> cfg -> Prop := *)
+(* | SilOne : forall (c c': cfg) (e : event), step c e c' -> silent e -> steps_silent c c' *)
+(* | SilCons : forall (c c' c'' : cfg) (e : event), *)
+(*     step c e c' -> silent e -> steps_silent c' c'' -> steps_silent c c''. *)
+(* Hint Constructors steps_silent. *)
+
+(* Lemma steps_silent_trans : forall c1 c2 c3, *)
+(*     steps_silent c1 c2 -> steps_silent c2 c3 -> steps_silent c1 c3. *)
+(* Proof. *)
+(*   intros c1 c2 c3 H H0. generalize dependent c3. *)
+(*   induction H; intros; simpl; eauto. *)
+(* Qed. *)
+(* Hint Resolve steps_silent_trans. *)
+
+(* Lemma steps_silent_cons : forall c c', *)
+(*     steps_silent c c' -> *)
+(*     (exists e, step c e c' /\ silent e) \/ (exists c'', steps_silent c c'' /\ steps_silent c'' c'). *)
+(* Proof. *)
+(*   intros c c' H. *)
+(*   induction H. *)
+(*   - left; eexists; now eauto. *)
+(*   - right; eexists; eauto. *)
+(* Qed. *)
+(* Hint Resolve steps_silent_cons. *)
 
 (* must terminate or cause non-silent event ... TODO: but that's not
    what we can easily write, folowing definition may termination *)
@@ -89,25 +121,123 @@ Proof.
 Admitted.
 
 (** Semantics: the semantics produce full traces, not finite prefixes. *)
-CoInductive sem' : cfg -> trace -> Prop :=
-| SStop : forall c, stuck c -> sem' c tstop
-| SCons : forall c e c' t, step c e c' -> ~silent e -> sem' c' t -> sem' c (tcons e t)
-| SSilent : forall c e c' t, step c e c' -> silent e -> sem' c' t -> sem' c t
-            (* TODO: Q: Do we need to prevent that this applies infinitely for an arbitrary t? Can we prevent it? *)
-| SSilentDiv : forall c, can_loop_silent c -> sem' c tsilent.
+(* A definition of the semantics, using a well-founded order 
+   and based on Compcert, module Smallstep *)
+Variable A: Type.
+Variable order: A -> A -> Prop.
+Hypothesis an_A : A. (* A is not empty *)
+Hypothesis order_wf: well_founded order.
+Hypothesis order_inf: forall (a : A), exists a', order a a'. (* Example: natural numbers *)
 
-(* This axiom should accurately model one expectation from the small-step semantics:
+CoInductive sem'_N : A -> cfg -> trace -> Prop :=
+| SStopN : forall c a, stuck c -> sem'_N a c tstop
+| SSilentDivN : forall c a, can_loop_silent c -> sem'_N a c tsilent
+| SAppNilN : forall c c' t a1 a2, steps' c [] c' -> order a2 a1 ->
+                             sem'_N a2 c' t -> sem'_N a1 c t
+| SAppN : forall c c' m t a1 a2, m <> [] -> steps' c m c' ->
+                            sem'_N a2 c' t -> sem'_N a1 c (tapp (ftbd m) t).
+
+Lemma sem'_N_inv:
+  forall a c t,
+  sem'_N a c t ->
+  exists m, exists c', exists a', exists t',
+          steps' c m c' /\ sem'_N a' c' t' /\ t = tapp (ftbd m) t'.
+Proof.
+  intros a. pattern a. apply (well_founded_ind order_wf).
+  intros a' Hi c t H.
+  inversion H; subst; repeat eexists; eauto.
+Qed.
+Hint Resolve sem'_N_inv.
+
+Inductive sem' : cfg -> trace -> Prop :=
+| sem'_cons : forall a c t, sem'_N a c t -> sem' c t.
+Hint Constructors sem'.
+
+Lemma sem'_inv : forall c t,
+    sem' c t -> exists m c' t', steps' c m c' /\ sem' c' t' /\ t = tapp (ftbd m) t'.
+Proof.
+  intros c t H.
+  inversion H; subst. repeat eexists; eauto.
+Qed.
+Hint Resolve sem'_inv.
+
+
+(* Another definition of the semantics, based on the reflexive transitive closrure of the step 
+   relation but without restrictions on appplying the silent event only finitely many times *)
+CoInductive sem'' : cfg -> trace -> Prop :=
+| SStop : forall c, stuck c -> sem'' c tstop
+| SSilentDiv : forall c, can_loop_silent c -> sem'' c tsilent
+| SApp : forall c c' m t, steps' c m c' -> sem'' c' t -> sem'' c (tapp (ftbd m) t).
+
+Lemma sem'_sem'':
+  forall c t, sem' c t -> sem'' c t.
+Proof.
+  cofix Hfix; intros.
+  destruct (sem'_inv c t H) as [m [c' [t' [H1 [H2 H3]]]]].
+  rewrite H3.
+  apply SApp with (c' := c'). assumption.
+  apply Hfix. auto.
+Qed.
+
+
+(* Might be useful later? *)
+(* CoInductive sem'_N : A -> cfg -> trace -> Prop := *)
+(* | SStopN : forall c a, stuck c -> sem'_N a c tstop *)
+(* | SConsN : forall c e c' t a1 a2, step c e c' -> ~silent e -> sem'_N a1 c' t -> sem'_N a2 c (tcons e t) *)
+(* | SSilentN : forall c c' t a1 a2, steps_silent c c' -> order a1 a2 -> sem'_N a1 c' t -> sem'_N a2 c t *)
+(*    (* Shouldn't be able to infinitely step with a silent event *) *)
+(* | SSilentDivN : forall c a, can_loop_silent c -> sem'_N a c tsilent. *)
+
+
+
+
+
+(* This lemma should accurately model one expectation from the small-step semantics:
    if a configuration can produce a whole trace with a least one single event, then
-   in particular it can finitely produce this event.
+   in particular it can finitely produce this event. Except that it can't be proved!
  *)
-Axiom sem'_tcons : forall c e t,
+Lemma sem'_tcons : forall c e t,
     sem' c (tcons e t) -> exists c', steps' c [e] c' /\ sem' c' t.
-Hint Resolve sem'_tcons.
+Proof.
+Abort.
+
+Lemma sem'_N_tcons : forall a c e t,
+    sem'_N a c (tcons e t) -> exists c' a', steps' c [e] c' /\ sem'_N a' c' t.
+Proof.
+  intros a. pattern a. apply (well_founded_ind order_wf).
+  intros a' Hi c e t H.
+  inversion H; subst.
+  - specialize (Hi a2 H1 c' e t H2).
+    destruct Hi as [c'0 [a'0 [H1' H2']]].
+    repeat eexists; eauto. eapply steps'_trans with (m := []) (m' := [e]); eassumption.
+  - destruct m; subst.
+    + contradiction.
+    + inversion H0; subst. simpl in *.
+      apply steps'_cons in H2.
+      destruct H2 as [c'' [H3 H4]]. clear H0. clear H1.
+      destruct m.
+      * exists c'. exists a2. split. eapply steps'_trans with (m := [e]) (m' := []); eauto.
+        simpl. eauto.
+      * exists c''. exists a2. split. assumption.
+        pose proof (SAppN c'' c' (e0 :: m) t0 a2 a2).
+        assert (e0 :: m <> []) by now destruct m.
+        specialize (H0 H1 H4 H5). assumption.
+Qed.
+Hint Resolve sem'_N_tcons.
+
+Lemma sem'_tcons : forall c e t,
+    sem' c (tcons e t) -> exists c', steps' c [e] c' /\ sem' c' t.
+Proof.
+  intros c e t H.
+  inversion H; subst.
+  eapply sem'_N_tcons in H0.
+  destruct H0 as [c' [a' [H1 H2]]]. eexists; eauto.
+Qed.
 
 Axiom classicT : forall (P : Prop), {P} + {~ P}.
 Axiom indefinite_description : forall (A : Type) (P : A->Prop),
    ex P -> sig P.
-    
+
 Definition sem (p:program) : trace -> Prop := sem' (init p).
 
 
@@ -162,19 +292,24 @@ Lemma trace_of_eta : forall c,
 Proof.
 Admitted.
 
-CoFixpoint sem'_trace_of (c:cfg) : sem' c (trace_of c).
-  rewrite trace_of_eta. destruct (classicT (stuck c)) as [H | H].
-  - now eapply SStop.
-  - unfold stuck in H. (* rewrite not_forall_ex_not in H. -- strange error *)
-    assert (exists (e : event), ~ (forall (c' : cfg), ~ step c e c'))
-      as [e H1] by now apply not_forall_ex_not.
-    assert (exists c', ~ ~ step c e c') as [c' H2] by now apply not_forall_ex_not.
-    clear H1.
-    apply NNPP in H2.
+(* CoFixpoint sem'_trace_of (c:cfg) : sem'' c (trace_of c). *)
+(*   rewrite trace_of_eta. destruct (classicT (stuck c)) as [H | H]. *)
+(*   - now apply SStop. *)
+(*   - unfold stuck in H. (* rewrite not_forall_ex_not in H. -- strange error *) *)
+(*     assert (exists (e : event), ~ (forall (c' : cfg), ~ step c e c')) *)
+(*       as [e H1] by now apply not_forall_ex_not. *)
+(*     assert (exists c', ~ ~ step c e c') as [c' H2] by now apply not_forall_ex_not. *)
+(*     clear H1. *)
+(*     apply NNPP in H2. *)
+(* Admitted. *)
+
+Lemma sem'_trace_of (c : cfg) : sem' c (trace_of c).
 Admitted.
 
+
 Lemma non_empty_sem : forall W, exists t, sem W t.
-Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of. Qed.
+Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of.
+Qed.
 
 (** Definition of the language *)
 Definition lang : language := @Build_language partial
@@ -191,12 +326,12 @@ Lemma steps'_sem'_single : forall c c' t,
     sem' c' t ->
     sem' c t.
 Proof.
-  cofix Hfix.
-  intros c c' t H H0. 
-  destruct t; inversion H; subst; try now auto;
-    eapply SSilent; try now eauto.
+  intros c c' t H H0.
+  inversion H0; subst; eauto.
+  destruct (order_inf a) as [a' Ha'].
+  apply sem'_cons with (a := a').
+  econstructor; eauto.  
 Qed.
-
 Hint Resolve steps'_sem'_single.
 
 Lemma steps'_sem' : forall c e c' t,
@@ -204,68 +339,52 @@ Lemma steps'_sem' : forall c e c' t,
   sem' c' t ->
   sem' c (tcons e t).
 Proof.
-  cofix Hfix.
   intros c e c' t H H0.
-  destruct t.
-  - inversion H; subst; try now auto.
-    apply SCons with (c' := c'0); eauto.
-    specialize (Hfix c'0 e c' tstop H3 H0).
-    apply SSilent with (c' := c'0) (e := e0); eauto.
-  - inversion H; subst; try now auto.
-    apply SCons with (c' := c'0); eauto.
-    specialize (Hfix c'0 e c' tsilent H3 H0).
-    apply SSilent with (c' := c'0) (e := e0); eauto.
-  - inversion H; subst; try now auto.
-    apply SCons with (c' := c'0); eauto.
-    specialize (Hfix c'0 e c' (tcons e0 t) H3 H0).
-    apply SSilent with (c' := c'0) (e := e1); eauto.
+  inversion H0; subst; eauto.
+  destruct (order_inf a) as [a' Ha'].
+  apply sem'_cons with (a := a').
+  eapply SAppN with (m := [e]); eauto.
+  intros Hn; inversion Hn.
 Qed.
-
 Hint Resolve steps'_sem'.
+
+Lemma steps'_sem'_N : forall c e c' t a,
+    steps' c [e] c' ->
+    sem'_N a c' t ->
+    sem'_N a c (tcons e t).
+Proof.
+  intros c e c' t a H H0.
+  eapply SAppN with (m := [e]); eauto.
+  intros Hn; inversion Hn.
+Qed.
 
 Lemma steps_sem'_app : forall c m c' t,
   steps c m c' ->
   sem' c' t ->
   sem' c (tapp m t).
 Proof.
-  cofix Hfix.
   intros c m c' t H H0.
-  destruct t; destruct m.
-  - inversion H; subst; try now auto.
-    inversion H1; subst; try now auto.
-    simpl in *. apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop m) c' tstop (conj H5 H2) H0).
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop p) c' tstop (conj H5 H2) H0).    
-  - inversion H; subst; try now auto.
-    simpl in *. apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd m) c' tstop H3 H0). 
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd p) c' tstop H3 H0).
-  - inversion H; subst; try now auto.
-    inversion H1; subst; try now auto.
-    simpl in *. now constructor.
-    simpl in *. apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop m) c' tsilent (conj H5 H2) H0).
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop p) c' tsilent (conj H5 H2) H0).
-  - inversion H; subst; try now auto.
-    simpl in *. apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd m) c' tsilent H3 H0). 
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd p) c' tsilent H3 H0).
-  - inversion H; subst; try now auto.
-    inversion H1; subst; try now auto.
-    simpl in *. now constructor.
-    apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop m) c' (tcons e t) (conj H5 H2) H0).
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (fstop p) c' (tcons e t) (conj H5 H2) H0).
-  - inversion H; subst; try now auto.
-    simpl in *. apply SCons with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd m) c' (tcons e t) H3 H0).
-    simpl in *. eapply SSilent with (c' := c'0); eauto.
-    now specialize (Hfix c'0 (ftbd p) c' (tcons e t) H3 H0).
+  destruct m.
+  - simpl in *.
+    inversion H; subst; try now auto.
+    induction H1; subst; try now auto.
+    + simpl in *. econstructor. now constructor.
+    + specialize (IHsteps' (conj H4 H2) H0 H2).
+      inversion IHsteps'; subst; eauto.
+      simpl in *. econstructor.
+      eapply SAppN with (m := [e]) (c' := c'); eauto.
+      intros Hn; inversion Hn.
+    + specialize (IHsteps' (conj H4 H2) H0 H2).
+      inversion IHsteps'; subst; eauto.    
+  - inversion H0; subst; eauto.
+    destruct (order_inf a) as [a' Ha'].
+    apply sem'_cons with (a := a').
+    destruct p as [| e' p'].
+    + econstructor; eauto.
+    + eapply SAppN with (m := e' :: p'); eauto.
+      intros Hn; inversion Hn.
+      Unshelve.
+      exact an_A. exact a.   
 Qed.
 
 Lemma steps_psem : forall P m c,
@@ -297,13 +416,15 @@ Proof.
   - exists c0. apply SSTbd.
   - destruct t as [| | e' t']; try now inversion Hpref.
     destruct Hpref as [Heq Hpref]; subst.
-    inversion Hsem; subst; simpl in *.
-    + destruct (IHp c' t' H4 Hpref Hnot_stopped) as [c'' HH].
-      exists c''. eapply SSCons; eassumption.
-    + admit.
-Admitted.
-(* 2018-09-27 Broken when updating definitions
-Qed. *)
+    (* inversion Hsem; subst; simpl in *. *)
+    apply sem'_tcons in Hsem.
+    destruct Hsem as [c' [H1 H2]].
+    specialize (IHp c' t' H2 Hpref Hnot_stopped).
+    destruct IHp as [c'' Hc''].
+    exists c''.
+    simpl.
+    apply steps'_trans with (m := [e']) (m' := p) (c2 := c'); eauto.
+Qed.
 
 Lemma sem_prefix : forall m P t,
   sem P t ->
@@ -368,7 +489,7 @@ Qed.
 
 Lemma rel_cfg_transitivity : forall (c1 c2 c3 : cfg), rel_cfg c1 c2 -> rel_cfg c2 c3 -> rel_cfg c1 c3.
 Proof.
-  now firstorder.
+  unfold rel_cfg. firstorder.
 Qed.
 
 Lemma rel_cfg_symmetry : forall (c1 c2 : cfg), rel_cfg c1 c2 -> rel_cfg c2 c1.
@@ -379,38 +500,59 @@ Qed.
 Definition rel_cfg_pref (c1 c2 : cfg) : Prop := forall (m : pref),
     (exists c1', steps' c1 m c1') <-> (exists c2', steps' c2 m c2').
 
+Lemma steps'_to_sem'_N_pref : forall c c' m,
+    steps' c m c' ->
+    exists t a, prefix (ftbd m) t /\ sem'_N a c t.
+Proof.
+  intros c c' m H.
+  induction H.
+  - pose proof (sem'_trace_of c).
+    inversion H; subst.
+    exists (trace_of c). exists a.
+    split; simpl; eauto.
+  - destruct IHsteps' as [t' [a [H2 H3]]].
+    exists (tcons e t'). exists a. split. now simpl.
+    eapply SAppN with (c' := c') (m := [e]); eauto. intros Hn; inversion Hn.
+  - destruct IHsteps' as [t' [a [H2 H3]]].
+    destruct (order_inf a) as [a' Ha'].
+    exists t'. exists a'. split. now simpl.
+    eapply SAppNilN with (c' := c'); eauto.
+Qed.
+
 Lemma steps'_to_sem'_pref : forall c c' m,
     steps' c m c' ->
     exists t, prefix (ftbd m) t /\ sem' c t.
 Proof.
   intros c c' m H.
-  induction H.
-  - exists (trace_of c).
-    split. now simpl. now apply sem'_trace_of.
-  - destruct IHsteps' as [t' [H2 H3]].
-    exists (tcons e t'). split. now simpl.
-    apply SCons with (c' := c'); now assumption.
-  - destruct IHsteps' as [t' [H2 H3]].
-    exists t'. split. now simpl.
-    apply SSilent with (c' := c') (e := e); now assumption.
+  apply steps'_to_sem'_N_pref in H.
+  destruct H as [t [a [H1 H2]]]. eauto.
 Qed.
 
-Lemma sem'_pref_to_steps' : forall c m t,
-    prefix (ftbd m) t -> sem' c t -> exists c', steps' c m c'.
+
+Lemma sem'_N_pref_to_steps' : forall c m t a,
+    prefix (ftbd m) t -> sem'_N a c t -> exists c', steps' c m c'.
 Proof.
-  intros c m t H H0.  
-  generalize dependent t. generalize dependent c.
+  intros c m.
+  generalize dependent c.
   induction m; intros.
   - now eauto.
   - destruct t.
     + inversion H.
     + inversion H.
-    + apply sem'_tcons in H0. destruct H0 as [c' [H1 H2]].
+    + apply sem'_N_tcons in H0. destruct H0 as [c' [a' [H1 H2]]].
       assert (Hpref: prefix (ftbd m) t) by now inversion H.
       inversion H; subst. clear H3.
-      specialize (IHm c' t Hpref H2). destruct IHm as [c'0 H3].
+      specialize (IHm c' t a' Hpref H2). destruct IHm as [c'0 H3].
       exists c'0.
       eapply steps'_trans with (m := [e]) (m' := m); eassumption.
+Qed.
+
+Lemma sem'_pref_to_steps' : forall c m t,
+    prefix (ftbd m) t -> sem' c t -> exists c', steps' c m c'.
+Proof.
+  intros c m t H H0.
+  inversion H0; subst. 
+  eauto using sem'_N_pref_to_steps'.
 Qed.
 
 Lemma rel_cfg_to_rel_cfg_pref : forall c1 c2, rel_cfg c1 c2 -> rel_cfg_pref c1 c2.
@@ -421,9 +563,9 @@ Proof.
   - intros H'. destruct H' as [c1' H'].
     apply steps'_to_sem'_pref in H'.
     destruct H' as [t [H1 H2]].
-    apply sem'_pref_to_steps' with (t := t).
-    assumption.
-    now apply (H t).
+    apply H in H2. inversion H2; subst; eauto.
+    eapply sem'_N_pref_to_steps' with (t := t).
+    assumption. eassumption.
   - intros H'. destruct H' as [c1' H'].
     apply steps'_to_sem'_pref in H'.
     destruct H' as [t [H1 H2]].
@@ -471,7 +613,8 @@ Lemma ind_hyp (det : weak_determinacy) : forall t c,
     (forall m, prefix (ftbd m) t -> exists c', steps' c m c') ->
     sem' c t.
 Proof.
-  cofix. intros t c Hndiv Hnstopped H.
+  econstructor. generalize dependent t. generalize dependent c.
+  cofix. intros c t Hndiv Hnstopped H.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
@@ -484,7 +627,7 @@ Proof.
     pose proof H as H'.
     assert (H1: prefix (ftbd [e]) (tcons e t')) by now split.
     specialize (H' [e] H1); clear H1. destruct H' as [c' Hc'].
-    apply steps'_sem' with (c' := c').
+    apply steps'_sem'_N with (c' := c').
     assumption.
     assert (Hndiv' : ~ diverges t').
     { intros Hn; apply Hndiv; now constructor. }
@@ -507,6 +650,8 @@ Proof.
     assert (exists c2' : cfg, steps' cc m c2') by (now exists c'').
     specialize (det H).
     apply det.
+    Unshelve.
+    exact an_A.
     (* Still not guarded. But should intuitively work *)
 Admitted.
 
@@ -635,4 +780,4 @@ Proof.
          assumption.
 Qed.
 
-End Main.
+End SmallSteps.
