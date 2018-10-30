@@ -272,7 +272,7 @@ Fixpoint embedding_pref (m : pref) (term : trace) : trace :=
 Definition embedding (m : finpref) : trace :=
   match m with
   | fstop m f => embedding_pref m (tstop f)
-  | ftbd m => embedding_pref m (tstop esgood) (* RB: The hack. *)
+  | ftbd m => embedding_pref m (tstop esbad) (* RB: The hack. *)
   end.
 
 Lemma embed_pref : forall m, prefix m (embedding m).
