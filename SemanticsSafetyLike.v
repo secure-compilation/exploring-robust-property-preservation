@@ -114,7 +114,7 @@ Definition cannot_loop_silent (c:cfg) : Prop :=
 
 Definition does_event_or_goes_wrong (c:cfg) :=
   (* (exists e c', steps' c (cons e nil) c') \/ (exists c', steps' c nil c' /\ stuck c'). *)
-  {exists e c', steps' c (cons e nil) c'} + {exists c', steps' c nil c' /\ stuck c'}.
+  {exists e c', steps' c [e] c'} + {exists c', steps' c [] c' /\ stuck c'}.
   
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
 Proof.
@@ -246,7 +246,8 @@ CoFixpoint trace_of (c:cfg) : trace.
   destruct (classicT (silent e)) as [He | He].
   - destruct (classicT (can_loop_silent c')) as [Hc | Hc].
     + exact tsilent.
-    + apply not_can_loop_silent in Hc. destruct Hc as [Hc | Hc].
+    + apply not_can_loop_silent in Hc.
+      destruct Hc as [Hc | Hc].
       * apply indefinite_description in Hc. destruct Hc as [e' Hc].
         apply indefinite_description in Hc. destruct Hc as [c'' Hs].
         exact (tcons e' (trace_of c'')).
@@ -259,33 +260,56 @@ Defined.
    it still doesn't compute because of all the axioms
    TODO: update this
  *)
-Lemma trace_of_eta : forall c,
-  trace_of c =
-        match classicT (stuck c) with
-        | left _ => tstop
-        | right H0 =>
-            let (e, H1) :=
-              indefinite_description event
-                (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
-                (Morphisms.subrelation_proper Morphisms_Prop.ex_iff_morphism tt
-                   (Morphisms.subrelation_respectful
-                      (Morphisms.subrelation_refl
-                         (Morphisms.pointwise_relation event iff))
-                      Morphisms.iff_impl_subrelation)
-                   (fun n : event => ~ (forall c' : cfg, ~ step c n c'))
-                   (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
-                   (fun n : event =>
-                    not_forall_ex_not cfg (fun n0 : cfg => ~ step c n n0))
-                   (Morphisms.iff_impl_subrelation
-                      (~ (forall (n : event) (c' : cfg), ~ step c n c'))
-                      (exists n : event, ~ (forall c' : cfg, ~ step c n c'))
-                      (not_forall_ex_not event
-                         (fun n : event => forall c' : cfg, ~ step c n c')) H0)) in
-            let (c', _) :=
-              indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H1 in
-            tcons e (trace_of c')
-        end.
+Lemma trace_of_eta' : forall c,
+    trace_of c =
+    let s := classicT (stuck c) in
+    match s with
+    | left _ => tstop
+    | right H =>
+      let H0 :=
+          indefinite_description event (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
+                                 (Morphisms.subrelation_proper Morphisms_Prop.ex_iff_morphism tt
+                                                               (Morphisms.subrelation_respectful
+                                                                  (Morphisms.subrelation_refl (Morphisms.pointwise_relation event iff))
+                                                                  Morphisms.iff_impl_subrelation) (fun n : event => ~ (forall c' : cfg, ~ step c n c'))
+                                                               (fun n : event => exists n0 : cfg, ~ (fun n1 : cfg => ~ step c n n1) n0)
+                                                               (fun n : event => not_forall_ex_not cfg (fun n0 : cfg => ~ step c n n0))
+                                                               (Morphisms.iff_impl_subrelation
+                                                                  (~ (forall n : event, (fun n0 : event => forall c' : cfg, ~ step c n0 c') n))
+                                                                  (exists n : event, ~ (fun n0 : event => forall c' : cfg, ~ step c n0 c') n)
+                                                                  (not_forall_ex_not event (fun n : event => forall c' : cfg, ~ step c n c')) H)) in
+      let (e, H1) := H0 in
+      let H2 := indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H1 in
+      let (c', H3) := H2 in
+      let H4 : step c e c' := NNPP (step c e c') H3 in
+      let s0 := classicT (silent e) in
+      if s0
+      then
+        let s1 := classicT (can_loop_silent c') in
+        match s1 with
+        | left _ => tsilent
+        | right Hc =>
+          let Hc0 := not_can_loop_silent c' Hc in
+          match Hc0 with
+          | left Hc1 =>
+            let Hc2 :=
+                indefinite_description event (fun e0 : event => exists c'0 : cfg, steps' c' [e0] c'0)
+                                       Hc1 in
+            let (e', Hc3) := Hc2 in
+            let Hc4 := indefinite_description cfg (fun c'0 : cfg => steps' c' [e'] c'0) Hc3 in
+            let (c'', _) := Hc4 in tcons e' (trace_of c'')
+          | right Hc1 =>
+            let Hc2 :=
+                indefinite_description cfg (fun c'0 : cfg => steps' c' [] c'0 /\ stuck c'0) Hc1 in
+            let (c'', a) := Hc2 in match a with
+                                   | conj _ _ => tstop
+                                   end
+          end
+        end
+      else tcons e (trace_of c')
+    end.
 Proof.
+  (* Have no idea how to prove this... *)
 Admitted.
 
 (* CoFixpoint sem'_trace_of (c:cfg) : sem'' c (trace_of c). *)
@@ -300,24 +324,61 @@ Admitted.
 (* Admitted. *)
 
 Lemma sem'_trace_of (c : cfg) : sem' c (trace_of c).
-  apply sem'_cons with (a := an_A).
-  generalize dependent c.
+Proof.
+  destruct (order_inf an_A) as [a' Ha'].
+  apply sem'_cons with (a := a').
+  generalize dependent c. generalize dependent a'.
   cofix Hfix.
-  intros c.
-  rewrite trace_of_eta. destruct (classicT (stuck c)) as [H | H].
-  - now apply SStopN.
-  - unfold stuck in H.
-    assert (exists (e : event), ~ (forall (c' : cfg), ~ step c e c'))
-      as [e H1] by now apply not_forall_ex_not.
-    assert (exists c', ~ ~ step c e c') as [c' H2] by now apply not_forall_ex_not.
-    clear H1.
-    apply NNPP in H2.
+  intros a' Ha' c.
+  rewrite trace_of_eta'. destruct (classicT (stuck c)) as [H | H].
+  - simpl. now apply SStopN.
+  - simpl. destruct (indefinite_description event (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
+         (Morphisms.subrelation_proper Morphisms_Prop.ex_iff_morphism tt
+            (Morphisms.subrelation_respectful
+               (Morphisms.subrelation_refl (Morphisms.pointwise_relation event iff))
+               Morphisms.iff_impl_subrelation) (fun n : event => ~ (forall c' : cfg, ~ step c n c'))
+            (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
+            (fun n : event => not_forall_ex_not cfg (fun n0 : cfg => ~ step c n n0))
+            (Morphisms.iff_impl_subrelation (~ (forall (n : event) (c' : cfg), ~ step c n c'))
+               (exists n : event, ~ (forall c' : cfg, ~ step c n c'))
+               (not_forall_ex_not event (fun n : event => forall c' : cfg, ~ step c n c')) H))) as [e H1].
+    destruct (indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H1) as [c' Hc'].
     destruct (classicT (silent e)) as [He | He].
-    + (* silent *)
-      admit.
-    + (* not silent *)
-      specialize (Hfix c').
-Admitted.
+    destruct (classicT (can_loop_silent c')) as [H0 | H0]; simpl.
+    + apply NNPP in Hc'.
+      apply SAppNilN with (c' := c') (a2 := an_A).
+      econstructor; eauto. assumption.
+      constructor. assumption.
+    + destruct (not_can_loop_silent c' H0); simpl.
+      ++ destruct (indefinite_description
+                     event
+                     (fun e1 : event => exists c'0 : cfg, steps' c' [e1] c'0) e0)
+         as [e' He'].
+         destruct (indefinite_description cfg
+                                          (fun c'0 : cfg => steps' c' [e'] c'0) He')
+           as [c'0 Hc'0].
+         apply SAppN with (c' := c'0) (m := [e']) (a2 := a').
+         intros Hn; inversion Hn.
+         apply NNPP in Hc'.
+         apply steps'_trans with (c2 := c') (m := []) (m' := [e']).
+         econstructor; eauto. assumption. apply Hfix. assumption.
+      ++ destruct (indefinite_description
+                     cfg (fun c'0 : cfg => steps' c' [] c'0 /\ stuck c'0) e0)
+          as [c'' Hc''].
+         destruct Hc''.
+         apply SAppNilN with (c' := c'') (a2 := an_A).
+         apply NNPP in Hc'.
+         apply steps'_trans with (c2 := c') (m := []) (m' := []); eauto.
+         assumption.
+         constructor. assumption.
+    + apply NNPP in Hc'.
+      apply SAppN with (c' := c') (m := [e]) (a2 := a').
+      intros Hn; inversion Hn.
+      econstructor; eauto.
+      apply Hfix. assumption.
+Qed.
+
+
 
 Lemma non_empty_sem : forall W, exists t, sem W t.
 Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of.
