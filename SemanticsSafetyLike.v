@@ -476,8 +476,19 @@ Theorem finpref_ind_snoc :
     forall m, P m.
 Proof.
   (* Proof similar to list_rev_ind in the Coq library *)
-  admit.
-Admitted.
+  intros P H H0 H1 m.
+  destruct m; eauto.
+  rewrite <- (@rev_involutive event p).
+  induction (rev p).
+  apply H.
+  simpl.
+  assert (forall l, l ++ [a] = snoc l a).
+  { clear.
+    induction l. now simpl.
+    simpl in *. rewrite IHl. reflexivity. }
+  specialize (H2 (rev l)). rewrite H2.
+  specialize (H1 (ftbd (rev l)) a IHl). assumption.
+Qed.
 
 Lemma not_diverges_cons : forall e t, ~ diverges (tcons e t) -> ~ diverges t.
   intros e t H Hn.
