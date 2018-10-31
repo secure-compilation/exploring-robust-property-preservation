@@ -10,10 +10,10 @@ Import ListNotations.
 (** This file provides a abstract definition of small-step operational
     semantics.  Then, we show that under certain assumptions of
     *determinacy* of configurations, these semantics satisfy the
-    particular property that we call "Safety-Like". This property, along
-    with determinacy [TODO: finish this description]
-    
- *)
+    particular property that we call "Safety-Like". This property,
+    along with determinacy, can be used to prove that R2rSP => RTEP
+    (file r2RSC_teq.v) 
+*)
 Section SmallSteps.
 
 Variable partial : Set.
