@@ -33,7 +33,7 @@ CoInductive can_loop_silent : cfg -> Prop :=
 | FSilent : forall c e c', step c e c' -> silent e -> can_loop_silent c' -> can_loop_silent c.
 Hint Constructors can_loop_silent.
 
-(** Reflexive Transitive Closure of the step relation*)
+(** Reflexive Transitive Closure of the step relation *)
 Inductive steps' : cfg -> pref -> cfg -> Prop :=
 | SSTbd : forall c, steps' c nil c
 | SSCons : forall c e c' m c'', step c e c' -> ~silent e -> steps' c' m c'' ->
@@ -113,6 +113,7 @@ Definition cannot_loop_silent (c:cfg) : Prop :=
   forall c', steps' c nil c' -> exists e c'', steps' c' (cons e nil) c''.
 
 Definition does_event_or_goes_wrong (c:cfg) :=
+  (* (exists e c', steps' c (cons e nil) c') \/ (exists c', steps' c nil c' /\ stuck c'). *)
   {exists e c', steps' c (cons e nil) c'} + {exists c', steps' c nil c' /\ stuck c'}.
   
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
@@ -194,12 +195,7 @@ Qed.
 
 (* This lemma should accurately model one expectation from the small-step semantics:
    if a configuration can produce a whole trace with a least one single event, then
-   in particular it can finitely produce this event. Except that it can't be proved!
- *)
-Lemma sem'_tcons : forall c e t,
-    sem' c (tcons e t) -> exists c', steps' c [e] c' /\ sem' c' t.
-Proof.
-Abort.
+   in particular it can finitely produce this event. *)
 
 Lemma sem'_N_tcons : forall a c e t,
     sem'_N a c (tcons e t) -> exists c' a', steps' c [e] c' /\ sem'_N a' c' t.
@@ -304,8 +300,24 @@ Admitted.
 (* Admitted. *)
 
 Lemma sem'_trace_of (c : cfg) : sem' c (trace_of c).
+  apply sem'_cons with (a := an_A).
+  generalize dependent c.
+  cofix Hfix.
+  intros c.
+  rewrite trace_of_eta. destruct (classicT (stuck c)) as [H | H].
+  - now apply SStopN.
+  - unfold stuck in H.
+    assert (exists (e : event), ~ (forall (c' : cfg), ~ step c e c'))
+      as [e H1] by now apply not_forall_ex_not.
+    assert (exists c', ~ ~ step c e c') as [c' H2] by now apply not_forall_ex_not.
+    clear H1.
+    apply NNPP in H2.
+    destruct (classicT (silent e)) as [He | He].
+    + (* silent *)
+      admit.
+    + (* not silent *)
+      specialize (Hfix c').
 Admitted.
-
 
 Lemma non_empty_sem : forall W, exists t, sem W t.
 Proof. intro W. exists (trace_of (init W)). apply sem'_trace_of.
@@ -463,6 +475,7 @@ Theorem finpref_ind_snoc :
     (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
     forall m, P m.
 Proof.
+  (* Proof similar to list_rev_ind in the Coq library *)
   admit.
 Admitted.
 
@@ -601,9 +614,6 @@ Proof.
   induction H; eauto; inversion Heqm; now subst.
 Qed.
 
-  
-
-
 Inductive stopped : trace -> Prop :=
   | stopped_stop : stopped tstop
   | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
@@ -613,8 +623,11 @@ Lemma ind_hyp (det : weak_determinacy) : forall t c,
     (forall m, prefix (ftbd m) t -> exists c', steps' c m c') ->
     sem' c t.
 Proof.
-  econstructor. generalize dependent t. generalize dependent c.
-  cofix. intros c t Hndiv Hnstopped H.
+  intros.
+  apply sem'_cons with (a := an_A).
+  generalize dependent an_A.
+  generalize dependent t. generalize dependent c.
+  cofix. intros c t Hndiv Hnstopped H a.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
@@ -627,7 +640,10 @@ Proof.
     pose proof H as H'.
     assert (H1: prefix (ftbd [e]) (tcons e t')) by now split.
     specialize (H' [e] H1); clear H1. destruct H' as [c' Hc'].
-    apply steps'_sem'_N with (c' := c').
+    destruct (order_inf a) as [a1 Ha1].
+    apply SAppN with (c' := c') (m := [e]) (a2 := a1).
+    intros Hn; inversion Hn.
+    (* apply steps'_sem'_N with (c' := c'). *)
     assumption.
     assert (Hndiv' : ~ diverges t').
     { intros Hn; apply Hndiv; now constructor. }
@@ -635,7 +651,7 @@ Proof.
     { intros Hn; apply Hnstopped; now constructor. }
     Guarded.
     apply ind_hyp; try now assumption.
-    Fail Guarded.
+    Guarded.
     intros m H0.
     assert (H': prefix (ftbd (e :: m)) (tcons e t')) by now split.
     specialize (H (e :: m) H'); clear H'.
@@ -650,49 +666,7 @@ Proof.
     assert (exists c2' : cfg, steps' cc m c2') by (now exists c'').
     specialize (det H).
     apply det.
-    Unshelve.
-    exact an_A.
-    (* Still not guarded. But should intuitively work *)
-Admitted.
-
-(* (* RB: Let's rearrange the pieces of the proof a bit and make the productive step *)
-(*    explicit to make the guardedness checker happy. *) *)
-(* Restart. *)
-(*   cofix. intros t c Hndiv Hnstopped H. *)
-(*   destruct t as [| | e t']. *)
-(*   - apply False_ind. apply Hnstopped. now constructor. *)
-(*   - apply False_ind. apply Hndiv. now constructor. *)
-(*   - pose proof H as H'. *)
-(*     assert (H1: prefix (ftbd [e]) (tcons e t')) by now split. *)
-(*     specialize (H' [e] H1); clear H1. destruct H' as [c' Hc']. *)
-(*     apply SCons with (c' := c'). *)
-(*     + (* Only this part of the proof changes slightly, and here looks like an *)
-(*          inversion lemma. *) *)
-(*       assert (Hstep : step c e c') by admit. *)
-(*       exact Hstep. *)
-(*     + assert (Hsilent: ~silent e) by admit. *)
-(*       exact Hsilent. *)
-(*     + apply ind_hyp. *)
-(*       * assert (Hndiv' : ~ diverges t') by admit. *)
-(*         exact Hndiv'. *)
-(*       * assert (Hnstopped' : ~ stopped t') by admit. *)
-(*         exact Hnstopped'. *)
-(*       * intros m H0. *)
-(*         assert (H': prefix (ftbd (e :: m)) (tcons e t')) by now split. *)
-(*         specialize (H (e :: m) H'); clear H'. *)
-(*         unfold weak_determinacy in det. *)
-(*         destruct H as [c'' Hc'']. *)
-(*         apply steps'_cons in Hc''. *)
-(*         destruct Hc'' as [cc [Hcc1 Hcc2]]. *)
-(*     specialize (det c c c' cc [e] (rel_cfg_reflexivity c) Hc' Hcc1). *)
-(*     apply rel_cfg_to_rel_cfg_pref in det. unfold rel_cfg_pref in det. *)
-(*     specialize (det m). *)
-(*     destruct det as [_ det]. *)
-(*     assert (exists c2' : cfg, steps' cc m c2') by (now exists c''). *)
-(*     specialize (det H). *)
-(*     apply det. *)
-(*     Guarded. *)
-(* Admitted. *)
+Qed.
 
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right (det : weak_determinacy): forall t P,
