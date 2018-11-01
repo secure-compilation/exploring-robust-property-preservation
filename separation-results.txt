@@ -525,3 +525,181 @@ RDP.  Qed.
 Proof of Theorem 5: It is immediate from Lemmas 9, 10 and 11 that ↓ is
 RTEP and correct, but neither RSP nor RDP.
 
+——–——————————————
+Other examples of such compilers that are RTEP and correct, but neither RSP nor RDP
+——–——————————————
+——————————————
+First example
+——————————————
+
+Trace Model
+———————
+Events: Nat n
+In both language, one event is produced at the end of
+the execution, that is the result of the computation.
+Trace are made of either this event or silent divergence.
+
+Source Language
+———————————————
+P ::= f(x : nat) { e } | f(x : bool) { e }
+e ::= if x then e else e
+      | if x < n then e else e
+      | n
+      | f(e)
+
+C ::= f(n) | f(b)
+
+The composition of a program and a context of incompatible types
+is disallowed (or it produces a single failure event).
+
+Target Language
+———————————————
+P ::= f(x : nat) { e }
+e ::= if x < n then e else e
+      | n
+      | f(e)
+
+C ::= f(n)
+
+
+Compiler
+————————
+Compilation of expressions:
+(if x then e else e)↓     = if x < 1 then e↓ else e↓
+(if x < n then e else e)↓ = if x < n then e↓ else e↓
+n↓                        = n↓
+f(e)↓                     = f(e↓)
+
+Compilation of programs:
+(f(x : nat) { e })↓  = f(x : nat) { e↓ }
+(f(x : bool) { e })↓ = f(x : nat) { if x < 2 then ẹ↓ else if x < 3 then f(3) else 42 }
+
+Lemma 1: ↓ is correct (BCC)
+Let Cₛ↓[P↓] ↝ t, show that Cₛ[P] ↝ t.
+Case analysis on P:
+- P = f(x : nat) { e }
+  We can prove by induction on e that e↓ = e: since x is a nat,
+  we can't have (if x then e else e) anywhere.
+- P = f(x : bool) { e }
+  Then P↓ = f(x : nat) { if x < 2 then ẹ↓ else 42 }.
+  By induction on e, we have correctness. (easy since
+  f(e') is disallowed in e).
+
+Lemma 2: ↓ is RTEP.
+
+We are going to prove the contrapositive form of the preservation
+of observational equivalence.
+
+Let P₁ and P₂ be two programs.
+
+Suppose that P₁↓ and P₂↓ are not observationaly equivalent, i.e. there
+exists Cₜ such that Cₜ[P₁↓] ↝ t₁, Cₜ[P₂↓] ↝ t₂, and t₁ ≠ t₂. Then,
+we can build a source context Cₛ such that Cₛ[P₁] ↝ t₂, Cₛ[P₂] ↝ t₂.
+
+Let us consider three cases:
+- First, if P₁ and P₂ expect a natural number in the source,
+  then Cₜ = f(n) for some natural number n.
+  Then, take Cₛ = f(n). We have indeed Cₛ[P₁] ↝ t₁ and
+  Cₛ[P₂] ↝ t₂, because the compilation on programs that expect
+  a natural number is the identity
+- Otherwise, suppose P₁ and P₂ expect a boolean in the source.
+  Cₜ = f(n) for some n.
+  + If n = 0 or n = 1, then by taking respectively Cₛ = f(false) or
+    Cₛ = f(true), we obtain that Cₛ[P₁] ↝ t₁ and Cₛ[P₂] ↝ t₂ by
+    correctness of the compiler
+  + Otherwise, this is a contradiction: both Cₛ[P₁] and Cₛ[P₂]
+    silently diverge, so t₁ = t₂.
+
+Note that this result holds if we allow P₁ and P₂ to be of different types:
+In this case, take Cₛ to be any context. Then Cₛ can be plugged with one of
+the programs, producing silent divergence or a natural number; Cₛ plugged
+with the other program will produce failure. Cₛ is indeed a distinguishing
+context .
+
+Lemma 2: ↓ is not RSP.
+Consider the program P = f(x : bool) { 1 }. This program
+satisfy the safety property "never output 42"
+
+Lemma 3: ↓ is not RDP
+Same, with the liveness property "never silently diverge".
+
+—————————————————————————————————————————————————————————————————————————————————————
+Second example
+—————————————————————————————————————————————————————————————————————————————————————
+
+Again, we consider a compiler between two languages that will satisfy
+RTEP but not RSP and not RDP. This compiler also satisfy TP, CCC and SCC.
+
+Consider a source language with two types nat and bool, with one trace action write x,
+where "x" can be either a natural number, a boolean or a special event "bad".
+There are exactly two partial programs in this language:
+Pn = fun n : nat  -> write n
+Pb = fun b : bool -> write b
+
+A context is a (infinite) sequence Cₛ = Cₛ¹ Cₛ² ... of either natural numbers
+or booleans.
+
+A whole program can be:
+- a pair (Pn, Cₛ) where Cₛ is a sequence of natural numbers
+- a pair (Pb, Cₛ) where Cₛ is a sequence of booleans
+- a special program ⊥
+
+Cₛ[P] is defined as:
+- Cₛ[Pn] = (Pn, Cₛ) if Cₛ is a sequence of natural numbers
+- Cₛ[Pb] = (Pb, Cₛ) if Cₛ is a sequence of booleans
+- ⊥ otherwise
+
+The semantics of this source language are defined as follow:
+- ⊥ has only one trace, the empty trace
+- (P, Cₛ) has only one trace, the one obtained by repeatedly calling P with
+  the values in the sequence Cₛ.
+
+
+The target language is similar, but doesn't have booleans (while still allowing
+outputting them). There are exactly two partial programs:
+- Pnₜ = fun n : nat -> write n
+- Pbₜ = fun n : nat -> if (n = 0)      then write false
+                       else if (n = 1) then write true
+		       else                 write "bad"
+
+Contexts are sequences of natural numbers. Whole programs are:
+- pairs (P, Cₜ)
+- ⊥ₜ
+
+We define the compiler ↓ as follow:
+- Pn↓ = Pnₜ
+- Pb↓ = Pbₜ
+
+We can directly extend the compiler to contexts, by replacing true by
+1 and false by 0. We can also extend the compiler to whole programs,
+by ⊥↓ = ⊥ₜ.
+
+Lemma: The compiler ↓ is BCC
+Proof: Let W be a whole source program. We need to prove that
+∀ t, W↓ ↝ t ⇒ W ↝ t. This is immediate by case analysis.
+
+Lemma: The compiler ↓ is SCC
+Lemma: The compiler ↓ is CCC
+Proof: by the same argument.
+
+Lemma: The compiler ↓ is RTEP
+Suppose that for ∀ Cₛ. behav(Cₛ[P₁]) = behav(Cₛ[P₂]). We want
+to show that ∀ Cₜ. behav(Cₜ[P₁↓]) = behav(Cₜ[P₂↓]).
+Then, P₁ = P₂ by construction of the source language. Hence,
+P₁↓ = P₂↓.
+
+Qed.
+
+Lemma: The compiler ↓ is not RSP
+The compiler is not RSP: consider the program Pb of input type bool.
+The property "never 'bad'" is satisfied by P, but not P↓, by using
+the context Cₜ = 2, 2, 2, ... for instance
+
+Lemma: The compiler ↓ is not RDP
+Similarly, consider a program P of input type bool. Then, this
+program satisfy the dense property
+"on infinite traces, eventually never write 'bad'". This property
+is indeed not satisfied by P↓, using the context Cₜ = 2, 2, 2, ...
+because it will always write bad.
+
+From these lemmas, we obtain the theorem.
