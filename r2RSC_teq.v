@@ -8,6 +8,8 @@ Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
 Require Import List.
 
+(** This file proves that r2RSC can imply RTEP *)
+
 Definition two_rRSC : Prop :=
   forall (r : finpref -> finpref -> Prop) P1 P2 ,
     ((forall Cs m1 m2, psem (Cs [P1]) m1 ->

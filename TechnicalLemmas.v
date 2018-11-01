@@ -5,7 +5,7 @@ Require Import CommonST.
 Require Import Robustdef.
 Require Import ClassicalExtras.
 
-(* This file contains several lemmas that are used in other proofs *)
+(** This file contains several lemmas that are used in other proofs *)
 
 Lemma longest_in_psem {K : language} : forall (P' : prg K) m,
     exists mm, (fpr mm m) /\ (psem P' mm) /\

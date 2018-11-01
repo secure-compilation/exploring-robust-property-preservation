@@ -7,7 +7,8 @@ Require Import Robustdef.
 Require Import Properties.
 Require Import Topology.
 
-(** *property free criteria *)
+(** This file proves the alternative, property-free criteria
+    for the robust preservation of classes of properties *)
 
 
 (*********************************************************)

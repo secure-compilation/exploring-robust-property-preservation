@@ -6,6 +6,10 @@ Require Import Robustdef.
 Require Import Criteria. 
 Require Import ClassicalExtras.
 
+(** This file proves the collapses that happens in presence of
+    a non-deterministic choice operator in the source language *)
+
+
 (* 
 
    RrHP ------ 

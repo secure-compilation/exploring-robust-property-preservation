@@ -1,8 +1,10 @@
 Require Export Classical.
 Require Export Classical_Pred_Type.
 
-(*********************************************************)
-(* Some useful Lemma to handle classical facts *)
+(** This file provides several lemmas
+    that we use to facilitate handling classical
+    reasonning *)
+
 Lemma dne : forall P : Prop, P <-> ~ ~ P.
 Proof.
  intros P. split.

@@ -3,6 +3,9 @@ Require Import Properties.
 Require Import ClassicalExtras.
 Require Import Events.
 
+(** This file defines the notion of language and of compilation
+    chain we use in the rest of the development *)
+
 Set Implicit Arguments.
 
 Record language :=

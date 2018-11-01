@@ -2,10 +2,10 @@ Require Import Events.
 Require Import TraceModel.
 Require Import ClassicalExtras.
 
-(* CA: in this file all and only defn of prop, Hprop, relation on prop
-       and main classes of these *)
-(*******************************************************)
+(** This file defines properties, hyperproperties, relational properties
+    and the main subclasses of these *)
 
+(*******************************************************)
 Definition prop := trace -> Prop.
 
 Definition Observable (π : prop) : Prop :=
@@ -26,7 +26,7 @@ Definition Liveness (π : prop) : Prop :=
 
 (* some notes about safety *)
 
-(* Safety a la Deepak *)
+(* Safety a la DG *)
 Definition Safety' (π : prop) : Prop:=
   exists π': finpref -> Prop,
   forall t:trace, ~(π t) <-> (exists m, prefix m t /\ π' m).

@@ -8,6 +8,9 @@ Require Import ClassicalExtras.
 Require Import FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalFacts.
 
+(** This file proves the collapses that happens in presence of
+    reflection in the source language *)
+
 (* 
 
        RrHP  ---  

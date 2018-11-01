@@ -5,6 +5,9 @@ Require Import CommonST.
 Require Import ClassicalExtras.
 Require Import FunctionalExtensionality.
 
+(** This file defines the robust preservation of several
+    classes of properties *)
+
 (** *Robust Preservation of π *)
 Definition RP (P : par src) (π : prop) : Prop :=
   rsat P π -> rsat (P ↓) π.

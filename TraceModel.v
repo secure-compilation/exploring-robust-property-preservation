@@ -1,18 +1,22 @@
-
-(*CA: In this file all and only definitions and lemmas about traces *)
-
 Require Import Events.
 Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import List.
 
-(** *traces  *)
+(** In this file, we define the trace model that will be used
+    in the rest of the development, and prove several results
+    about these traces. *)
+
+
+(** A trace represents either a stopped execution, a silently diverging
+    execution or an infinite execution. *)
 CoInductive trace : Set :=
   | tstop : trace
   | tsilent : trace
   | tcons : event -> trace -> trace.
 
-(** *finite prefixes *)
+(** A finite prefix is a list of events, that can be continued (ftbd)
+    or not (fstop). *)
 Definition pref := list event.
 
 Inductive finpref : Set :=
@@ -26,7 +30,7 @@ Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(p) :=
 Tactic Notation "induction" "finpref" ident(m) "as" ident(e) ident(p) ident(Hp) :=
   destruct m as [m | m]; induction m as [|e p Hp].
 
-(** *prefix relation *)
+(** Prefix relation between finite prefixes and traces *)
 Fixpoint fstop_prefix (m : pref) (t : trace) : Prop :=
   match m, t with
     | nil, tstop => True
@@ -48,10 +52,8 @@ Definition prefix (m : finpref) (t : trace) : Prop :=
   | ftbd m  => ftbd_prefix m t
   end.
 
-(** *finite trace*)
+(** Some traces/executions are finite, some are not. *)
 
-(* fin and inf now refer to *executions*, not traces!
-   Eventually they may be given more memorable names than term/nonterm. *)
 Inductive fin : trace -> Prop :=
   | fin_stop : fin tstop
   | fin_cons : forall e t, fin t -> fin (tcons e t).
@@ -59,6 +61,7 @@ Inductive fin : trace -> Prop :=
 Definition inf (t : trace) : Prop := ~(fin t).
 Hint Unfold inf.
 
+(* A trace is either finite or not *)
 Lemma fin_or_inf : forall t, fin t \/ inf t.
 Proof.
   intros t. unfold inf. now apply classic.
@@ -67,7 +70,7 @@ Qed.
 Lemma inf_tcons : forall e t, inf (tcons e t) -> inf t.
 Proof. intros e t H Hc. apply H. now constructor. Qed.
 
-(* a finite prefix has at least two possible continuations
+(* A finite prefix has at least two possible continuations
    as we have at least two distinct events
    CH: this doesn't seem to use different_events though!
 *)
@@ -99,7 +102,7 @@ Proof.
        intros Hc. inversion Hc; now subst.
 Qed.
 
-(* we try to identify a finite trace and the fpref made of the same events *)
+(* We try to identify a finite trace and the fpref made of the same events. *)
 
 Fixpoint fstop_equal (m : pref) (t : trace) : Prop :=
   match m, t with
@@ -274,7 +277,7 @@ Qed.
 
 (************************************************************************)
 
-(** *fpr  *)
+(** The relation fpr is the prefix relation between two prefixes *)
 
 
 (* CA: we can define a prefix relation among finite prefixes *)
