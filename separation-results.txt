@@ -550,7 +550,7 @@ e ::= if x then e else e
 C ::= f(n) | f(b)
 
 The composition of a program and a context of incompatible types
-is disallowed (or it produces a single failure event).
+is statically disallowed.
 
 Target Language
 ———————————————
