@@ -599,68 +599,6 @@ Proof.
     specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
 
-
-Definition alternative := forall P1 P2 S1 S2,
-    Safety S1 -> Safety S2 ->
-    (exists Ct, ~ sat (Ct [P1 ↓]) S1 /\ ~ sat (Ct [P2 ↓]) S2) ->
-    (exists Cs, ~ sat (Cs [P1]) S1 /\ ~ sat (Cs [P2]) S2).
-
-(* aletrnative <->
-    forall P1 P2 S1 S2, 
-    Safety S1 -> Safety S2 ->  
-    (forall Cs, sat (Cs [P1]) S1 \/ sat (Cs[P2]) S2) -> 
-    (forall Ct, sat (Ct [P1↓]) S1 \/ sat (Ct[P2↓]) S2)
- *)
-
-Lemma alternative_R2rSC : alternative <-> R2rSC.
-Proof.
-  split; intros H.
-  + intros Ct P1 P2 m1 m2 H1 H2.
-    specialize (H P1 P2 (fun t => ~ prefix m1 t) (fun t => ~ prefix m2 t)).
-    assert (s1 : Safety  (fun t => ~ prefix m1 t)).
-    { intros t Ht. apply NNPP in Ht. now exists m1. }  
-    assert (s2 : Safety  (fun t => ~ prefix m2 t)).
-    { intros t Ht. apply NNPP in Ht. now exists m2. } 
-    specialize (H s1 s2). destruct H as [Cs [Hc1 Hc2]].
-    exists Ct. split.
-    ++ intros Hs.
-       destruct (H1) as [t1 [Hpref Ht1]].
-       specialize (Hs t1 Ht1). simpl in Hs. contradiction.   
-    ++ intros Hs.
-       destruct (H2) as [t2 [Hpref Ht2]].
-       specialize (Hs t2 Ht2). simpl in Hs. contradiction.
-    ++ exists Cs. split.
-       +++ unfold sat in Hc1. rewrite not_forall_ex_not in Hc1.
-           destruct Hc1 as [t1 Hc1].
-           rewrite not_imp in Hc1. exists t1. 
-           destruct Hc1 as [Hc11 Hc12].
-           rewrite <- dne in Hc12. now auto. 
-       +++ unfold sat in Hc2. rewrite not_forall_ex_not in Hc2.
-           destruct Hc2 as [t2 Hc2].
-           rewrite not_imp in Hc2. exists t2. 
-           destruct Hc2 as [Hc21 Hc22].
-           rewrite <- dne in Hc22. now auto.
-  + intros P1 P2 S1 S2 HS1 HS2 [Ct [Hc1 Hc2]].
-    unfold sat in Hc1,Hc2.
-    rewrite not_forall_ex_not in Hc1,Hc2.
-    destruct Hc1 as [t1 Hc1]. destruct Hc2 as [t2 Hc2].
-    rewrite not_imp in Hc1,Hc2.
-    destruct Hc1 as [Hc1 Ht1]. destruct Hc2 as [Hc2 Ht2].
-    destruct (HS1 t1 Ht1) as [m1 [Hpref1 H1]].
-    destruct (HS2 t2 Ht2) as [m2 [Hpref2 H2]].
-    specialize (H Ct P1 P2 m1 m2). destruct H as [Cs [Hpsem1 Hpsem2]].
-    ++ now exists t1.
-    ++ now exists t2.
-    ++ destruct Hpsem1 as [tt1 [Hm1 Hsem1]]. destruct Hpsem2 as [tt2 [Hm2 Hsem2]]. 
-       exists Cs. split; unfold sat; rewrite not_forall_ex_not;
-               [exists tt1 |exists tt2]; rewrite not_imp; now auto.                 
-Qed.
-
-Lemma alternative_R2rSP : alternative <-> R2rSP.
-Proof.
- now rewrite R2rSP_R2rSC, alternative_R2rSC.
-Qed. 
-    
 (*************************************************************************)
 (* Robust 2-relational Hyperproperty Preservation *)
 (*************************************************************************)
