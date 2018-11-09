@@ -88,6 +88,8 @@ Proof.
                [exists tt1 |exists tt2]; rewrite not_imp; now auto.                 
 Qed.
 
+(** *Robust preservation of relSafety  *)
+
 Definition RrSP' :=
  forall (I : Type), forall (ρ : I -> par src) (δ : I -> {π | Safety π}),
      (forall Cs, exists i, sat (Cs [(ρ i)]) (proj1_sig (δ i))) ->
@@ -98,7 +100,26 @@ Lemma RrSP'_contra :
   ( forall (I : Type), forall (ρ : I -> par src) (δ : I -> {π | Safety π}),
      (exists Ct, forall i, ~ sat (Ct [(ρ i) ↓]) (proj1_sig (δ i))) -> 
      (exists Cs, forall i, ~ sat (Cs [(ρ i)]) (proj1_sig (δ i))) ). 
-Admitted.
+Proof.
+  split; intros Hr.
+  + intros I ρ δ. 
+    specialize (Hr I ρ δ). rewrite contra.
+    repeat rewrite not_ex_forall_not.
+    intros H Ct.
+    assert (HH: (forall Cs : ctx src, exists i : I, sat (Cs [ρ i]) (proj1_sig (δ i)))).
+    { intros Cs. specialize (H Cs). rewrite not_forall_ex_not in H.
+      destruct H as [i H]. rewrite <- dne in H. now exists i. }
+    specialize (Hr HH Ct). destruct Hr as [i Hr].
+    rewrite not_forall_ex_not. exists i. now rewrite <- dne.
+  + intros I ρ δ. 
+    specialize (Hr I ρ δ). rewrite contra.
+    repeat rewrite not_forall_ex_not.
+    intros [Ct H].
+    assert (HH:  (exists Ct : ctx tgt, forall i : I, ~ sat (Ct [ρ i ↓]) (proj1_sig (δ i)))). 
+    { exists Ct. now rewrite not_ex_forall_not in H. } 
+    specialize (Hr HH). destruct Hr as [Cs Hr].
+    exists Cs. now rewrite not_ex_forall_not.
+Qed.
 
 
 Theorem alternative_RrSP : RrSP <-> RrSP'.
