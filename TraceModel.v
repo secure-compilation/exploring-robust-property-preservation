@@ -269,10 +269,14 @@ Fixpoint embedding_pref (m : pref) (term : trace) : trace :=
   | cons e m' => tcons e (embedding_pref m' term)
   end.
 
+Section Embedding.
+
+Variable es : endstate.
+
 Definition embedding (m : finpref) : trace :=
   match m with
   | fstop m f => embedding_pref m (tstop f)
-  | ftbd m => embedding_pref m (tstop esbad) (* RB: The hack. *)
+  | ftbd m => embedding_pref m (tstop es)
   end.
 
 Lemma embed_pref : forall m, prefix m (embedding m).
@@ -306,6 +310,8 @@ Proof.
   simpl in *. now rewrite He.
   simpl in *. now rewrite He.
 Qed.
+
+End Embedding.
 
 (************************************************************************)
 
@@ -681,24 +687,26 @@ Inductive diverges : trace -> Prop :=
 (*     (exists e, prefix (fsnoc m e) t). *)
 Lemma proper_prefix : forall m t,
     prefix m t ->
-    embedding m <> t ->
+    (forall es, embedding es m <> t) ->
     fstopped m = false ->
     ~ diverges t ->
     (exists e, prefix (fsnoc m e) t).
 Proof.
+  Print diverges.
   destruct m as [m f| m]; induction m; intros t Hpref Hembed Hstop Hdiv; try now auto.
   + destruct t.
-    * simpl in *. admit.
+    * specialize (Hembed e). contradiction.
     * now pose proof div_silent.
     * now exists e.
   + destruct t; try now auto.
     inversion Hpref. subst. destruct (IHm t) as [e' h]; try now auto.
-    * intros ff. apply Hembed. simpl. pose proof embed_cons (ftbd m) t e.
-      now specialize (H ff).
+    * intros ff. specialize (Hembed ff).
+      intros Hembed'.
+      pose proof embed_cons ff (ftbd m) t e as Hcontra. specialize (Hcontra Hembed').
+      now apply Hembed.
     * intros ff. now pose proof div_cons e t ff.
     * now exists e'.
-(* Qed. *)
-Abort.
+Qed.
 
 Lemma fpr_stop_equal : forall m1 m2,
     fpr m1 m2 ->
@@ -715,47 +723,47 @@ Qed.
 
 (** *m[fstop/ftbd] *)
 
-(* RB: TODO: Terminator hack. *)
+Section Embedding'.
+
+Variable es : endstate.
+
 Definition same_events_with_stop (m : finpref) : finpref :=
   match m with
-  | ftbd m => fstop m esbad (* RB: The hack, again. *)
+  | ftbd m => fstop m es
   | fstop m f => fstop m f
   end.
 
-Notation "m [fstop/ftbd]" := (same_events_with_stop m)
-                             (at level 50).
-
 Lemma with_stop_fstopped : forall m,
-    fstopped (m[fstop/ftbd]) = true.
+    fstopped (same_events_with_stop m) = true.
 Proof. destruct m; auto. Qed.
 
 Lemma if_fstopped_equal : forall m,
     fstopped m = true ->
-    m = m[fstop/ftbd].
+    m = same_events_with_stop m.
 Proof.
   now destruct m.
 Qed.
 
 Lemma embedding_is_the_same : forall m,
-    embedding m =
-    embedding (m[fstop/ftbd]).
+    embedding es m =
+    embedding es (same_events_with_stop m).
 Proof.
-  now destruct m.
+  intros m. destruct m; try easy.
 Qed.
 
 Lemma m_fpr_with_stop : forall m,
-    fpr m (m[fstop/ftbd]).
+    fpr m (same_events_with_stop m).
 Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma with_stop_prefix_embedding :forall m,
-    prefix (m [fstop/ftbd]) (embedding m).
+    prefix (same_events_with_stop m) (embedding es m).
 Proof. destruct m as [m | m]; now induction m. Qed.
 
 Lemma equal_with_stop_same_embedding : forall m mm,
     fstopped m = true ->
     fpr mm m ->
-    fpr m (mm[fstop/ftbd]) ->
-    embedding m = embedding mm.
+    fpr m (same_events_with_stop mm) ->
+    embedding es m = embedding es mm.
 Proof.
   destruct m as [m | m]; destruct m;
     intros mm Hstop Hfpr HfprStop; try now destruct mm.
@@ -767,7 +775,7 @@ Proof.
 Qed.
 
 Lemma proper_fpr: forall m0 mm,
-    fpr m0 (mm[fstop/ftbd]) ->
+    fpr m0 (same_events_with_stop mm) ->
     fstopped m0 = false ->
     fpr m0 mm.
 Proof. 
@@ -775,6 +783,11 @@ Proof.
   simpl in Hstop. destruct mm; try now auto.
   now destruct mm as [mm | mm].
 Qed.
+
+End Embedding'.
+
+Notation "m '[fstop' es '/ftbd]'" := (same_events_with_stop es m)
+                                       (at level 50).
 
 (*******************************************************************************)
 
@@ -1051,7 +1064,7 @@ Fixpoint tapp' (p : pref) (t : trace) : trace :=
 
 Definition tapp (m : finpref) (t : trace) : trace :=
   match m with
-  | fstop p f => embedding (fstop p f) (* justification:
+  | fstop p f => embedding f (fstop p f) (* justification:
                            we can't really add anything after a stopped trace. *)
   | ftbd  p => tapp' p t
   end.
