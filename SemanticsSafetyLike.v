@@ -6,6 +6,10 @@ Require Import ClassicalExtras.
 Require Import List.
 Import ListNotations.
 
+Axiom classicT : forall (P : Prop), {P} + {~ P}.
+Axiom indefinite_description : forall (A : Type) (P : A->Prop),
+   ex P -> sig P.
+
 
 (** This file provides a abstract definition of small-step operational
     semantics.  Then, we show that under certain assumptions of
@@ -112,12 +116,56 @@ Hint Unfold steps.
 Definition cannot_loop_silent (c:cfg) : Prop :=
   forall c', steps' c nil c' -> exists e c'', steps' c' (cons e nil) c''.
 
+Definition does_event_or_goes_wrong' (c : cfg) :=
+  exists m c', steps' c m c' /\ (stuck c' \/ m <> []).
+
+Lemma not_can_loop_silent' :  forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong' c.
+Proof.
+  intros c.
+  rewrite contra. intros Hc. rewrite <- dne.
+  generalize dependent c.
+  cofix Hfix.
+  - intros c Hc.
+    unfold does_event_or_goes_wrong' in Hc.
+    assert (~ stuck c).
+    { rewrite not_ex_forall_not in Hc. specialize (Hc []).
+      rewrite not_ex_forall_not in Hc. specialize (Hc c).
+      rewrite de_morgan1 in Hc. destruct Hc.
+      - exfalso. apply H. constructor.
+      - rewrite de_morgan2 in H. destruct H. assumption.
+    }
+    unfold stuck in H.
+    rewrite not_forall_ex_not in H.
+    destruct H as [e Hn].
+    rewrite not_forall_ex_not in Hn. destruct Hn as [c' H].
+    rewrite <- dne in H.
+    destruct (classic (silent e)).
+    (* Hfix *)
+    apply FSilent with (e := e) (c' := c'); try assumption.
+    apply Hfix.
+    unfold does_event_or_goes_wrong'.
+    intros Hn. destruct Hn as [m [c'0 [H1 H2]]].
+    rewrite (not_ex_forall_not) in Hc. specialize (Hc m).
+    rewrite (not_ex_forall_not) in Hc. specialize (Hc c'0).
+    apply Hc. split.
+    econstructor; eassumption.
+    assumption.
+    rewrite (not_ex_forall_not) in Hc. specialize (Hc [e]).
+    rewrite (not_ex_forall_not) in Hc. specialize (Hc c').
+    rewrite de_morgan1 in Hc. destruct Hc.
+    exfalso. apply H1. econstructor. apply H. apply H0. constructor.
+    apply de_morgan2 in H1. destruct H1.
+    exfalso. apply H2. intros Hn. inversion Hn.
+Qed.
+
 Definition does_event_or_goes_wrong (c:cfg) :=
   (* (exists e c', steps' c (cons e nil) c') \/ (exists c', steps' c nil c' /\ stuck c'). *)
   {exists e c', steps' c [e] c'} + {exists c', steps' c [] c' /\ stuck c'}.
   
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
 Proof.
+  intros c Hc.
+  unfold does_event_or_goes_wrong.
   (* intro c. rewrite contra. intro Hc. rewrite <- dne. cofix. -- no longer works with + *)
 Admitted.
 
@@ -230,10 +278,6 @@ Proof.
   destruct H0 as [c' [a' [H1 H2]]]. eexists; eauto.
 Qed.
 
-Axiom classicT : forall (P : Prop), {P} + {~ P}.
-Axiom indefinite_description : forall (A : Type) (P : A->Prop),
-   ex P -> sig P.
-
 Definition sem (p:program) : trace -> Prop := sem' (init p).
 
 
@@ -247,6 +291,7 @@ CoFixpoint trace_of (c:cfg) : trace.
   - destruct (classicT (can_loop_silent c')) as [Hc | Hc].
     + exact tsilent.
     + apply not_can_loop_silent in Hc.
+      unfold does_event_or_goes_wrong in Hc.
       destruct Hc as [Hc | Hc].
       * apply indefinite_description in Hc. destruct Hc as [e' Hc].
         apply indefinite_description in Hc. destruct Hc as [c'' Hs].
