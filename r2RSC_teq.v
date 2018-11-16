@@ -86,10 +86,15 @@ Proof.
       destruct H as [t Ht].
       exists t; split. reflexivity. assumption.
     + intros. destruct m'; now auto.
-  - pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
+  - rename e into f. rename e0 into e.
+    pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
     destruct H.
     + exists (ftbd (snoc p e)); repeat (try split).
-      ++ now apply m_fpr_with_stop.
+      ++ SearchAbout "fpr". simpl in *.
+         clear H.
+         induction (snoc p e).
+      -- reflexivity.
+         -- split; [reflexivity |]. apply IHl.
       ++ now assumption.
       ++ intros m' Hfpr Hpsem Hstopped.
          now destruct m'.
@@ -100,15 +105,15 @@ Proof.
          assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
          { clear H' Hstopped Hsem H. now assumption. }
          clear Hfpr.
-         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) f)).
          { clear. now induction p. }
-         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) f)); now assumption.
       ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
          specialize (H' (ftbd p')).
          assert (Hlemma : psem P' (ftbd p') ->
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
-                          fpr (ftbd p') (fstop p)).
+                          fpr (ftbd p') (fstop p f)).
          { intros H0 H1 H2. unfold fpr in H2.
            apply destruct_fpr_ftbd_snoc in H2.
            destruct H2 as [H21 | H22].
@@ -134,15 +139,15 @@ Proof.
          assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
          { clear H' Hstopped Hsem H. now assumption. }
          clear Hfpr.
-         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) esgood)).
          { clear. now induction p. }
-         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) esgood)); now assumption.
       ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
          specialize (H' (ftbd p')).
          assert (Hlemma : psem P' (ftbd p') ->
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
-                          fpr (ftbd p') (fstop p)).
+                          fpr (ftbd p') (fstop p esgood)).
          { intros H0 H1 H2. unfold fpr in H2.
            apply destruct_fpr_ftbd_snoc in H2.
            destruct H2 as [H21 | H22].
@@ -196,22 +201,27 @@ Qed.
 Lemma a_technical_lemma: forall (P' : prg tgt) m,
     psem P' m ->
     (exists egood, psem P' (fsnoc m egood)) \/
-     psem P' (m[fstop/ftbd]) \/
+     (exists es, psem P' (m[fstop es/ftbd])) \/
      (exists t, prefix m t /\ diverges t /\ sem tgt P' t).
 Proof.
   intros P' m Hpsem. destruct (fstopped m) eqn:Hstop.
-  + right. left. now rewrite <- if_fstopped_equal.
+  + right. left.
+    destruct m as [m es | m]; try easy.
+    exists es. now rewrite <- if_fstopped_equal.
   + destruct Hpsem as [b [Hpref Hsem]].
-    assert (embedding m = b \/ embedding m <> b) by now apply classic.
-    destruct H as [H | H].
-    ++ right. left. exists b. split; try now auto.
-       rewrite <- H. rewrite embedding_is_the_same.
+
+    assert ((exists es, embedding es m = b) \/ ~ (exists es, embedding es m = b)) by apply classic.
+   destruct H as [H | H].
+    ++ right. left. destruct H as [es H]. exists es. exists b. split; try now auto.
+       simpl. rewrite <- H. rewrite embedding_is_the_same.
        now apply embed_pref.
     ++ assert (Hdiv : diverges b \/ ~ diverges b) by now apply classic.
        destruct Hdiv as [Hdiv | Hdiv].
        - right. right. now exists b.
-       - left. destruct (proper_prefix m b Hpref H Hstop Hdiv) as [egood HH].
-         now exists egood, b.
+       - left.
+         rewrite not_ex_forall_not in H.
+         destruct (proper_prefix m b Hpref H Hstop Hdiv) as [e He].
+         now exists e, b.
 Qed.
 
 Hypothesis no_divergence : forall P' t, sem tgt P' t -> ~ diverges t.
