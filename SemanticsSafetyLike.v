@@ -17,7 +17,7 @@ Variable step : cfg -> event -> cfg -> Prop.
 Definition stuck (c:cfg) : Prop :=  forall e c', ~step c e c'.
 
 CoInductive sem' : cfg -> trace -> Prop :=
-| SStop : forall c, stuck c -> sem' c tstop
+| SStop : forall c, stuck c -> sem' c (tstop esbad)
 | SCons : forall c e c' t, step c e c' -> sem' c' t -> sem' c (tcons e t).
 
 Definition sem (p:program) : trace -> Prop := sem' (init p).
@@ -29,7 +29,7 @@ Axiom indefinite_description : forall (A : Type) (P : A->Prop),
    ex P -> sig P.
 
 CoFixpoint trace_of (c:cfg) : trace.
-  destruct (classicT (stuck c)) as [H | H]. exact tstop.
+  destruct (classicT (stuck c)) as [H | H]. exact (tstop esbad).
   unfold stuck in H. do 2 setoid_rewrite not_forall_ex_not in H.
   apply indefinite_description in H. destruct H as [e H].
   apply indefinite_description in H. destruct H as [c' H].
@@ -41,7 +41,7 @@ Defined.
 Lemma trace_of_eta : forall c,
   trace_of c =
         match classicT (stuck c) with
-        | left _ => tstop
+        | left _ => (tstop esbad)
         | right H0 =>
             let (e, H1) :=
               indefinite_description event
@@ -161,14 +161,14 @@ Qed.
 
 Fixpoint fsnoc' (m : finpref) (e : event) : finpref :=
   match m with
-  | fstop m' => fstop (snoc m' e)
+  | fstop m' es => fstop (snoc m' e) es
   | ftbd m' => ftbd (snoc m' e)
   end.
 
 Theorem finpref_ind_snoc :
   forall (P : finpref -> Prop),
     P (ftbd nil) ->
-    (forall (m : pref), P (fstop m)) ->
+    (forall (m : pref) (es : endstate), P (fstop m es)) ->
     (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
     forall m, P m.
 Proof. Admitted.
@@ -202,13 +202,13 @@ Proof.
   destruct m as [p | p].
   - (* fstop *)
     intros Hm1 Hm2.
-    assert (forall t m, prefix (fstop m) t -> fin t).
-    { clear. intros t m. generalize dependent t. induction m; intros t H.
+    assert (forall t m es, prefix (fstop m es) t -> fin t).
+    { clear. intros t m. generalize dependent t. induction m; intros t es H.
       - destruct t; try now auto. constructor.
       - destruct t; try now auto.
         destruct H as [H1 H2].
-        specialize (IHm t H2). now constructor. }
-    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p Hm1).
+        specialize (IHm t es H2). now constructor. }
+    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p e Hm1).
   - (* ftbd *)
     induction p as [| p' e' IH] using pref_ind_snoc; intros Hm1 Hm2.
     + (* p = nil *)

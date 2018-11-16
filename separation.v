@@ -19,11 +19,11 @@ Definition ϕ_plug : ϕ_par -> ϕ_ctx -> ϕ_prg :=
 
 Definition length (m : finpref) : nat :=
   match m with
-  | fstop m => List.length m
+  | fstop m _ => List.length m
   | ftbd m  => List.length m
   end.
 
-Lemma stop_same_lenght: forall m, length m = length (m[fstop/ftbd]).
+Lemma stop_same_lenght: forall m es, length m = length (m[fstop es/ftbd]).
 Proof.
   now destruct m.
 Qed.
