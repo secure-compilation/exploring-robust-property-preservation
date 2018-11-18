@@ -19,10 +19,15 @@ Proof.
       destruct H as [t Ht].
       exists t; split. reflexivity. assumption.
     + intros. destruct m'; now auto.
-  - pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
+  - rename e into f. rename e0 into e.
+    pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
     destruct H.
     + exists (ftbd (snoc p e)); repeat (try split).
-      ++ now apply m_fpr_with_stop.
+      ++ SearchAbout "fpr". simpl in *.
+         clear H.
+         induction (snoc p e).
+      -- reflexivity.
+         -- split; [reflexivity |]. apply IHl.
       ++ now assumption.
       ++ intros m' Hfpr Hpsem Hstopped.
          now destruct m'.
@@ -33,15 +38,15 @@ Proof.
          assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
          { clear H' Hstopped Hsem H. now assumption. }
          clear Hfpr.
-         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) f)).
          { clear. now induction p. }
-         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) f)); now assumption.
       ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
          specialize (H' (ftbd p')).
          assert (Hlemma : psem P' (ftbd p') ->
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
-                          fpr (ftbd p') (fstop p)).
+                          fpr (ftbd p') (fstop p f)).
          { intros H0 H1 H2. unfold fpr in H2.
            apply destruct_fpr_ftbd_snoc in H2.
            destruct H2 as [H21 | H22].
@@ -67,15 +72,15 @@ Proof.
          assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
          { clear H' Hstopped Hsem H. now assumption. }
          clear Hfpr.
-         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e))).
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) esgood)).
          { clear. now induction p. }
-         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e))); now assumption.
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) esgood)); now assumption.
       ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
          specialize (H' (ftbd p')).
          assert (Hlemma : psem P' (ftbd p') ->
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
-                          fpr (ftbd p') (fstop p)).
+                          fpr (ftbd p') (fstop p esgood)).
          { intros H0 H1 H2. unfold fpr in H2.
            apply destruct_fpr_ftbd_snoc in H2.
            destruct H2 as [H21 | H22].
@@ -129,22 +134,27 @@ Qed.
 Lemma a_technical_lemma: forall (P' : prg tgt) m,
     psem P' m ->
     (exists egood, psem P' (fsnoc m egood)) \/
-     psem P' (m[fstop/ftbd]) \/
+     (exists es, psem P' (m[fstop es/ftbd])) \/
      (exists t, prefix m t /\ diverges t /\ sem tgt P' t).
 Proof.
   intros P' m Hpsem. destruct (fstopped m) eqn:Hstop.
-  + right. left. now rewrite <- if_fstopped_equal.
+  + right. left.
+    destruct m as [m es | m]; try easy.
+    exists es. now rewrite <- if_fstopped_equal.
   + destruct Hpsem as [b [Hpref Hsem]].
-    assert (embedding m = b \/ embedding m <> b) by now apply classic.
-    destruct H as [H | H].
-    ++ right. left. exists b. split; try now auto.
-       rewrite <- H. rewrite embedding_is_the_same.
+
+    assert ((exists es, embedding es m = b) \/ ~ (exists es, embedding es m = b)) by apply classic.
+   destruct H as [H | H].
+    ++ right. left. destruct H as [es H]. exists es. exists b. split; try now auto.
+       simpl. rewrite <- H. rewrite embedding_is_the_same.
        now apply embed_pref.
     ++ assert (Hdiv : diverges b \/ ~ diverges b) by now apply classic.
        destruct Hdiv as [Hdiv | Hdiv].
        - right. right. now exists b.
-       - left. destruct (proper_prefix m b Hpref H Hstop Hdiv) as [egood HH].
-         now exists egood, b.
+       - left.
+         rewrite not_ex_forall_not in H.
+         destruct (proper_prefix m b Hpref H Hstop Hdiv) as [e He].
+         now exists e, b.
 Qed.
 
 Lemma longest_contra {K : language} :
@@ -212,66 +222,80 @@ Proof.
        +++ apply (IHp t t'). now inversion H.
 Qed.
 
-Lemma prefix_fin_fpr : forall m mt t, prefix m t ->
-                                 t = tapp mt tstop ->
+Lemma prefix_fin_fpr : forall m mt t es, prefix m t ->
+                                 t = tapp mt (tstop es) ->
                                  fstopped m = false ->
                                  fpr m mt.
 Proof.
-  intros []; induction p; intros [] t Hpref Happ Hstop; try now inversion Hstop.
+  intros []; induction p; intros [] t es Hpref Happ Hstop; try now inversion Hstop.
   + destruct t; try now auto.
     inversion Hpref; subst. destruct p0; try now auto.
     inversion Happ. rewrite H1 in *.
     assert (foo : fstopped (ftbd p) = false) by auto.
-    assert (app_foo : t = tapp (fstop p0) tstop) by auto. 
-    specialize (IHp (fstop p0) t H0 app_foo foo). now auto.
+    assert (app_foo : t = tapp (fstop p0 e) (tstop es)) by auto.
+    specialize (IHp (fstop p0 e) t es H0 app_foo foo). now auto.
   + destruct t; try now auto.
     inversion Hpref; subst. destruct p0; try now auto.
     inversion Happ. rewrite H1 in *.
     assert (foo : fstopped (ftbd p) = false) by auto.
-    assert (app_foo : t = tapp (ftbd p0) tstop) by auto. 
-    specialize (IHp (ftbd p0) t H0 app_foo foo). now auto.
+    assert (app_foo : t = tapp (ftbd p0) (tstop es)) by auto. 
+    specialize (IHp (ftbd p0) t es H0 app_foo foo). now auto.
 Qed.   
 
 Lemma stopped_pref_app : forall t m, prefix m t -> fstopped m = true ->
-                                t = tapp m tstop.
+                                exists es, t = tapp m (tstop es).
 Proof.
   intros t [] Hpref Hstop; try now inversion Hstop.
-  generalize dependent t. induction p; intros [] Hpref; try now auto. 
-  inversion Hpref; subst. assert (Hfoo : fstopped (fstop p) = true) by reflexivity.
-  rewrite (IHp Hfoo t); auto. 
-Qed.   
-
-Lemma not_sem_psem_not_stopped {K : language} :
-  forall W t m, ~ sem K W t -> prefix m t -> psem W m  -> fstopped m = false. 
-Proof.
-  intros W t m Hsemt Hpref Hpsem.
-  destruct (fstopped m) eqn:Hstop; auto.
-  apply stopped_pref_app in Hpref; auto. 
-  destruct Hpsem as [t1 [H1 H2]].
-  apply stopped_pref_app in H1; auto. now subst.
+  generalize dependent t. induction p; intros [] Hpref; try now auto.
+  inversion Hpref; subst. exists e0. reflexivity.
+  inversion Hpref; subst. assert (Hfoo : fstopped (fstop p e) = true) by reflexivity.
+  destruct (IHp Hfoo t H0) as [es Hes].
+  exists esbad (**); subst; eauto.
 Qed.
 
 
+(* explicit hypothesis about the structure of m. It's not needed, will have to remove that later *)
+Lemma not_sem_psem_not_stopped {K : language} :
+  forall W t m p es, (m = ftbd p \/ m = fstop p es) -> ~ sem K W t -> prefix m t -> psem W m  ->
+                fstopped m = false. 
+Proof.
+  intros W t m p es Hdis Hsemt Hpref Hpsem.
+  destruct Hdis.
+  - subst. destruct (fstopped (ftbd p)) eqn:Hstop; auto.
+  - destruct (fstopped m) eqn:Hstop; auto.
+    apply stopped_pref_app in Hpref; auto.
+    destruct Hpref as [es' Hes].
+    destruct Hpsem as [t1 [H1 H2]].
+    apply stopped_pref_app in H1; auto.
+    destruct H1 as [es'' Hes'']. subst.
+    now auto.
+Qed.
+
 Lemma longest_prefix_tstop {K : language} {HK : semantics_safety_like K} :
-  forall W t, (exists m, t = tapp m tstop) -> ~ sem K W t ->
+  forall W t es, (exists m, t = tapp m (tstop es)) -> ~ sem K W t ->
          (exists mm, prefix mm t /\ psem W mm /\
                (forall m', prefix m' t -> psem W m' -> fpr m' mm)).
 Proof.
-  intros W t [m Hm] Hsem.
+  intros W t es [m Hm] Hsem.
   destruct (longest_in_psem W m) as [m0 [Hfpr [Hpsem [Hstopped Hm0]]]].
   assert (forall n, prefix n t -> psem W n -> fstopped n = false).
-  { intros n H H0. now apply (not_sem_psem_not_stopped W t). }
+  { intros n H H0.
+    destruct n.
+    now eapply (not_sem_psem_not_stopped W t); eauto.
+    now eapply (not_sem_psem_not_stopped W t); eauto.
+  }
   exists m0. repeat split;auto.
-  - apply (fpr_pref_pref m0 m t); auto. now apply (tapp_pref m t tstop).
-  - intros m' H0 H1. apply Hm0; auto. apply (prefix_fin_fpr m' m t); auto. 
-Qed.   
-
+  - apply (fpr_pref_pref m0 m t); auto. now apply (tapp_pref m t (tstop es)).
+  - intros m' H0 H1. apply Hm0; auto. apply (prefix_fin_fpr m' m t es); auto.
+    Unshelve.
+    exact esbad.
+Qed.
 
 Lemma fstopped_prefix_fpr : forall m m',
     (fstopped m = false -> prefix m' (tapp m tsilent) -> fpr m' m /\ fstopped m' = false).
 Proof.
   intros m m'. generalize dependent m.
-  induction finpref m' as e' p' IHp';
+  induction finpref m' as e' es' p' IHp';
   intros [p | p] H1 H2; try now auto.
 - simpl in H2. now destruct p.
 - simpl in H2. destruct p as [|e p].
@@ -289,15 +313,18 @@ Qed.
 Lemma continuum_lemma : forall m m' e1,
     fpr m m' -> fpr m' (fsnoc m e1) -> m = m' \/ m' = fsnoc m e1.
 Proof.
-  induction finpref m as e p IHp; intros; try now auto.
-  - destruct finpref m' as e' p'; try now auto.
-  - destruct finpref m' as e' p'; try now auto.
+  induction finpref m as e es p IHp; intros; try now auto.
+  - destruct finpref m' as e' es' p'; try now auto.
+    inversion H; subst; try now auto. simpl in *. inversion H.
+    inversion H1.
+  - destruct finpref m' as e' es' p'; try now auto.
     inversion H; subst. now left.
-  - destruct finpref m' as e' p'; try now auto.
+    simpl in *. inversion H; inversion H1; subst. now auto.
+  - destruct finpref m' as e' es' p'; try now auto.
     inversion H0; subst. simpl in *.
     assert (p' = nil) by now destruct p'.
     subst; now right.
-  - destruct finpref m' as e' p'; try now auto.
+  - destruct finpref m' as e' es' p'; try now auto.
     destruct H; subst.
     destruct H0; subst.
     specialize (IHp (ftbd p') e1 H1 H0).
@@ -316,8 +343,10 @@ Proof.
   intros H.
   destruct (fin_or_inf t) as [Ht | Ht].
   - (* fin t *)
-    apply (@longest_prefix_tstop K HK W t).
-    now apply (tapp_fin_pref t Ht). assumption. 
+    pose proof (tapp_fin_pref t Ht). destruct H0 as [m [es Hes]].
+    apply (@longest_prefix_tstop K HK W t es).
+    now (exists m).
+    assumption.
   - (* inf t *)
     destruct (classic (diverges t)) as [Ht' | Ht'].
     + (* diverges t *)
@@ -371,14 +400,14 @@ Proof.
   assert (fstopped m = false -> fpr (fsnoc m e) m -> False).
   { clear.
     generalize dependent e.
-    induction finpref m as e p IHp; intros; try now auto.
+    induction finpref m as e es p IHp; intros; try now auto.
     simpl in *. destruct H0 as [_ H0].
     apply (IHp e0 H H0).
   }
   assert (inf t -> prefix m t -> fstopped m = false).
   { clear.
     generalize dependent t.
-    induction finpref m as e p IHp; intros; try now auto.
+    induction finpref m as e es p IHp; intros; try now auto.
     - destruct t; try now auto.
       exfalso. apply H. constructor.
     - destruct t; try now auto.

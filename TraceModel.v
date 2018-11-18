@@ -829,107 +829,71 @@ Qed.
 Lemma neq_finitely_refutable : forall t1 t2,
     ~ (t_eq t1 t2) <-> (exists m1 m2, prefix m1 t1 /\ prefix m2 t2 /\ ~ (prefix m1 t2 /\ prefix m2 t1)).
 Proof.
-  (* intros t1 t2. split. *)
-  (* - apply contra. intros H. *)
-  (*   rewrite <- dne. *)
-  (*   generalize dependent t2. generalize dependent t1. *)
-  (*   cofix Hfix. *)
-  (*   intros t1 t2 H. *)
-  (*   destruct t1 as [| | e1' t1']; destruct t2 as [| | e2' t2']. *)
-  (*   + constructor. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (fstop nil). exists (ftbd nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (fstop nil). exists (ftbd nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (fstop nil). exists (ftbd (cons e2' nil)). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd nil). exists (fstop nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + constructor. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (fstuck nil). exists (ftbd nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (fstuck nil). exists (ftbd (cons e2' nil)). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd nil). exists (fstop nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd nil). exists (fstuck nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + constructor. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd nil). exists (ftbd (cons e2' nil)). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd (cons e1' nil)). exists (fstop nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd (cons e1' nil)). exists (fstuck nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + exfalso; apply H. *)
-  (*     exists (ftbd (cons e1' nil)). exists (ftbd nil). *)
-  (*     repeat split; try now auto. *)
-  (*   + destruct (classic (e1' = e2')). *)
-  (*     * subst. specialize (Hfix t1' t2'). *)
-  (*       assert (H0: ~(exists m1 m2 : finpref, prefix m1 t1' /\ prefix m2 t2' *)
-  (*                                    /\ ~ (prefix m1 t2' /\ prefix m2 t1'))). *)
-  (*       { intros Hn. *)
-  (*         apply H. destruct Hn as [m1 [m2 [Hm1 [Hm2 Hn]]]]. *)
-  (*         destruct m1, m2. *)
-  (*         - exists (fstop (cons e2' p)). exists (fstop (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (fstop (cons e2' p)). exists (fstuck (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (fstop (cons e2' p)). exists (ftbd (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (fstuck (cons e2' p)). exists (fstop (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (fstuck (cons e2' p)). exists (fstuck (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (fstuck (cons e2' p)). exists (ftbd (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (ftbd (cons e2' p)). exists (fstop (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (ftbd (cons e2' p)). exists (fstuck (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*         - exists (ftbd (cons e2' p)). exists (ftbd (cons e2' p0)). *)
-  (*           repeat split; try now auto. intros Hn'. *)
-  (*           destruct Hn' as [Hn1 Hn2]. *)
-  (*           inversion Hn1; inversion Hn2. now auto. *)
-  (*       } *)
-  (*       specialize (Hfix H0). constructor. assumption. *)
-  (*     * exfalso; apply H. *)
-  (*       exists (ftbd (cons e1' nil)). exists (ftbd (cons e2' nil)). *)
-  (*       repeat split; try now auto. simpl. *)
-  (*       intros Hn. *)
-  (*       inversion Hn. inversion H1. contradiction. *)
-  (* - intros [m1 [m2 [h1 [h2 hn]]]] hf. apply hn. split. *)
-  (*   + now apply (same_finite_prefixes t1 t2). *)
-  (*   + apply t_eq_symm in hf. now apply (same_finite_prefixes t2 t1). *)
-(* Qed. *)
-Abort.
+  intros t1 t2. split.
+  - apply contra. intros H.
+    rewrite <- dne.
+    generalize dependent t2. generalize dependent t1.
+    cofix Hfix.
+    intros t1 t2 H.
+    destruct t1 as [| | e1' t1']; destruct t2 as [| | e2' t2'].
+    + destruct (classic (e = e0)).
+      * subst; constructor.
+      * exfalso. apply H.
+        exists (fstop nil e). exists (fstop nil e0).
+        repeat split; try now auto.
+    + exfalso; apply H.
+      exists (fstop nil e ). exists (ftbd nil).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (fstop nil e). exists (ftbd nil).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd nil). exists (fstop nil e).
+      repeat split; try now auto.
+    + constructor.
+    + exfalso; apply H.
+      exists (ftbd nil). exists (ftbd (cons e2' nil)).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd (cons e1' nil)). exists (fstop nil e).
+      repeat split; try now auto.
+    + exfalso; apply H.
+      exists (ftbd (cons e1' nil)). exists (ftbd nil).
+      repeat split; try now auto.
+    + destruct (classic (e1' = e2')).
+      * subst. specialize (Hfix t1' t2').
+        assert (H0: ~(exists m1 m2 : finpref, prefix m1 t1' /\ prefix m2 t2'
+                                     /\ ~ (prefix m1 t2' /\ prefix m2 t1'))).
+        { intros Hn.
+          apply H. destruct Hn as [m1 [m2 [Hm1 [Hm2 Hn]]]].
+          destruct m1, m2.
+          - exists (fstop (cons e2' p) e). exists (fstop (cons e2' p0) e0).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (fstop (cons e2' p) e). exists (ftbd (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (ftbd (cons e2' p)). exists (fstop (cons e2' p0) e).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+          - exists (ftbd (cons e2' p)). exists (ftbd (cons e2' p0)).
+            repeat split; try now auto. intros Hn'.
+            destruct Hn' as [Hn1 Hn2].
+            inversion Hn1; inversion Hn2. now auto.
+        }
+        specialize (Hfix H0). constructor. assumption.
+      * exfalso; apply H.
+        exists (ftbd (cons e1' nil)). exists (ftbd (cons e2' nil)).
+        repeat split; try now auto. simpl.
+        intros Hn.
+        inversion Hn. inversion H1. contradiction.
+  - intros [m1 [m2 [h1 [h2 hn]]]] hf. apply hn. split.
+    + now apply (same_finite_prefixes t1 t2).
+    + apply t_eq_symm in hf. now apply (same_finite_prefixes t2 t1).
+Qed.
 
 (*******************************************************************************)
 
