@@ -30,6 +30,8 @@ Variable init : program -> cfg.
 Variable step : cfg -> event -> cfg -> Prop.
 
 Definition stuck (c:cfg) : Prop :=  forall e c', ~step c e c'.
+Variable es_of_cfg : forall (c : cfg), stuck c -> endstate.
+
 
 Variable silent : event -> Prop.
 
@@ -76,13 +78,17 @@ Proof.
 Qed.
 Hint Resolve steps'_cons.
 
-Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop :=
-  match m with
-  | ftbd m' => steps' c m' c'
-  | fstop m' => steps' c m' c' /\ stuck c'
-  end.
+Inductive steps : cfg -> finpref -> cfg -> Prop :=
+| steps_ftbd : forall c m' c', steps' c m' c' -> steps c (ftbd m') c'
+| steps_fstop : forall c m' c' (H : stuck c'), steps' c m' c' -> steps c (fstop m' (es_of_cfg c' H)) c'.
 
-Hint Unfold steps.
+(* Definition steps (c:cfg) (m:finpref) (c':cfg) : Prop := *)
+(*   match m with *)
+(*   | ftbd m' => steps' c m' c' *)
+(*   | fstop m' es => steps' c m' c' /\ stuck c' *)
+(*   end. *)
+
+Hint Constructors steps.
 
 
 (* Keep that for later, maybe it will be useful *)
@@ -188,7 +194,7 @@ Hypothesis order_wf: well_founded order.
 Hypothesis order_inf: forall (a : A), exists a', order a a'. (* Example: natural numbers *)
 
 CoInductive sem'_N : A -> cfg -> trace -> Prop :=
-| SStopN : forall c a, stuck c -> sem'_N a c tstop
+| SStopN : forall c a (H : stuck c), sem'_N a c (tstop (es_of_cfg c H))
 | SSilentDivN : forall c a, can_loop_silent c -> sem'_N a c tsilent
 | SAppNilN : forall c c' t a1 a2, steps' c [] c' -> order a2 a1 ->
                              sem'_N a2 c' t -> sem'_N a1 c t
@@ -223,7 +229,7 @@ Hint Resolve sem'_inv.
 (* Another definition of the semantics, based on the reflexive transitive closrure of the step 
    relation but without restrictions on appplying the silent event only finitely many times *)
 CoInductive sem'' : cfg -> trace -> Prop :=
-| SStop : forall c, stuck c -> sem'' c tstop
+| SStop : forall c (H : stuck c), sem'' c (tstop (es_of_cfg c H))
 | SSilentDiv : forall c, can_loop_silent c -> sem'' c tsilent
 | SApp : forall c c' m t, steps' c m c' -> sem'' c' t -> sem'' c (tapp (ftbd m) t).
 
@@ -291,7 +297,8 @@ Definition sem (p:program) : trace -> Prop := sem' (init p).
 
 
 CoFixpoint trace_of (c:cfg) : trace.
-  destruct (classicT (stuck c)) as [H | H]. exact tstop.
+  destruct (classicT (stuck c)) as [H | H].
+  exact (tstop (es_of_cfg c H)).
   unfold stuck in H. do 2 setoid_rewrite not_forall_ex_not in H.
   apply indefinite_description in H. destruct H as [e H].
   apply indefinite_description in H. destruct H as [c' H].
@@ -304,7 +311,8 @@ CoFixpoint trace_of (c:cfg) : trace.
       apply indefinite_description in Hc. destruct Hc as [m Hc].
       apply indefinite_description in Hc. destruct Hc as [c'' [H1 H2]].
       destruct m as [| e' p'].
-      exact tstop.
+      assert (H2' : stuck c'') by now destruct H2.
+      exact (tstop (es_of_cfg c'' H2')).
       apply steps'_cons in H1.
       apply indefinite_description in H1. destruct H1 as [c'0 H1].
       destruct H1 as [H11 H12].
@@ -323,7 +331,7 @@ Defined.
 (* cf CPDT *)
 Definition frob (t :trace) : trace :=
   match t with
-  | tstop => tstop
+  | tstop es => tstop es
   | tsilent => tsilent
   | tcons e' t' => tcons e' t'
   end.
@@ -340,7 +348,7 @@ Lemma trace_of_eta' : forall c,
     trace_of c =
     let s := classicT (stuck c) in
     match s with
-    | left _ => tstop
+    | left H => (tstop (es_of_cfg c H))
     | right H =>
       let H0 :=
           indefinite_description event (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
@@ -377,7 +385,14 @@ Lemma trace_of_eta' : forall c,
           match a with
           | conj H5 H6 =>
             match m as l return (steps' c' l c'' -> stuck c'' \/ l <> [] -> trace) with
-            | [] => fun (_ : steps' c' [] c'') (_ : stuck c'' \/ [] <> []) => tstop
+            | [] => 
+                   fun (_ : steps' c' [] c'') (H8 : stuck c'' \/ [] <> []) =>
+                   let H2' : stuck c'' :=
+                     match H8 with
+                     | or_introl H9 => H9
+                     | or_intror H9 => False_ind (stuck c'') (H9 eq_refl)
+                     end in
+                   tstop (es_of_cfg c'' H2')
             | e' :: p' =>
                    fun (H7 : steps' c' (e' :: p') c'') (_ : stuck c'' \/ e' :: p' <> []) =>
                    let H9 : exists c''0 : cfg, steps' c' [e'] c''0 /\ steps' c''0 p' c'' :=
@@ -459,7 +474,7 @@ Proof.
       ++ apply SAppNilN with (c' := c'') (a2 := an_A).
          apply steps'_trans with (c2 := c') (m := []) (m' := []); eauto.
          assumption.
-         constructor. destruct H2. assumption. contradiction.
+         constructor. (* destruct H2. assumption. contradiction. *)
       ++ destruct (indefinite_description cfg (fun c''0 : cfg => steps' c' [e0] c''0 /\ steps' c''0 m c'')
                                           (steps'_cons c' c'' e0 m H1)) as [c'0 H11].
          destruct H11.
@@ -472,7 +487,6 @@ Proof.
       econstructor; eauto.
       apply Hfix. assumption.
 Qed.
-
 
 
 Lemma non_empty_sem : forall W, exists t, sem W t.
@@ -535,23 +549,26 @@ Proof.
   destruct m.
   - simpl in *.
     inversion H; subst; try now auto.
-    induction H1; subst; try now auto.
+    induction H7; subst; try now eauto.
     + simpl in *. econstructor. now constructor.
-    + specialize (IHsteps' (conj H4 H2) H0 H2).
+    + specialize (IHsteps' H6).
+      assert (steps c' (fstop m (es_of_cfg c'' H6)) c'').
+      constructor. assumption.
+      specialize (IHsteps' H4 H0 H6).
       inversion IHsteps'; subst; eauto.
       simpl in *. econstructor.
       eapply SAppN with (m := [e]) (c' := c'); eauto.
       intros Hn; inversion Hn.
-    + specialize (IHsteps' (conj H4 H2) H0 H2).
-      inversion IHsteps'; subst; eauto.    
   - inversion H0; subst; eauto.
     destruct (order_inf a) as [a' Ha'].
     apply sem'_cons with (a := a').
     destruct p as [| e' p'].
-    + econstructor; eauto.
-    + eapply SAppN with (m := e' :: p'); eauto.
+    + simpl in *. inversion H; subst.
+      econstructor; eauto.
+    + inversion H; subst. eapply SAppN with (m := e' :: p'); eauto.
       intros Hn; inversion Hn.
       Unshelve.
+      assumption.
       exact an_A. exact a.   
 Qed.
 
@@ -562,10 +579,11 @@ Proof.
   intros P m c Hsteps.
   unfold psem. simpl. exists (tapp m (trace_of c)). split.
   - destruct m.
-    + destruct Hsteps.
+    + inversion Hsteps; subst.
       apply tapp_pref.
     + unfold sem.
       inversion Hsteps; subst.
+      inversion H1; subst.
       ++ now split.
       ++ apply tapp_pref.
       ++ apply tapp_pref.
@@ -580,8 +598,8 @@ Lemma sem'_prefix : forall m c0 t,
   fstopped m = false ->
   exists c, steps c0 m c.
 Proof.
-  induction finpref m as e p IHp; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
-  - exists c0. apply SSTbd.
+  induction finpref m as e es p IHp; intros c0 t Hsem Hpref Hnot_stopped; try inversion Hnot_stopped.
+  - exists c0. constructor. apply SSTbd.
   - destruct t as [| | e' t']; try now inversion Hpref.
     destruct Hpref as [Heq Hpref]; subst.
     (* inversion Hsem; subst; simpl in *. *)
@@ -589,8 +607,8 @@ Proof.
     destruct Hsem as [c' [H1 H2]].
     specialize (IHp c' t' H2 Hpref Hnot_stopped).
     destruct IHp as [c'' Hc''].
-    exists c''.
-    simpl.
+    exists c''. constructor.
+    inversion Hc''; subst. 
     apply steps'_trans with (m := [e']) (m' := p) (c2 := c'); eauto.
 Qed.
 
@@ -620,14 +638,14 @@ Qed.
 
 Fixpoint fsnoc' (m : finpref) (e : event) : finpref :=
   match m with
-  | fstop m' => fstop (snoc m' e)
+  | fstop m' es => fstop (snoc m' e) es
   | ftbd m' => ftbd (snoc m' e)
   end.
 
 Theorem finpref_ind_snoc :
   forall (P : finpref -> Prop),
     P (ftbd nil) ->
-    (forall (m : pref), P (fstop m)) ->
+    (forall (m : pref) (es : endstate), P (fstop m es)) ->
     (forall (m : finpref) (e : event), P m -> P (fsnoc m e)) ->
     forall m, P m.
 Proof.
@@ -782,7 +800,7 @@ Proof.
 Qed.
 
 Inductive stopped : trace -> Prop :=
-  | stopped_stop : stopped tstop
+  | stopped_stop : forall es, stopped (tstop es)
   | stopped_cons : forall (e : event) (t : trace), stopped t -> stopped (tcons e t).
 
 Lemma ind_hyp (det : weak_determinacy) : forall t c,
@@ -842,9 +860,10 @@ Lemma semantics_safety_like_right (det : weak_determinacy): forall t P,
 Proof.
   intros t P Hndiv Hnstopped H.
   destruct t as [| | e0 t0].
-  - specialize (H (fstop nil) I). unfold psem in H.
+  - assert (Ht: e = e) by reflexivity.
+    specialize (H (fstop nil e) Ht). unfold psem in H.
     destruct H as [t [H1 H2]].
-    now destruct t.
+    destruct t; simpl in *; subst; now eauto.
   - exfalso. apply Hndiv. now constructor.
   - remember (tcons e0 t0) as t.
     apply ind_hyp.
@@ -856,7 +875,8 @@ Proof.
     apply psem_steps in H; [| reflexivity].
     destruct H as [c2 H].
     simpl in H.
-    now (exists c2).
+    exists c2.
+    now inversion H.
 Qed.
 
 Lemma tgt_sem (det : weak_determinacy) : semantics_safety_like lang.
@@ -890,13 +910,13 @@ Proof.
   destruct m as [p | p].
   - (* fstop *)
     intros Hm1 Hm2.
-    assert (forall t m, prefix (fstop m) t -> fin t).
-    { clear. intros t m. generalize dependent t. induction m; intros t H.
+    assert (forall t m es, prefix (fstop m es) t -> fin t).
+    { clear. intros t m. generalize dependent t. induction m; intros t es H.
       - destruct t; try now auto. constructor.
       - destruct t; try now auto.
         destruct H as [H1 H2].
-        specialize (IHm t H2). now constructor. }
-    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p Hm1).
+        specialize (IHm t es H2). now constructor. }
+    unfold inf in Hinf. exfalso; apply Hinf. now apply (H t p e Hm1).
   - (* ftbd *)
     induction p as [| p' e' IH] using pref_ind_snoc; intros Hm1 Hm2.
     + (* p = nil *)

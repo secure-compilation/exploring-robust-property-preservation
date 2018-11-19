@@ -56,10 +56,10 @@ Proof.
     split; try now auto.
     split.
     + exists (fun t => False).  split; auto.
-      intros [t Heq]. destruct t;
-      [specialize (Heq (tcons an_event tstop))
-      |specialize (Heq tstop)
-      |specialize (Heq tstop)];  now rewrite Heq.
+      intros [t Heq]. destruct t as [f | | ];
+      [specialize (Heq (tcons an_event (tstop f)))
+      |specialize (Heq (tstop esbad))
+      |specialize (Heq (tstop esbad))];  now rewrite Heq.
     + unfold RclassP. intros P π H tt.
       eapply (RclassP_sufficient_to_RPP (fun π => exists t, (forall b, π b <-> b <> t)));
         try now auto.

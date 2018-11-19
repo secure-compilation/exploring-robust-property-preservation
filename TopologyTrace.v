@@ -57,7 +57,7 @@ Proof.
     destruct (HL m) as [t [Hpref Hd]]. specialize (Ht t Hpref).
     now exists t.
   - intros Hd m. specialize (Hd (fun t => prefix m t)).
-    destruct Hd. now exists m. exists (embedding m). now apply embed_pref.
+    destruct Hd. now exists m. exists (embedding esbad (**) m). now apply embed_pref.
     now exists x.
 Qed.
 

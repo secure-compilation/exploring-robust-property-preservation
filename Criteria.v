@@ -97,13 +97,13 @@ Proof.
 Qed.
 
 (** ** Stronger variant of Robustly Safe Compilation *)
-Lemma stronger_rsc : (forall P C' t, sem tgt ( C' [ P ↓ ]) t  ->
-  forall m, prefix m t -> exists C, sem src ( C [ P ] ) (embedding m))
+Lemma stronger_rsc (es : endstate) : (forall P C' t, sem tgt ( C' [ P ↓ ]) t  ->
+  forall m, prefix m t -> exists C, sem src ( C [ P ] ) (embedding es m))
   -> RSC.
 Proof.
   unfold RSC. intros H P c t Hsem' m Hprefix.
   specialize (H P c t Hsem' m Hprefix). destruct H as [C Hsem].
-  exists C. exists (embedding m). split. assumption. apply embed_pref.
+  exists C. exists (embedding es m). split. assumption. apply embed_pref.
 Qed.
 
 (* The reverse direction doesn't hold *)
@@ -404,13 +404,13 @@ Qed.
 (*********************************************************)
 
 Definition Embedding (M : finpref -> Prop) : prop :=
-  fun t => exists m, M m /\ t = embedding m.
+  fun t => exists m es, M m /\ t = embedding es m.
 
 Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (constant_trace an_event).
 Proof.
-  intros M hf. inversion hf. destruct H as [h1 h2].
+  intros M hf. inversion hf. destruct H as [es [h1 h2]].
   assert (inf (constant_trace an_event)) by now apply inf_constant_trace.
-  assert (fin (embedding x)) by now apply embed_fin.
+  assert (fin (embedding es x)) by now apply embed_fin.
   rewrite <- h2 in H0.  now apply (H H0).
 Qed.
 
@@ -421,18 +421,18 @@ Proof.
   assert (sem tgt (C' [P ↓]) = Embedding M \/  sem tgt (C' [P ↓]) <> Embedding M)
     by now apply classic.
   destruct H.
-  + rewrite H; clear H. exists (fun t => (exists m, M m /\ t = embedding m) \/ t = constant_trace an_event).
+  + rewrite H; clear H. exists (fun t => (exists m es, M m /\ t = embedding es m) \/ t = constant_trace an_event).
     split.
-    ++ unfold spref. intros m hm. exists (embedding m).
+    ++ unfold spref. intros m hm. exists (embedding esbad (**) m).
        split.
-       +++ left. now exists m.
+       +++ left. now exists m, esbad (**).
        +++ now apply embed_pref.
      ++ intros hf. apply (infinite_trace_not_in_embed M).
         rewrite <- hf. now right.
   + exists (Embedding M). split; try now auto.
     unfold spref, Embedding. intros m hm.
-    exists (embedding m). split.
-    ++ now exists m.
+    exists (embedding esbad (**) m). split.
+    ++ now exists m, esbad (**).
     ++ now apply embed_pref.
 Qed.
 

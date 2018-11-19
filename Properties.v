@@ -46,12 +46,14 @@ Proof.
 Qed.
 
 Lemma safety_bad_finite_prefix : forall π, Safety π ->
-  forall t:trace, ~(π t) -> (exists m:finpref, prefix m t /\ ~(π (embedding m))).
+  forall t:trace, ~(π t) -> (exists (m:finpref) (es:endstate), prefix m t /\ ~(π (embedding es m))).
 Proof.
   unfold Safety. intros π H t H0.
   specialize (H t H0). destruct H as [m [H1 H2]].
-  exists m. split. assumption.
+  exists m. eexists. split. assumption.
   apply H2. now apply embed_pref.
+Unshelve.
+  exact esbad. (* Anything goes. *)
 Qed.
 
 (* some notes about liveness *)
@@ -66,7 +68,7 @@ Proof.
   - intros Hl t Hfin.
     destruct (single_cont_consequence _ Hfin) as [m H].
     destruct (Hl m) as [t' [H1 H2]]. erewrite H; eauto.
-  - intros H m. exists (embedding m). split.
+  - intros H m. exists (embedding esbad (* Anything goes! *) m). split.
     + now apply embed_pref.
     + apply H. now apply embed_fin.
 Qed.
@@ -79,9 +81,9 @@ Proof.
   intros π. unfold Liveness, inf. split.
   - intros Hl t nt Hfin. apply nt.
     now apply all_fin_in_all_liv.
-  - intros H m. exists (embedding m). split.
+  - intros H m. exists (embedding esbad (**) m). split.
     + now apply embed_pref.
-    + apply NNPP. intros ff. specialize (H (embedding m) ff).
+    + apply NNPP. intros ff. specialize (H (embedding esbad (**) m) ff).
       apply H. now apply embed_fin.
 Qed.
 
