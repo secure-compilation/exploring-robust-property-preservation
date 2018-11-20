@@ -5,6 +5,9 @@ Require Import Properties.
 Require Import FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalFacts.
 
+(** This file describes the topology of the classes of 
+    properties *)
+
 Axiom prop_ext : prop_extensionality.
 
 Record Topology {X : Set} :=

@@ -1,3 +1,10 @@
+(** This file defines an abstract model of the events
+    that will be used in the traces 
+
+    In particular, we assume that there exists at least
+    two different events.
+*)
+
 Axiom event : Set.
 Axiom an_event : event.
 Axiom another_event : event.

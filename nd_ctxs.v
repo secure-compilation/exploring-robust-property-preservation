@@ -6,10 +6,41 @@ Require Import Robustdef.
 Require Import Criteria. 
 Require Import ClassicalExtras.
 
+(** This file proves the collapses that happens in presence of
+    a non-deterministic choice operator in the source language *)
+
+
+(* 
+
+   RrHP ------ 
+               \
+    |          RrSCP----
+               /          \
+   RFrHP      /           RrTP ----
+             /            /        \
+    |       /            /          \
+           /            /           RrSP
+   RHP--- /            /             |
+         /            /              |
+    |   /            /               |
+       /            /                | 
+   RSCP  --------- /                 |
+                  /-                 |
+    |            /                   /
+          -----                     /
+   RTP (<-> RFrTP)                 /
+                                  /
+                                 /
+   / \                          /
+                               / 
+ RDP  RSP (<-> RFrSP) --------- 
+
+*)
+
 Variable nd  : ctx src -> ctx src -> ctx src.
 
 Infix "⊕" := nd (at level 50).
-Infix "⊆" := subset (at level 50). 
+
 
 Axiom nd_beh1 : forall C1 C2 P, beh (C1 [P]) ⊆ beh ((C1 ⊕ C2) [P]).  
 
@@ -31,7 +62,7 @@ Proof.
                         now exists Cs, t'.
 Qed.
 
-Lemma RSP_r2RSP : RSC -> r2RSC. 
+Lemma RSP_R2rSP : RSC -> R2rSC. 
 Proof.
   rewrite RSC'. 
   intros rsc Ct P1 P2 m1 m2 H1 H2.
@@ -45,9 +76,9 @@ Qed.
 (** *RTP -> R2rTP *)
 (* and with a similar argument RTP -> R r_fin TP *)
 
-Lemma RTP_r2RTP : (forall P π, RP P π) -> r2RPP. 
+Lemma RTP_R2rTP : (forall P π, RP P π) -> r2RPP. 
 Proof.
-  rewrite <- RC_RPP, r2RPP_r2RC.
+  rewrite <- RTC_RTP, r2RPP_r2RC.
   intros Hrc Ct P1 P2 t1 t2 H1 H2.
   destruct (Hrc P1 Ct t1) as [Cs1 Hs1]. specialize (Hs1 H1).
   destruct (Hrc P2 Ct t2) as [Cs2 Hs2]. specialize (Hs2 H2).
@@ -57,47 +88,6 @@ Qed.
 (** *RTP -> R2rTP *)
 (* and with a similar argument RTP -> R r_fin TP *)
 
-Definition two_sc (r : prop -> prop -> Prop) :=
-  forall b1 b2 b1' b2', r b1 b2 -> subset b1' b1 -> subset b2' b2 -> r b1' b2'.
-
-Lemma two_scP' :
-  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)) <->
-  (forall P1 P2 r, two_sc r -> ((exists Ct, ~ r (beh (Ct [P1↓])) (beh (Ct [P2↓]))) ->
-                            (exists Cs, ~ r (beh (Cs [P1])) (beh (Cs [P2]))))).
-Proof.
-  split.
-  + intros r2p P1 P2 r Hr [Ct nr].
-    rewrite <- not_forall_ex_not.
-    intros H. specialize (r2p P1 P2 r Hr H). now apply nr. 
-  + intros r2pc P1 P2 r Hr H. unfold hrsat2.  
-    intros Ct. rewrite dne. intros Hf.
-    destruct (r2pc P1 P2 r Hr) as [Cs Hc].
-    now exists Ct. now apply Hc.
-Qed.     
-    
-Lemma two_scC :
-  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)) <->
-  (forall (P1 P2 : par src) Ct, exists Cs,
-        (beh (Ct [P1↓])) ⊆  (beh (Cs [P1])) /\
-        (beh (Ct [P2↓])) ⊆  (beh (Cs [P2]))).
-Proof.
-  rewrite two_scP'. split. 
-  + intros r2sscP P1 P2 Ct.
-    destruct (r2sscP P1 P2
-                (fun π1 π2 => ~ subset (beh (Ct [P1 ↓])) π1 \/ ~ subset (beh (Ct [P2 ↓])) π2)) as [Cs Hcs].
-    { intros b1 b2 b1' b2' [nsup1 | nsup2] s1 s2. 
-      + left. unfold "⊆" in *. rewrite not_forall_ex_not in *.
-        destruct nsup1 as [t Hn1]. exists t. 
-        rewrite not_imp in *. split; firstorder.
-      + right. unfold "⊆" in *; rewrite not_forall_ex_not in *. 
-        destruct nsup2 as [t Hn2]. exists t. 
-        rewrite not_imp in *. split; firstorder. }  
-    exists Ct. rewrite de_morgan2. split; now rewrite <- dne. 
-    rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs). 
-    now exists Cs.
-  + intros scC P1 P2 r r2ssc [Ct nr]. destruct (scC P1 P2 Ct) as [Cs [K1 K2]].
-    exists Cs. intros Hf. apply nr. unfold two_sc in r2ssc. eapply r2ssc; eassumption. 
-Qed.     
 
 Lemma RSCCP_R2SSCP : ssc_cr -> (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)).
 Proof.
@@ -111,7 +101,7 @@ Proof.
     now unfold "⊆". apply nd_beh2.
 Qed.
 
-Lemma RTP_R2SSCP : RC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)). 
+Lemma RTP_R2SSCP : RTC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)). 
 Proof.
   rewrite two_scC. 
   intros rc P1 P2 Ct.
@@ -121,7 +111,7 @@ Abort.
   apply ⊕ and get the desired context. 
   When one of these two sets is infinite ⊕ should be applied infinitely many times
 
-  Assuming finitary non determinism the implication can be proved. 
- *)
+  Assuming finitary non determinism the implication can be proved.  
 
+ *)
 

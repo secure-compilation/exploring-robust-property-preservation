@@ -2,7 +2,7 @@
 
 This repository contains the supplementary materials of the paper:
 - Carmine Abate, Roberto Blanco, Deepak Garg, Catalin Hritcu, Marco Patrignani, and Jérémy Thibault.
-  **[Exploring Robust Property Preservation for Secure Compilation](http://arxiv.org/abs/1807.04603)**. July 2018.
+  **[Journey Beyond Full Abstraction: Exploring Robust Property Preservation for Secure Compilation](http://arxiv.org/abs/1807.04603)**. July 2018.
 
 ### Entry points ###
 

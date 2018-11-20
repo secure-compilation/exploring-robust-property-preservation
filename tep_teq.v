@@ -7,6 +7,8 @@ Require Import Setoid.
 Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
 
+(** This file proves that R2RTP may imply RTEP *)
+
 
 (** *our assumptions *)
 (**********************************************************)
