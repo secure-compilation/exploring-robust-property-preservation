@@ -28,8 +28,31 @@ Definition Liveness (π : prop) : Prop :=
 
 (* Safety a la Deepak *)
 Definition Safety' (π : prop) : Prop:=
-  exists π': finpref -> Prop,
-  forall t:trace, ~(π t) <-> (exists m, prefix m t /\ π' m).
+  exists M: finpref -> Prop,
+  forall t:trace, ~(π t) <-> (exists m, prefix m t /\ M m).
+
+Variable trace' : Set.
+Variable finpref' : Set.
+Definition prop' := trace' -> Prop.
+Variable prefix' : finpref' -> trace' -> Prop.
+
+Variable rel : finpref -> finpref' -> Prop.
+
+Definition Safety'' (π' : prop') : Prop:=
+  exists M': finpref' -> Prop,
+  forall t':trace', ~(π' t') <-> (exists m', prefix' m' t' /\ M' m').
+
+Definition alpha_M (M':finpref' -> Prop) :=
+  (fun m : finpref => exists m', M' m' /\ rel m m').
+
+Axiom indefinite_description : forall (A : Type) (P : A->Prop),
+   ex P -> sig P.
+
+Definition alpha (π':prop') (H:Safety'' π') : prop.
+  intro t. unfold Safety'' in H. apply indefinite_description in H.
+  destruct H as [M' H]. exact (forall m, alpha_M M' m -> not (prefix m t)).
+Defined. Print alpha.
+
 
 Lemma safety_safety' : forall π, Safety π <-> Safety' π.
 Proof.
