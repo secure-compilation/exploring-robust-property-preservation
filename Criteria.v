@@ -383,7 +383,7 @@ Proof.
   intros H P Ct t Ht m Hpref.
   destruct (H P Ct m m) as [Cs Hspref].
   intros m' [K | K]; subst; now exists t.
-  exists Cs. destruct (Hspref m) as [t' H']; auto.
+  exists Cs. destruct (Hspref m) as [t' H']; simpl; auto.
 Qed.
 
 

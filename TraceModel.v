@@ -12,8 +12,8 @@ Require Import List.
     execution or an infinite execution. *)
 Inductive endstate : Set :=
 | esgood : endstate
-| esbad : endstate
-.
+| esbad : endstate.
+
 CoInductive trace : Set :=
   | tstop : endstate -> trace
   | tsilent : trace
@@ -25,8 +25,7 @@ Definition pref := list event.
 
 Inductive finpref : Set :=
 | fstop : pref -> endstate -> finpref
-| ftbd  : pref -> finpref
-.
+| ftbd  : pref -> finpref.
 
 Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(f) ident(p) :=
   destruct m as [ [| e p] f
