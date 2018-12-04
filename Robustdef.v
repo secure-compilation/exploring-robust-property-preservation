@@ -175,6 +175,33 @@ Definition teq_preservation : Prop :=
   forall P1 P2, (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
            (forall Ct t, sem tgt (Ct [P1 ↓]) t <-> sem tgt (Ct [P2 ↓]) t).
 
+Definition rtip : Prop :=
+  forall P1 P2, (forall Cs t, sem src (Cs [P1]) t -> sem src (Cs [P2]) t) ->
+           (forall Ct t, sem tgt (Ct [P1 ↓]) t -> sem tgt (Ct [P2 ↓]) t).
+
+Lemma rtip_rtep : rtip -> teq_preservation.
+Proof.
+  unfold rtip. intros Hrtip P1 P2 H Ct t.
+  split; intro H'.
+  - eapply Hrtip. Focus 2. eassumption. intros Cs t0 H0.
+    apply H. assumption.
+  - eapply Hrtip. Focus 2. eassumption. intros Cs t0 H0.
+    apply H. assumption.
+Qed.
+
+Require Import Criteria.
+
+Lemma rtep_rtc_independent_attempt :
+  (forall p, (teq_preservation -> p -> RTC) -> p -> RTC) <->
+  (teq_preservation \/ RTC). (* this is bogus though *)
+Proof.
+  split.
+  - intros H. destruct (classic teq_preservation) as [H' | H'].
+    + left. assumption.
+    + right. eapply H. tauto. eassumption.
+  - intros [Hrtep | Hrtc] p Hf Hp; tauto.
+Qed.
+
 Lemma teq' : teq_preservation <-> (forall P1 P2,
  (exists Ct t, ~ (sem tgt (Ct [P1 ↓]) t  <-> sem tgt (Ct [P2 ↓]) t)) ->
  (exists Cs t', ~ (sem src (Cs [P1]) t'  <-> sem src (Cs [P2]) t'))).

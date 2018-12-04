@@ -41,7 +41,10 @@ Qed.
 
 (* If we can do the final `err` in the source then we can prove the original rtc
    - but there are still concerns about fsb and valid needing to be amended
-     in this case to say that err is not in t *)
+     in this case to say that err is not in t
+   - and more importantly the err_ctx_correct assumption seems too strong;
+     context would be able to preempt program at any point and produce any action
+*)
 
 Variable err_ctx : ctx src -> ctx src.
 
