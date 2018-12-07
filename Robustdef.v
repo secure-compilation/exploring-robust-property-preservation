@@ -204,17 +204,3 @@ Proof.
     destruct (H P1 P2) as [Cs [t' Hc]].
     now exists Ct, t. apply Hc. now apply Hsrc.
 Qed.
-
-(* CA: comment this part to make *)
-Require Import Criteria. 
-
-Lemma rtep_rtc_independent_attempt :
-  (forall p, (teq_preservation -> p -> RTC) -> p -> RTC) <->
-  (teq_preservation \/ RTC). (* this is bogus though *)
-Proof.
-  split.
-  - intros H. destruct (classic teq_preservation) as [H' | H'].
-    + left. assumption.
-    + right. eapply H. tauto. eassumption.
-  - intros [Hrtep | Hrtc] p Hf Hp; tauto.
-Qed.
