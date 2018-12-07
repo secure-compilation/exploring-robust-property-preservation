@@ -41,7 +41,10 @@ Qed.
 
 (* If we can do the final `err` in the source then we can prove the original rtc
    - but there are still concerns about fsb and valid needing to be amended
-     in this case to say that err is not in t *)
+     in this case to say that err is not in t
+   - and more importantly the err_ctx_correct assumption seems too strong;
+     context would be able to preempt program at any point and produce any action
+*)
 
 Variable err_ctx : ctx src -> ctx src.
 
@@ -61,3 +64,34 @@ Proof.
 Qed.
 
 End Quick.
+
+
+Section Stefan.
+
+  Definition question_mark := forall P1 P2 Ct,
+    beh (Ct [P1 ↓]) ⊆ beh (Ct [P2 ↓]) ->
+    exists Cs, beh (Cs [P1 ]) ⊆ beh (Cs [P2 ]).
+
+  Variable Wt : trace -> par src.
+
+  Hypothesis only_t:  forall Ct t t', sem tgt (Ct [(Wt t)↓]) t' -> t = t'.
+  Hypothesis t_src : forall Cs t, sem src (Cs [(Wt t)]) t. (* CC for Wt *)
+
+  Lemma question_mark_RTC : question_mark -> RTC.
+  Proof.
+    rewrite RTC'. intros Hqm P Ct t Ht.
+    destruct (classic (valid_trace P t)).
+    - exact H.
+    - unfold valid_trace in H. rewrite not_ex_forall_not in H.
+      destruct (Hqm (Wt t) P Ct) as [Cs HCs].
+      + intros b Hb. apply only_t in Hb. rewrite <- Hb. auto.
+      + exfalso. apply ((H Cs)). apply HCs. apply t_src.
+  Qed.
+
+  (* CA:
+
+     only_t + t_src => ((~ valid P t) -> False)
+
+  *)
+
+End Stefan.
