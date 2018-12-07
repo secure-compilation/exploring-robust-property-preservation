@@ -58,8 +58,8 @@ Proof.
     + exists (fun t => False).  split; auto.
       intros [t Heq]. destruct t as [f | | ];
       [specialize (Heq (tcons an_event (tstop f)))
-      |specialize (Heq (tstop esbad))
-      |specialize (Heq (tstop esbad))];  now rewrite Heq.
+      |specialize (Heq (tstop an_endstate))
+      |specialize (Heq (tstop an_endstate))];  now rewrite Heq.
     + unfold RclassP. intros P π H tt.
       eapply (RclassP_sufficient_to_RPP (fun π => exists t, (forall b, π b <-> b <> t)));
         try now auto.

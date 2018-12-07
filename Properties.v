@@ -53,7 +53,7 @@ Proof.
   exists m. eexists. split. assumption.
   apply H2. now apply embed_pref.
 Unshelve.
-  exact esbad. (* Anything goes. *)
+  exact an_endstate.
 Qed.
 
 (* some notes about liveness *)
@@ -68,7 +68,7 @@ Proof.
   - intros Hl t Hfin.
     destruct (single_cont_consequence _ Hfin) as [m H].
     destruct (Hl m) as [t' [H1 H2]]. erewrite H; eauto.
-  - intros H m. exists (embedding esbad (* Anything goes! *) m). split.
+  - intros H m. exists (embedding an_endstate m). split.
     + now apply embed_pref.
     + apply H. now apply embed_fin.
 Qed.
@@ -81,9 +81,9 @@ Proof.
   intros π. unfold Liveness, inf. split.
   - intros Hl t nt Hfin. apply nt.
     now apply all_fin_in_all_liv.
-  - intros H m. exists (embedding esbad (**) m). split.
+  - intros H m. exists (embedding an_endstate m). split.
     + now apply embed_pref.
-    + apply NNPP. intros ff. specialize (H (embedding esbad (**) m) ff).
+    + apply NNPP. intros ff. specialize (H (embedding an_endstate m) ff).
       apply H. now apply embed_fin.
 Qed.
 

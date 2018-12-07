@@ -72,15 +72,15 @@ Proof.
          assert (Hfpr1 : fpr (ftbd (snoc m' e')) (ftbd p)).
          { clear H' Hstopped Hsem H. now assumption. }
          clear Hfpr.
-         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) esgood)).
+         assert (Hfpr2 : fpr (ftbd p) (fstop (snoc p e) an_endstate)).
          { clear. now induction p. }
-         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) esgood)); now assumption.
+         apply (fpr_transitivity (ftbd (snoc m' e')) (ftbd p) (fstop (snoc p e) an_endstate)); now assumption.
       ++ intros m' Hm' Hsem' Hstopped'. destruct m' as [p' | p']; try now auto.
          specialize (H' (ftbd p')).
          assert (Hlemma : psem P' (ftbd p') ->
                           ~ (psem P' (ftbd (snoc p e))) ->
                           fpr (ftbd p') (ftbd (snoc p e)) ->
-                          fpr (ftbd p') (fstop p esgood)).
+                          fpr (ftbd p') (fstop p an_endstate)).
          { intros H0 H1 H2. unfold fpr in H2.
            apply destruct_fpr_ftbd_snoc in H2.
            destruct H2 as [H21 | H22].
@@ -250,7 +250,7 @@ Proof.
   inversion Hpref; subst. exists e0. reflexivity.
   inversion Hpref; subst. assert (Hfoo : fstopped (fstop p e) = true) by reflexivity.
   destruct (IHp Hfoo t H0) as [es Hes].
-  exists esbad (**); subst; eauto.
+  exists an_endstate; subst; eauto.
 Qed.
 
 
@@ -288,7 +288,7 @@ Proof.
   - apply (fpr_pref_pref m0 m t); auto. now apply (tapp_pref m t (tstop es)).
   - intros m' H0 H1. apply Hm0; auto. apply (prefix_fin_fpr m' m t es); auto.
     Unshelve.
-    exact esbad.
+    exact an_endstate.
 Qed.
 
 Lemma fstopped_prefix_fpr : forall m m',

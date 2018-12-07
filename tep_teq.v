@@ -62,5 +62,5 @@ Proof.
     assert (fpr (fsnoc m' i1) m) by now apply Hmax_m.
     apply (fpr_pref_pref _ _ t2) in H0; auto.  
     destruct (same_ext (fsnoc m' i1) (fsnoc m' i2) t2); auto;
-    apply snoc_m_event_equal in H1; congruence.
+      apply snoc_m_event_equal in H1; congruence.
 Qed.

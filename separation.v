@@ -31,7 +31,7 @@ Qed.
 Fixpoint take_n (t : trace) (n : nat) : trace :=
   match n, t with
   | _ ,tstop es     => tstop es
-  | 0, _            => tstop esgood
+  | 0, _            => tstop an_endstate
   | _, tsilent      => tsilent
   | S m, tcons x xs => tcons x (take_n xs m)
   end.                               
@@ -109,9 +109,9 @@ Qed.
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
 Proof.
   intros P. destruct (non_empty_sem L (snd P)) as [t h].
-  exists (embedding esbad (**) (take_nth_pref t (fst P))). unfold ϕ_sem.
+  exists (embedding an_endstate (take_nth_pref t (fst P))). unfold ϕ_sem.
   exists (take_nth_pref t (fst P)). repeat (split; try now auto).
-  unfold psem. exists esbad.
+  unfold psem. exists an_endstate.
   split.
   + reflexivity.
   + split.
@@ -126,7 +126,7 @@ Proof.
     simpl. apply omega_fact. omega.
   + destruct m2 as [m2 | m2]; destruct m2; try now auto.
     ++ simpl. inversion hpref; subst.
-       apply omega_fact. now apply (IHm1 (fstop m2 esbad (**)) H0).
+       apply omega_fact. now apply (IHm1 (fstop m2 an_endstate) H0).
     ++ simpl. inversion hpref; subst.
        apply omega_fact. now apply (IHm1 (ftbd m2) H0).
 Qed.
@@ -322,10 +322,10 @@ Proof.
     assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
     { intros C t hsem. specialize (h C). destruct h as [h1 h2].
       now apply h2. }
-    specialize (ff H (0, some_ctx_L) (tstop esbad (**))).
-    assert  (sem ϕ ((0, some_ctx_L) [c2 P]) (tstop esbad (**))).
+    specialize (ff H (0, some_ctx_L) (tstop an_endstate)).
+    assert  (sem ϕ ((0, some_ctx_L) [c2 P]) (tstop an_endstate)).
     simpl. unfold ϕ_sem, ϕ_plug. exists (ftbd nil). 
-    repeat (split; try now auto). simpl. exists esbad. repeat (split; try now auto).
+    repeat (split; try now auto). simpl. exists an_endstate. repeat (split; try now auto).
     exists an_omega.
     split; try now auto. now apply (h some_ctx_L).
     specialize (ff H0). unfold my_pi2 in ff. inversion ff.

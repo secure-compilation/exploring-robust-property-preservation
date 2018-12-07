@@ -423,16 +423,16 @@ Proof.
   destruct H.
   + rewrite H; clear H. exists (fun t => (exists m es, M m /\ t = embedding es m) \/ t = constant_trace an_event).
     split.
-    ++ unfold spref. intros m hm. exists (embedding esbad (**) m).
+    ++ unfold spref. intros m hm. exists (embedding an_endstate m).
        split.
-       +++ left. now exists m, esbad (**).
+       +++ left. now exists m, an_endstate.
        +++ now apply embed_pref.
      ++ intros hf. apply (infinite_trace_not_in_embed M).
         rewrite <- hf. now right.
   + exists (Embedding M). split; try now auto.
     unfold spref, Embedding. intros m hm.
-    exists (embedding esbad (**) m). split.
-    ++ now exists m, esbad (**).
+    exists (embedding an_endstate m). split.
+    ++ now exists m, an_endstate.
     ++ now apply embed_pref.
 Qed.
 

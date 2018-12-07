@@ -8,12 +8,14 @@ Require Import List.
     about these traces. *)
 
 
+(* Inductive endstate : Set := *)
+(* | esgood : endstate *)
+(* | esbad : endstate. *)
+Axiom endstate : Set.
+Axiom an_endstate : endstate.
+
 (** A trace represents either a stopped execution, a silently diverging
     execution or an infinite execution. *)
-Inductive endstate : Set :=
-| esgood : endstate
-| esbad : endstate.
-
 CoInductive trace : Set :=
   | tstop : endstate -> trace
   | tsilent : trace
@@ -95,7 +97,7 @@ Proof.
        destruct IHm as [t' [Hpref Hneq]]. exists (tcons e t').
        split; try now auto.
        intros Hc. inversion Hc; now subst.
-  + exists (tstop esgood). split; try now auto.
+  + exists (tstop an_endstate). split; try now auto.
     intros Hc; subst. apply Hinf. now constructor.
   + destruct ta as [| | e' ta].
     ++ exfalso. apply Hinf. now constructor.
@@ -400,7 +402,7 @@ Proof.
       simpl in *; subst; try (now auto).
   - induction m1 as [| e m1'].
     + intros [] [] H1 H2; simpl in *;
-        try destruct H1 as [H1 H1']; try destruct H2 as [H2 H2'];
+        try destruct H1 as []; try destruct H2 as [H2 H2'];
         subst; try (now auto).
     + intros m2 t. intros H1 H2.
       destruct m2 as [[| e2 m2'] f | [| e2 m2']]; simpl in *; subst; try (now auto);
