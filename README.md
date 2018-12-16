@@ -6,7 +6,7 @@ This repository contains the supplementary materials of the paper:
 
 ### Entry points ###
 
-The best entry points into this work are the paper above followed by the [online appendix](https://github.com/secure-compilation/exploring-robust-property-preservation/blob/master/appendix.pdf) in this repo, which includes direct pointers to various Coq and text files.
+The best entry points for this work are the paper above followed by the [online appendix](https://github.com/secure-compilation/exploring-robust-property-preservation/blob/master/appendix.pdf) in this repo, which includes direct pointers to various Coq and text files.
 
 ### Prerequisites for the Coq proofs ###
 
