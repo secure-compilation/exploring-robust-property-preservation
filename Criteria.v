@@ -534,17 +534,6 @@ Definition R2rSC := forall Ct P1 P2 m1 m2,
   psem (plug _ (P2 ↓) Ct) m2 ->
   exists Cs, psem (plug _ P1 Cs) m1 /\ psem (plug _ P2 Cs) m2.
 
-
-Definition R2rSC' : Prop :=
-  forall P1 P2 (r : finpref -> finpref -> Prop),
-    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
-                  psem (Cs [P2]) m2 ->
-                  r m1 m2) ->
-     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
-                  psem (Ct [P2 ↓]) m2 ->
-                  r m1 m2)).
-
-
 Theorem R2rSP_R2rSC : R2rSP <-> R2rSC.
 Proof.
   rewrite R2rSP'.
@@ -584,6 +573,15 @@ Proof.
     exists Cs, t1', t2'. auto.
 Qed.
 
+Definition R2rSC' : Prop :=
+  forall P1 P2 (r : finpref -> finpref -> Prop),
+    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
+                  psem (Cs [P2]) m2 ->
+                  r m1 m2) ->
+     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
+                  psem (Ct [P2 ↓]) m2 ->
+                  r m1 m2)).
+
 Theorem R2rSC_R2rSC' : R2rSC <-> R2rSC'.
 Proof.
   unfold R2rSC, R2rSC'.
@@ -612,15 +610,9 @@ Definition xafety2 r := forall (t1 t2 : trace),
   exists (m1 m2 : xpref), xprefix m1 t1 /\ xprefix m2 t2 /\
     (forall (t1' t2' : trace), xprefix m1 t1' -> xprefix m2 t2' -> ~(r t1' t2')).
 
-Lemma xsilent_prefix_ftbd_prefix : forall p t,
-  xsilent_prefix p t -> ftbd_prefix p t.
-Proof.
-  induction p; destruct t; simpl; try tauto. intros [H1 H2]. subst a. eauto.
-Qed.
-
-Lemma frop_prefix_functional : forall p e t t',
-  fstop_prefix p e t -> fstop_prefix p e t' -> t = t'.
-Admitted.
+(* Lemma frop_prefix_functional : forall p e t t', *)
+(*   fstop_prefix p e t -> fstop_prefix p e t' -> t = t'. *)
+(* Admitted. *)
 
 (* While this seems natural, it is simply not true *)
 Lemma xafety2_safety2 : forall r, xafety2 r -> safety2 r.
@@ -636,7 +628,7 @@ Proof.
   - exists (fstop p1 e1), (ftbd p2); simpl. split; [assumption|].
     split. now apply xsilent_prefix_ftbd_prefix.
     intros t1' t2' H1 H2.
-    assert (Ht1: t1 = t1') by (eapply frop_prefix_functional; eauto). subst t1'.
+    (* assert (Ht1: t1 = t1') by (eapply frop_prefix_functional; eauto). subst t1'. *)
     (* however can't get the same for t2 and t2', need to apply H *)
     apply H. assumption. (* stuck, this is simply not true *)
 Abort.
@@ -646,8 +638,89 @@ Definition R2rXP := forall P1 P2 r,
     rsat2 P1 P2 r ->
     rsat2 (P1 ↓) (P2 ↓) r.
 
-(* There is still hope that R2rXP implies R2rSP, and one might be able
-   to prove it by looking at the property-free characterizations. *)
+Lemma R2rXP' : R2rXP <-> (forall P1 P2 r,
+                           xafety2 r ->
+                           forall Ct t1 t2, sem _ (plug _ (P1 ↓) Ct) t1 ->
+                                       sem _ (plug _ (P2 ↓) Ct) t2 -> ~(r t1 t2) ->
+                                       exists Cs t1' t2', sem _ (plug _ P1 Cs) t1' /\
+                                                     sem _ (plug _ P2 Cs) t2' /\ ~(r t1' t2')).
+Proof.
+  unfold R2rXP, rsat2, sat2. split.
+  - intros H P1 P2 r Hsafety Ct t1 t2 H0 H1 H2. specialize (H P1 P2 r Hsafety).
+    rewrite imp_equiv in H. destruct H as [H | H].
+    + rewrite not_forall_ex_not in H. destruct H as [Cs H].
+      rewrite not_forall_ex_not in H. destruct H as [tt1 H].
+      rewrite not_forall_ex_not in H. destruct H as [tt2 H].
+      rewrite not_imp in H. destruct H as [k1 k2].
+      rewrite not_imp in k2. destruct k2 as [k2 k3].
+      now exists Cs, tt1, tt2.
+    + exfalso. now apply (H2 (H Ct t1 t2 H0 H1)).
+  - intros H P1 P2 r Hsafety H0 C t1 t2 H1 H2. apply NNPP. intros ff.
+    specialize (H P1 P2 r Hsafety C t1 t2 H1 H2 ff); destruct H as [Cs [tt1 [tt2 [h0 [h1 h2]]]]].
+    now apply (h2 (H0 Cs tt1 tt2 h0 h1)).
+Qed.
+
+Definition R2rXC := forall Ct P1 P2 m1 m2,
+  xsem (plug _ (P1 ↓) Ct) m1 ->
+  xsem (plug _ (P2 ↓) Ct) m2 ->
+  exists Cs, xsem (plug _ P1 Cs) m1 /\ xsem (plug _ P2 Cs) m2.
+
+Theorem R2rXP_R2rXC : R2rXP <-> R2rXC.
+Proof.
+  rewrite R2rXP'.
+  unfold R2rXP, R2rXC. split.
+  - intros H Ct P1 P2 m1 m2 H1 H2.
+    specialize (H P1 P2 (fun t1' t2' => ~ (xprefix m1 t1') \/ ~(xprefix m2 t2'))).
+    assert (Hsafety : xafety2 (fun t1' t2' => ~ (xprefix m1 t1') \/ ~(xprefix m2 t2'))).
+    { clear. unfold xafety2.
+      intros t1 t2 Ht. apply not_or_and in Ht. destruct Ht as [Ht1 Ht2].
+      apply NNPP in Ht1. apply NNPP in Ht2.
+      exists m1. exists m2. firstorder. }
+    unfold psem in H1, H2. destruct H1 as [t1 [H1 H1']]. destruct H2 as [t2 [H2 H2']].
+    specialize (H Hsafety Ct t1 t2 H1' H2').
+    assert (Htriv : ~ (fun t1' t2' : trace => ~ xprefix m1 t1' \/ ~ xprefix m2 t2') t1 t2).
+    { apply and_not_or. split; firstorder. }
+    specialize (H Htriv).
+    destruct H as [Cs [t1' [t2' [Ht1' [Ht2' H]]]]].
+    exists Cs.
+    assert (Htriv' : ~ (fun t1' t2' : trace => ~ xprefix m1 t1' \/ ~ xprefix m2 t2') t1' t2').
+    { apply and_not_or. split; firstorder. }
+    simpl in Htriv'. apply not_or_and in Htriv'. destruct Htriv' as [Htriv1' Htriv2'].
+    apply NNPP in Htriv1'. apply NNPP in Htriv2'.
+    split; unfold psem.
+    exists t1'; auto. exists t2'; auto.
+  - intros H P1 P2 r Hsafety Ct t1 t2 H1 H2 Hr.
+    specialize (H Ct P1 P2).
+    unfold safety2 in Hsafety. specialize (Hsafety t1 t2 Hr).
+    destruct Hsafety as [m1 [m2 [Hm1 [Hm2 Hs]]]].
+    specialize (H m1 m2). unfold psem in H.
+    assert (Hex1 : (exists t : trace, xprefix m1 t /\ sem _ (plug _ (P1 ↓) Ct) t)).
+    { exists t1; auto. }
+    assert (Hex2 : (exists t : trace, xprefix m2 t /\ sem _ (plug _ (P2 ↓) Ct) t)).
+    { exists t2; auto. }
+    specialize (H Hex1 Hex2). destruct H as [Cs [HCs1 HCs2]].
+    unfold psem in HCs1. unfold psem in HCs2. destruct HCs1 as [t1' [Hpref1' Hsem1']].
+    destruct HCs2 as [t2' [Hpref2' Hsem2']].
+    exists Cs, t1', t2'. auto.
+Qed.
+
+(* Still R2rXP implies R2rSP, and one can prove it by looking at the
+   property-free characterization. *)
+
+Lemma R2rXC_R2rSC : R2rXC -> R2rSC.
+Proof.
+  unfold R2rXC, R2rSC. intros H Ct P1 P2 m1 m2 [t1 [H1 H1']] [t2 [H2 H2']].
+  specialize (H Ct P1 P2 (xembed m1) (xembed m2)).
+  apply prefix_xprefix_xembed in H1. apply prefix_xprefix_xembed in H2.
+  assert (X1 : xsem (Ct [P1 ↓]) (xembed m1)) by (exists t1; tauto).
+  assert (X2 : xsem (Ct [P2 ↓]) (xembed m2)) by (exists t2; tauto).
+  specialize (H X1 X2). destruct H as [Cs [[t1' [XX1 Hsem1]] [t2' [XX2 Hsem2]]]].
+  exists Cs. apply xprefix_xembed_prefix in XX1.
+             apply xprefix_xembed_prefix in XX2. split.
+  - exists t1'. tauto.
+  - exists t2'. tauto.
+Qed.
+
 
 (*************************************************************************)
 (* Robust 2-relational Hyperproperty Preservation *)
