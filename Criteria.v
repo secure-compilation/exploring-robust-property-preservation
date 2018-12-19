@@ -490,10 +490,12 @@ Proof.
 Qed.
 
 (*************************************************************************)
-(* Robust 2-rel Safety Pres              *)
-(* We give three equivalent caracterization of the same criterion: R2rSP, R2rSC
-   and R2rSC' *)
+(** Robust 2-rel Safety Preservation *)
 (*************************************************************************)
+
+(* We give three equivalent caracterization of the same criterion:
+   R2rSP, R2rSC and R2rSC' *)
+
 Definition safety2 r := forall (t1 t2 : trace),
     ~ (r t1 t2) ->
     exists (m1 m2 : finpref), prefix m1 t1 /\ prefix m2 t2 /\
@@ -598,6 +600,54 @@ Proof.
     { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
     specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
+
+(*************************************************************************)
+(** Robust 2-rel Xafety Preservation *)
+(*************************************************************************)
+
+Require Import XPrefix.
+
+Definition xafety2 r := forall (t1 t2 : trace),
+  ~ (r t1 t2) ->
+  exists (m1 m2 : xpref), xprefix m1 t1 /\ xprefix m2 t2 /\
+    (forall (t1' t2' : trace), xprefix m1 t1' -> xprefix m2 t2' -> ~(r t1' t2')).
+
+Lemma xsilent_prefix_ftbd_prefix : forall p t,
+  xsilent_prefix p t -> ftbd_prefix p t.
+Proof.
+  induction p; destruct t; simpl; try tauto. intros [H1 H2]. subst a. eauto.
+Qed.
+
+Lemma frop_prefix_functional : forall p e t t',
+  fstop_prefix p e t -> fstop_prefix p e t' -> t = t'.
+Admitted.
+
+(* While this seems natural, it is simply not true *)
+Lemma xafety2_safety2 : forall r, xafety2 r -> safety2 r.
+Proof.
+  unfold xafety2, safety2. intros r Hxafety2 t1 t2 Hnr.
+  specialize (Hxafety2 t1 t2 Hnr). destruct Hxafety2 as [m1 [m2 [Hm1 [Hm2 H]]]].
+  destruct m1 as [p1 e1 | p1 | p1];
+  destruct m2 as [p2 e2 | p2 | p2]; simpl in *.
+  - exists (fstop p1 e1), (fstop p2 e2); simpl. do 2 (split; [assumption|]).
+    intros t1' t2' H1 H2. apply H; assumption.
+  - exists (fstop p1 e1), (ftbd p2); simpl. do 2 (split; [assumption|]).
+    intros t1' t2' H1 H2. apply H; assumption.
+  - exists (fstop p1 e1), (ftbd p2); simpl. split; [assumption|].
+    split. now apply xsilent_prefix_ftbd_prefix.
+    intros t1' t2' H1 H2.
+    assert (Ht1: t1 = t1') by (eapply frop_prefix_functional; eauto). subst t1'.
+    (* however can't get the same for t2 and t2', need to apply H *)
+    apply H. assumption. (* stuck, this is simply not true *)
+Abort.
+
+Definition R2rXP := forall P1 P2 r,
+    xafety2 r ->
+    rsat2 P1 P2 r ->
+    rsat2 (P1 ↓) (P2 ↓) r.
+
+(* There is still hope that R2rXP implies R2rSP, and one might be able
+   to prove it by looking at the property-free characterizations. *)
 
 (*************************************************************************)
 (* Robust 2-relational Hyperproperty Preservation *)
