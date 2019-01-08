@@ -103,6 +103,12 @@ Lemma R2rXP_two : R2rXP <->  two_rRXC.
 Admitted. 
 
 
+Lemma xpr_snoc : forall p a1 a2, 
+    xpr (xtbd (snoc p a1)) (xtbd (snoc p a2)) -> a1 = a2.
+Proof.
+  induction p; intros a1 a2 H; simpl in *; destruct H as [H1 H2]; auto.   
+Qed.
+
 Fixpoint list_to_stop_trace (l : list event) (e : endstate) : trace :=
   match l with
   | nil => tstop e
@@ -159,10 +165,40 @@ Proof.
 Qed.
 
 Lemma xpr_longer_stop_contra : forall p a e, xpr (xtbd (snoc p a)) (xstop p e) -> False.
-Admitted.
+Proof.
+  induction p; auto.
+  simpl. intros a0 e [Hfoo H]. now apply (IHp a0 e). 
+Qed.
 
 Lemma xpr_longer_silent_contra : forall p a, xpr (xtbd (snoc p a)) (xsilent p) -> False.
+Proof.
+  induction p; auto.
+  simpl. intros a0 [Hfoo H]. now apply (IHp a0).
+Qed. 
+
+Lemma xpr_longer_xtbd_contra: forall p a, xpr (xtbd (snoc p a)) (xtbd p) -> False.
+Proof.
+  induction p; auto.
+  simpl. intros a0 [Hfoo H]. now apply (IHp a0).
+Qed. 
+
+Lemma xpr_snoc_pointwise: forall x i1 i2 p a1 a2,
+                          i1 <> i2 ->
+                          xpr (xsnoc x i1) (xtbd (snoc p a1)) ->
+                          xpr (xsnoc x i2) (xtbd (snoc p a2)) ->
+                          (i1 = a1 /\ i2 = a2).
 Admitted.
+
+
+Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
+    is_input i1 -> is_input i2 -> 
+    xsem W (xtbd (snoc p i1)) -> xsem W (xtbd (snoc p i2)).
+Proof.
+  intros p i1 i2 Hi1 Hi2 [t [xpref_x_t Hsemt]].
+  assert (psem W (fsnoc (ftbd p) i1)).
+  { simpl in *. now exists t. }
+  now apply (input_totality_tgt W (ftbd p) i1 i2) in H.
+Qed.  
 
 Lemma t_being_tstop_leads_to_contra (W1 W2 : prg tgt) t t2 p
                                     (t2stop: exists e, t2 = list_to_stop_trace p e) 
@@ -252,17 +288,42 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- now apply xpr_longer_silent_contra in xpr1.
              -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]]. 
                 (* you should deduce form Hxrp2 that xx = xsilent _ 
                    and hence it cannot be an xpr of some xtbd _
-                   i.e. Hpr1 is contraddicted 
-                *)
+                   i.e. Hpr1 is contraddicted                *)
 Admitted. 
 
 
-Lemma t_last_case_violates_xmax : True.
-Admitted. 
-
+Lemma violates_xmax  (W1 W2 : prg tgt) t t2 p a aa
+                     (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
+                     (nsem12: ~ sem tgt W2 t)
+                     (xpref_x_t : xprefix (xtbd (snoc p aa)) t)
+                     (x_t2 : xprefix (xtbd (snoc p a)) t2)
+                       
+  :
+    (forall x' : xpref, xprefix x' t -> xsem W2 x' -> xpr x' (xtbd p)) -> 
+    (forall x1 x2, xsem W1 x1 -> xsem W2 x2 ->  myXr x1 x2) -> False.
+Proof.
+  intros xmax twoX.
+  assert (xsem1 : xsem W1 (xtbd (snoc p aa))) by now exists t.
+  assert (xsem2 : xsem W2 (xtbd (snoc p a))) by now exists t2.
+  specialize (twoX (xtbd (snoc p aa)) (xtbd (snoc p a)) xsem1 xsem2).
+  destruct twoX as [xpr1 | [xpr2 | matching]].
+  + apply xpr_snoc in xpr1. subst.
+    specialize (xmax (xtbd (snoc p a)) xpref_x_t xsem2).
+    now apply xpr_longer_xtbd_contra in xmax.
+  + apply xpr_snoc in xpr2. subst.
+    specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
+    now apply xpr_longer_xtbd_contra in xmax.
+  + destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff_is [Hxpr1 [Hxpr2 Hstop]]]]]]]].
+    apply (xpr_snoc_pointwise xx i1 i2 p aa a) in Hxpr2; auto.  
+    destruct Hxpr2 as [H1 H2]. subst.
+    apply (input_tot_consequence W2 p a aa) in xsem2; auto. 
+    specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
+    now apply xpr_longer_xtbd_contra in xmax. 
+Qed. 
+    
 
 Theorem R2rXP_RTEP : R2rXP -> teq_preservation.
 Proof.  
@@ -311,14 +372,7 @@ Proof.
                    i.e. Hxpr2 is violated 
                 *) admit.              
            - destruct ttlonger as [aa ttlonger].
-             admit. (* 
-                      use twoX and get that (snoc p a) and (snoc p aa) are in myXr
-                      i.e. they are equal -> contraddiction 
-                        or they differ for the first time on an input (a ≠ aa ∈ Input) 
-                        now use input totality and 
-                        get that (snoc p aa) is also produced by P1, violating x_max
-                     *)
-             
+             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 p a aa).              
    ++ (*  it can only be t2 '=' xsilent p e = t *)
       apply (unique_continuation_silent p t) in xpref_x_t.
       apply (unique_continuation_silent p t2) in x_t2.
