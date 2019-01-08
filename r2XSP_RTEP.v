@@ -18,12 +18,13 @@ Hypothesis determinacy_src    : determinacy src.
 Hypothesis tgt_sem           : semantics_safety_like tgt.
 (**********************************************************)
 
+(* CA: before trying to prove a lemma check if it is actually used or not! *)
 
-Definition xsnoc (m : xpref) (e : event) :=
-  match m with
-  | xstop _ _ | xsilent _ => m
-  | xtbd  l               => xtbd (snoc l e)
-  end. 
+(* Definition xsnoc (m : xpref) (e : event) := *)
+(*   match m with *)
+(*   | xstop _ _ | xsilent _ => m *)
+(*   | xtbd  l               => xtbd (snoc l e) *)
+(*   end.  *)
 
 
 Fixpoint list_pref { A : Type } (l1 l2 : list A) : Prop :=
@@ -57,51 +58,7 @@ Definition xstopped x : bool :=
   match x with
   | xstop _ _ => true
   | _ => false
-  end. 
-
-Definition myXr (x1 x2: xpref) : Prop :=
-  (xpr x1 x2) \/ (xpr x2 x1) \/
-  (exists x i1 i2, is_input i1 /\
-               is_input i2 /\
-               i1 <> i2 /\
-               xpr (xsnoc x i1) x1 /\
-               xpr (xsnoc x i2) x2 /\
-               xstopped x = false).
-
-
-Lemma teq_premises_myXr_holds : forall P1 P2,
-    (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
-    (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
-                 myXr x1 x2).
-Proof.
-  intros P1 P2 H Cs x1 x2 H0 H1. unfold myXr.
-  assert (Hc :(xpr x1 x2 \/ xpr x2 x1) \/ ~ (xpr x1 x2 \/ xpr x2 x1)) by now apply classic.
-  destruct Hc.
-  + destruct H2; now auto.
-  + destruct H0 as [b1 [H11 H12]].  destruct H1 as [b2 [H21 H22]].
-    right. right.
-Admitted.
-(* CA: try to work on the lists of events to simplify things *)
-
-
-Lemma  longest_in_xsem :
-  forall W t, ~ sem tgt W t ->
-    exists x, xprefix x t /\ xsem W x /\
-     (forall x', xprefix x' t -> xsem W x' -> xpr x' x).
-Admitted.
-
-Definition  two_rRXC : Prop :=
-  forall (r : xpref -> xpref -> Prop) P1 P2 ,
-    ((forall Cs x1 x2, xsem (Cs [P1]) x1 ->
-                  xsem (Cs [P2]) x2 ->
-                   r x1 x2) ->
-     (forall Ct x1 x2, xsem (Ct [P1 ↓]) x1 ->
-                  xsem (Ct [P2 ↓]) x2 ->
-                  r x1 x2)).
-
-Lemma R2rXP_two : R2rXP <->  two_rRXC.
-Admitted. 
-
+  end.
 
 Lemma xpr_snoc : forall p a1 a2, 
     xpr (xtbd (snoc p a1)) (xtbd (snoc p a2)) -> a1 = a2.
@@ -129,7 +86,6 @@ Proof.
     simpl. now rewrite (IHl t).    
 Qed.
 
-
 Fixpoint list_to_silent_trace (l : list event) : trace :=
   match l with
   | nil => tsilent
@@ -137,8 +93,9 @@ Fixpoint list_to_silent_trace (l : list event) : trace :=
   end.
 
 Lemma xsilent_prefix_list : forall p, xprefix (xsilent p) (list_to_silent_trace p).
-Admitted. 
-
+Proof.
+  induction p; simpl; auto.  
+Qed.
 
 Lemma unique_continuation_silent : forall l t, xprefix (xsilent l) t -> t = list_to_silent_trace l.
 Proof.  
@@ -182,12 +139,103 @@ Proof.
   simpl. intros a0 [Hfoo H]. now apply (IHp a0).
 Qed. 
 
-Lemma xpr_snoc_pointwise: forall x i1 i2 p a1 a2,
+Lemma list_snoc_pointwise: forall (l p : list event) i1 i2 a1 a2,
                           i1 <> i2 ->
-                          xpr (xsnoc x i1) (xtbd (snoc p a1)) ->
-                          xpr (xsnoc x i2) (xtbd (snoc p a2)) ->
+                          list_pref (snoc l i1) (snoc p a1) ->
+                          list_pref (snoc l i2) (snoc p a2) ->
                           (i1 = a1 /\ i2 = a2).
 Admitted.
+
+Lemma no_silent_and_stop: forall l1 l2 e,
+    list_to_silent_trace l1 <> list_to_stop_trace l2 e.
+Admitted. 
+
+Lemma same_x_ext : forall x1 x2 t, xprefix x1 t -> xprefix x2 t -> xpr x1 x2 \/ xpr x2 x1. 
+Proof.
+  intros []; induction p; intros x2 t H1 H2. 
+  + apply unique_continuation_stop in H1. subst.
+    destruct x2.
+    ++ destruct p. simpl in H2. subst. now left.
+       simpl in *. contradiction.
+    ++ destruct p. simpl in H2. subst. now right.
+       simpl in *. contradiction.
+    ++ destruct p. simpl in H2. contradiction.
+       simpl in *. contradiction.
+  + destruct t; simpl in H1; try contradiction. 
+    inversion H1. subst.
+    destruct x2.
+    ++ destruct p0; simpl in H2. contradiction.
+       inversion H2. subst.
+       destruct (IHp (xstop p0 e1) t) as [K1 | K2]; auto. 
+       +++ left. subst. simpl in *. firstorder. now rewrite H.
+       +++ right. simpl in *. firstorder. now rewrite H.
+    ++ destruct p0; simpl in H2. now right. 
+       destruct (IHp (xtbd p0) t) as [K1 | K2]; auto. 
+       +++ simpl. now destruct H2.  
+       +++ right. simpl. firstorder.
+    ++ apply unique_continuation_silent in H2. 
+       apply unique_continuation_stop in H0.
+       destruct p0; inversion H2.  
+       rewrite H0 in H4. exfalso. symmetry in H4.
+       now apply no_silent_and_stop in H4.     
+  + left. now case x2.
+  + admit.
+Admitted.   
+       
+(*********************************************************************************)
+
+Definition myXr (x1 x2: xpref) : Prop :=
+  (xpr x1 x2) \/ (xpr x2 x1) \/
+  (exists p i1 i2, is_input i1 /\
+               is_input i2 /\
+               i1 <> i2 /\
+               xpr (xtbd (snoc p i1)) x1 /\
+               xpr (xtbd (snoc p i2)) x2).
+
+
+Lemma teq_premises_myXr_holds : forall P1 P2,
+    (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
+    (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
+                 myXr x1 x2).
+Proof.
+  (* intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]]. *)
+(*   rewrite (H Cs t1) in sem1.   *)
+(*   destruct (determinacy_src (Cs[P2]) t1 t2 sem1 sem2) as [t_eq | matching]. *)
+(*   + rewrite t_eq in *.  *)
+(*     destruct (same_x_ext x1 x2 t2 xpref1 xpref2) as  [go_left | go_right]; *)
+(*       [now left | right; now left]. *)
+(*   + destruct matching as [m [i1 [i2 [I1 [I2 [Idiff [m_stop [m_prefix1 m_prefix2]]]]]]]]. *)
+(*     destruct m. *)
+(*     ++ inversion m_stop.  *)
+(*     ++ simpl in m_prefix1, m_prefix2. *)
+(*        destruct x1, x2. *)
+(*        - apply unique_continuation_stop in xpref1. *)
+(*          apply unique_continuation_stop in xpref2. *)
+(*          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2. *)
+(*          right. right. *)
+(*          exists p, i1, i2. repeat (split; try now auto). *)
+(*          simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit. *)
+(*          (* mprefix2 -> thesis, maybe a lemma is needed *) admit. *)
+(* Admitted. (* CA: look for a more clever way *)  *)
+Admitted. 
+
+Lemma  longest_in_xsem :
+  forall W t, ~ sem tgt W t ->
+    exists x, xprefix x t /\ xsem W x /\
+     (forall x', xprefix x' t -> xsem W x' -> xpr x' x).
+Admitted.
+
+Definition  two_rRXC : Prop :=
+  forall (r : xpref -> xpref -> Prop) P1 P2 ,
+    ((forall Cs x1 x2, xsem (Cs [P1]) x1 ->
+                  xsem (Cs [P2]) x2 ->
+                   r x1 x2) ->
+     (forall Ct x1 x2, xsem (Ct [P1 ↓]) x1 ->
+                  xsem (Ct [P2 ↓]) x2 ->
+                  r x1 x2)).
+
+Lemma R2rXP_two : R2rXP <->  two_rRXC.
+Admitted. 
 
 
 Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
@@ -222,9 +270,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- inversion xpr1. now subst.
              -- inversion xpr2. now subst.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                assert (xx_stopped: xstopped xx = true) by admit. (* Hxpr1 : xx ≤ xstop *)
-                rewrite xx_stopped in Hstop. inversion Hstop.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
+                simpl in Hxpr1, Hxpr2. admit. (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
            -  destruct t2stop as [e t2stop].
                assert (xsem1 : xsem W1 (xsilent p)).
              { exists t. split; auto.
@@ -236,9 +283,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- inversion xpr1.
              -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                assert (xx_stopped: xstopped xx = true) by admit. (* Hxpr2 : xx ≤ xstop *)
-                rewrite xx_stopped in Hstop. inversion Hstop.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
+                 simpl in Hxpr1, Hxpr2. admit.  (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
            - destruct t2stop as [e2 t2stop]. destruct ttlonger as [a ttstop].
              assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
              assert (xsem2 : xsem W2 (xstop p e2)).
@@ -248,9 +294,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- now apply xpr_longer_stop_contra in xpr1.
              -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                assert (xx_stopped: xstopped xx = true) by admit. (* Hxpr2 : xx ≤ xstop *)
-                rewrite xx_stopped in Hstop. inversion Hstop.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
+                 simpl in Hxpr1, Hxpr2. admit. (* contradiction from Hxpr1 and Hxpr2 *)
 Admitted. 
 
 Lemma t_being_tsilent_leads_to_contra (W1 W2 : prg tgt) t t2 p
@@ -275,9 +320,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- inversion xpr1. 
              -- inversion xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                assert (xx_stopped: xstopped xx = true) by admit. (* Hxpr1 : xx ≤ xstop *)
-                rewrite xx_stopped in Hstop. inversion Hstop.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
+                simpl in Hxpr1, Hxpr2. admit. (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
            - rewrite <- t2silent in ttsilent. now subst. 
            - destruct ttlonger as [a ttstop].
              assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
@@ -288,10 +332,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- now apply xpr_longer_silent_contra in xpr1.
              -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]]. 
-                (* you should deduce form Hxrp2 that xx = xsilent _ 
-                   and hence it cannot be an xpr of some xtbd _
-                   i.e. Hpr1 is contraddicted                *)
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
+                simpl in Hxpr1, Hxpr2.  admit. (* contradiction from Hxpr1 and Hxpr2 *)
 Admitted. 
 
 
@@ -316,8 +358,9 @@ Proof.
   + apply xpr_snoc in xpr2. subst.
     specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
     now apply xpr_longer_xtbd_contra in xmax.
-  + destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff_is [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-    apply (xpr_snoc_pointwise xx i1 i2 p aa a) in Hxpr2; auto.  
+  + destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff_is [Hxpr1 Hxpr2 ]]]]]]].
+    simpl in Hxpr1, Hxpr2.  
+    apply (list_snoc_pointwise xx p i1 i2 aa a) in Hxpr2; auto.  
     destruct Hxpr2 as [H1 H2]. subst.
     apply (input_tot_consequence W2 p a aa) in xsem2; auto. 
     specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
@@ -356,9 +399,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- inversion xpr1. 
              -- now apply xpr_longer_stop_contra in xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                assert (xx_stopped: xstopped xx = true) by admit. (* Hxpr1 : xx ≤ xstop *)
-                rewrite xx_stopped in Hstop. inversion Hstop.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. admit. (* contradiction from Hxpr1 and Hxpr2 *)        
            - assert (xsem1 : xsem (Ct [P1↓]) (xsilent p)).
              { exists t. split; auto.
                rewrite ttsilent. now apply xsilent_prefix_list. }
@@ -366,11 +408,8 @@ Proof.
              destruct twoX as [xpr1 | [xpr2 | matching]].
              -- inversion xpr1.
              -- now apply xpr_longer_silent_contra in xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 [Hxpr2 Hstop]]]]]]]].
-                (* you should deduce from Hxpr1 that xx = xsilent _, so that 
-                   it is not the case that xpr xx (xtbd _ ) 
-                   i.e. Hxpr2 is violated 
-                *) admit.              
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2.  admit. (* contradiction from Hxpr1 and Hxpr2 *) 
            - destruct ttlonger as [aa ttlonger].
              now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 p a aa).              
    ++ (*  it can only be t2 '=' xsilent p e = t *)
