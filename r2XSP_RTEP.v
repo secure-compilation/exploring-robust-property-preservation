@@ -198,32 +198,92 @@ Lemma teq_premises_myXr_holds : forall P1 P2,
     (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
                  myXr x1 x2).
 Proof.
-  (* intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]]. *)
-(*   rewrite (H Cs t1) in sem1.   *)
-(*   destruct (determinacy_src (Cs[P2]) t1 t2 sem1 sem2) as [t_eq | matching]. *)
-(*   + rewrite t_eq in *.  *)
-(*     destruct (same_x_ext x1 x2 t2 xpref1 xpref2) as  [go_left | go_right]; *)
-(*       [now left | right; now left]. *)
-(*   + destruct matching as [m [i1 [i2 [I1 [I2 [Idiff [m_stop [m_prefix1 m_prefix2]]]]]]]]. *)
-(*     destruct m. *)
-(*     ++ inversion m_stop.  *)
-(*     ++ simpl in m_prefix1, m_prefix2. *)
-(*        destruct x1, x2. *)
-(*        - apply unique_continuation_stop in xpref1. *)
-(*          apply unique_continuation_stop in xpref2. *)
-(*          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2. *)
-(*          right. right. *)
-(*          exists p, i1, i2. repeat (split; try now auto). *)
-(*          simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit. *)
-(*          (* mprefix2 -> thesis, maybe a lemma is needed *) admit. *)
-(* Admitted. (* CA: look for a more clever way *)  *)
-Admitted. 
+  intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]].
+  rewrite (H Cs t1) in sem1.
+  destruct (determinacy_src (Cs[P2]) t1 t2 sem1 sem2) as [t_eq | matching].
+  + rewrite t_eq in *.
+    destruct (same_x_ext x1 x2 t2 xpref1 xpref2) as  [go_left | go_right];
+      [now left | right; now left].
+  + destruct matching as [m [i1 [i2 [I1 [I2 [Idiff [m_stop [m_prefix1 m_prefix2]]]]]]]].
+    destruct m.
+    ++ inversion m_stop.
+    ++ simpl in m_prefix1, m_prefix2.
+       destruct x1, x2.
+       - apply unique_continuation_stop in xpref1.
+         apply unique_continuation_stop in xpref2.
+         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
+         right. right.
+         exists p, i1, i2. repeat (split; try now auto);
+         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
+         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
+       -  apply unique_continuation_stop in xpref1.
+          rewrite xpref1 in m_prefix1.  
+          (* p1 and (p; i2)  are comparable as both have t2 as extension, 
+             if p1 ≤ p then by m_prefix1, p1 ≤ (xstop p0 e) and go in the first 2 disjuncts 
+             if p1 = p;i2  then go right-right  
+             if p1 > p;i2 then go right-right
+           *) admit.
+       - apply unique_continuation_stop in xpref1.
+         apply unique_continuation_silent in xpref2.
+         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
+         right. right.
+         exists p, i1, i2. repeat (split; try now auto);
+         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
+         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
+       -  apply unique_continuation_stop in xpref2.
+          rewrite xpref2 in m_prefix2.
+          (* p0 and (p; i1)  are comparable as both have t1 as extension, 
+             if p0 ≤ p then by m_prefix2, p0 ≤ (xstop p1 e) and go in the first 2 disjuncts 
+             if p0 = p;i1  then go right-right  
+             if p0 > p;i1 then go right-right
+           *) admit.
+       - (* p0 and p1 are comparable with (snoc p i1) and (snoc p i2) respectively 
+            from that deduce they are in myXr
+          *) admit.
+       - apply unique_continuation_silent in xpref2.
+         rewrite xpref2 in m_prefix2.
+         (* p0 and (p; i1) are comparable as both have t1 as extension 
+            if p0 ≤ p then by m_prefix2, p0 ≤ (xsilent p1) and go in the first 2 disjuncts 
+            if p0 = p;i1  then go right-right  
+            if p0 > p;i1 then go right-right
+          *) admit.
+       - apply unique_continuation_silent in xpref1.
+         apply unique_continuation_stop in xpref2.
+         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
+         right. right.
+         exists p, i1, i2. repeat (split; try now auto);
+         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
+         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
+       - apply unique_continuation_silent in xpref1.
+          rewrite xpref1 in m_prefix1.  
+          (* p1 and (p; i2)  are comparable as both have t2 as extension, 
+             if p1 ≤ p then by m_prefix1, p1 ≤ (xsilent p0) and go in the first 2 disjuncts 
+             if p1 = p;i2  then go right-right  
+             if p1 > p;i2 then go right-right
+           *) admit.
+       - apply unique_continuation_silent in xpref1.
+         apply unique_continuation_silent in xpref2.
+         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
+         right. right.
+         exists p, i1, i2. repeat (split; try now auto);
+         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
+         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.        
+Admitted.
 
+
+(* CA: painful but resonable, 
+       if t = m;stop and we can use an argument similar to longest_in_psem 
+       if t = m;silent ' '        ''         ''           ''         ''
+       if t is infinite then we have to use semantics_safety_like and then 
+       embed the given prefix 
+ *)
 Lemma  longest_in_xsem :
   forall W t, ~ sem tgt W t ->
     exists x, xprefix x t /\ xsem W x /\
      (forall x', xprefix x' t -> xsem W x' -> xpr x' x).
 Admitted.
+
+
 
 Definition  two_rRXC : Prop :=
   forall (r : xpref -> xpref -> Prop) P1 P2 ,
