@@ -144,12 +144,25 @@ Lemma list_snoc_pointwise: forall (l p : list event) i1 i2 a1 a2,
                           list_pref (snoc l i1) (snoc p a1) ->
                           list_pref (snoc l i2) (snoc p a2) ->
                           (i1 = a1 /\ i2 = a2).
-Admitted.
+Proof.
+  induction l; intros p i1 i2 a1 a2 diff_i l1_pref l2_pref.
+  + destruct p; inversion l1_pref; inversion l2_pref; auto. 
+    subst. exfalso. now apply diff_i.
+  + destruct p; simpl in l1_pref, l2_pref.
+    ++ destruct l1_pref as [aa1 contra].
+       now destruct l.
+    ++ destruct l1_pref as [ae l1_pref]. destruct l2_pref as [foo l2_pref].
+       now apply (IHl p i1 i2 a1 a2).
+Qed.   
 
 Lemma no_silent_and_stop: forall l1 l2 e,
     list_to_silent_trace l1 <> list_to_stop_trace l2 e.
-Admitted. 
-
+Proof.  
+  intros l. induction l; intros []; try now auto. 
+  + intros e1. intros Hf. inversion Hf.
+    apply ((IHl l0 e1) H1).
+Qed.    
+  
 Lemma same_x_ext : forall x1 x2 t, xprefix x1 t -> xprefix x2 t -> xpr x1 x2 \/ xpr x2 x1. 
 Proof.
   intros []; induction p; intros x2 t H1 H2. 
@@ -179,9 +192,40 @@ Proof.
        rewrite H0 in H4. exfalso. symmetry in H4.
        now apply no_silent_and_stop in H4.     
   + left. now case x2.
-  + admit.
-Admitted.   
-       
+  + admit.    
+Admitted.
+
+
+Lemma ftbd_prefix_stop_sublist: forall l p e, ftbd_prefix l (list_to_stop_trace p e) -> list_pref l p. 
+Proof.
+  induction l; intros p e Hpref; auto.
+  destruct p; inversion Hpref.
+  subst. simpl. split; auto. now apply (IHl p e). 
+Qed.
+
+Lemma ftbd_prefix_silent_sublist: forall l p, ftbd_prefix l (list_to_silent_trace p) -> list_pref l p.
+Proof.
+  induction l; intros p Hpref; auto.
+  destruct p; inversion Hpref.
+  subst. simpl. split; auto.
+Qed.
+
+Lemma snocs_same_continuation: forall (l p : list event) e1 e2,
+    list_pref (snoc l e1) p -> list_pref (snoc l e2) p -> e1 = e2. 
+Proof.
+  induction l; intros [] e1 e2 H1 H2; inversion H1; inversion H2; subst; auto.  
+  now apply (IHl l0 e1 e2).   
+Qed. 
+
+Lemma snocs_aux_lemma: forall (l p : list event) i1 i2 a,
+    i1 <> i2 -> list_pref (snoc l i1) (snoc p a) -> list_pref (snoc l i2) p -> False.
+Proof.
+  induction l; intros [] i1 i2 ev Hdiff Hpref1 Hpref2;
+    inversion Hpref1; inversion Hpref2; subst.
+  + now apply Hdiff. 
+  + now apply (IHl l0 i1 i2 ev).     
+Qed.
+
 (*********************************************************************************)
 
 Definition myXr (x1 x2: xpref) : Prop :=
@@ -213,10 +257,9 @@ Proof.
          apply unique_continuation_stop in xpref2.
          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
          right. right.
-         exists p, i1, i2. repeat (split; try now auto);
-         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
-         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
-       -  apply unique_continuation_stop in xpref1.
+         exists p, i1, i2. repeat (split; try now auto); simpl in *;
+                        [ now apply ftbd_prefix_stop_sublist in m_prefix1
+                        | now apply ftbd_prefix_stop_sublist in m_prefix2].                                   -  apply unique_continuation_stop in xpref1.
           rewrite xpref1 in m_prefix1.  
           (* p1 and (p; i2)  are comparable as both have t2 as extension, 
              if p1 ≤ p then by m_prefix1, p1 ≤ (xstop p0 e) and go in the first 2 disjuncts 
@@ -227,9 +270,9 @@ Proof.
          apply unique_continuation_silent in xpref2.
          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
          right. right.
-         exists p, i1, i2. repeat (split; try now auto);
-         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
-         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
+         exists p, i1, i2. repeat (split; try now auto); simpl in *;
+                        [ now apply ftbd_prefix_stop_sublist in m_prefix1
+                        | now apply ftbd_prefix_silent_sublist in m_prefix2].     
        -  apply unique_continuation_stop in xpref2.
           rewrite xpref2 in m_prefix2.
           (* p0 and (p; i1)  are comparable as both have t1 as extension, 
@@ -251,9 +294,9 @@ Proof.
          apply unique_continuation_stop in xpref2.
          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
          right. right.
-         exists p, i1, i2. repeat (split; try now auto);
-         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
-         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.
+         exists p, i1, i2. repeat (split; try now auto); simpl in *;
+                        [ now apply ftbd_prefix_silent_sublist in m_prefix1
+                        | now apply ftbd_prefix_stop_sublist in m_prefix2].   
        - apply unique_continuation_silent in xpref1.
           rewrite xpref1 in m_prefix1.  
           (* p1 and (p; i2)  are comparable as both have t2 as extension, 
@@ -265,9 +308,9 @@ Proof.
          apply unique_continuation_silent in xpref2.
          rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
          right. right.
-         exists p, i1, i2. repeat (split; try now auto);
-         simpl in *. (* mprefix1 -> thesis, maybe a lemma is needed *) admit.
-         (* mprefix2 -> thesis, maybe a lemma is needed *) admit.        
+         exists p, i1, i2. repeat (split; try now auto); simpl in *;
+                        [ now apply ftbd_prefix_silent_sublist in m_prefix1
+                        | now apply ftbd_prefix_silent_sublist in m_prefix2].   
 Admitted.
 
 
@@ -296,7 +339,6 @@ Definition  two_rRXC : Prop :=
 
 Lemma R2rXP_two : R2rXP <->  two_rRXC.
 Admitted. 
-
 
 Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
     is_input i1 -> is_input i2 -> 
@@ -331,7 +373,8 @@ Proof.
              -- inversion xpr1. now subst.
              -- inversion xpr2. now subst.
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2. admit. (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
+                simpl in Hxpr1, Hxpr2.
+                apply Hdiff. now apply (snocs_same_continuation xx p i1 i2).  
            -  destruct t2stop as [e t2stop].
                assert (xsem1 : xsem W1 (xsilent p)).
              { exists t. split; auto.
@@ -344,7 +387,8 @@ Proof.
              -- inversion xpr1.
              -- inversion xpr2.
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                 simpl in Hxpr1, Hxpr2. admit.  (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
+                simpl in Hxpr1, Hxpr2.
+                 apply Hdiff. now apply (snocs_same_continuation xx p i1 i2). 
            - destruct t2stop as [e2 t2stop]. destruct ttlonger as [a ttstop].
              assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
              assert (xsem2 : xsem W2 (xstop p e2)).
@@ -355,8 +399,10 @@ Proof.
              -- now apply xpr_longer_stop_contra in xpr1.
              -- inversion xpr2.
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                 simpl in Hxpr1, Hxpr2. admit. (* contradiction from Hxpr1 and Hxpr2 *)
-Admitted. 
+                simpl in Hxpr1, Hxpr2.
+                now apply (snocs_aux_lemma xx p i1 i2 a).
+Qed. 
+ 
 
 Lemma t_being_tsilent_leads_to_contra (W1 W2 : prg tgt) t t2 p
                                       (t2silent: t2 = list_to_silent_trace p) 
@@ -381,7 +427,8 @@ Proof.
              -- inversion xpr1. 
              -- inversion xpr2. 
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2. admit. (* contradiction! from Hxpr1, Hxpr2 we get i1 = i2 *)
+                simpl in Hxpr1, Hxpr2.
+                 apply Hdiff. now apply (snocs_same_continuation xx p i1 i2).
            - rewrite <- t2silent in ttsilent. now subst. 
            - destruct ttlonger as [a ttstop].
              assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
@@ -393,9 +440,9 @@ Proof.
              -- now apply xpr_longer_silent_contra in xpr1.
              -- inversion xpr2.
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.  admit. (* contradiction from Hxpr1 and Hxpr2 *)
-Admitted. 
-
+                simpl in Hxpr1, Hxpr2.
+                now apply (snocs_aux_lemma xx p i1 i2 a).
+Qed. 
 
 Lemma violates_xmax  (W1 W2 : prg tgt) t t2 p a aa
                      (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
@@ -460,7 +507,8 @@ Proof.
              -- inversion xpr1. 
              -- now apply xpr_longer_stop_contra in xpr2. 
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2. admit. (* contradiction from Hxpr1 and Hxpr2 *)        
+                simpl in Hxpr1, Hxpr2.
+                apply (snocs_aux_lemma xx p i2 i1 a); congruence.       
            - assert (xsem1 : xsem (Ct [P1↓]) (xsilent p)).
              { exists t. split; auto.
                rewrite ttsilent. now apply xsilent_prefix_list. }
@@ -469,7 +517,8 @@ Proof.
              -- inversion xpr1.
              -- now apply xpr_longer_silent_contra in xpr2. 
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2.  admit. (* contradiction from Hxpr1 and Hxpr2 *) 
+                simpl in Hxpr1, Hxpr2.
+                 apply (snocs_aux_lemma xx p i2 i1 a); congruence. 
            - destruct ttlonger as [aa ttlonger].
              now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 p a aa).              
    ++ (*  it can only be t2 '=' xsilent p e = t *)
