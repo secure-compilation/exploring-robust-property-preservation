@@ -34,6 +34,16 @@ Fixpoint list_pref { A : Type } (l1 l2 : list A) : Prop :=
   | _, _ => False
   end.
 
+Fixpoint list_pref_trace (l : list event) (t : trace) : Prop :=
+  match l with  
+  | nil => True
+  | cons x xs => match t with
+                | tcons e t' => x = e /\ list_pref_trace xs t'
+                | _ => False
+                end
+  end. 
+
+    
 Definition xpr (x1 x2 : xpref) : Prop :=
   match x1 with
   | xstop m1 s1 => match x2 with
@@ -162,7 +172,28 @@ Proof.
   + intros e1. intros Hf. inversion Hf.
     apply ((IHl l0 e1) H1).
 Qed.    
-  
+
+Lemma list_same_ext : forall l1 l2 t,
+    list_pref_trace l1 t ->
+    list_pref_trace l2 t ->
+    list_pref l1 l2 \/ list_pref l2 l1.
+Proof.
+  induction l1; intros l2 t H1 H2.
+  + now left.
+  + destruct l2.
+    ++ now right.
+    ++ destruct t; inversion H1; inversion H2; subst.
+       simpl. destruct (IHl1 l2 t); auto. 
+Qed. 
+
+Lemma xsilent_prefix_xftbd_prefix : forall p t,
+    xprefix (xsilent p) t -> xprefix (xtbd p) t. 
+Proof.
+  induction p; intros t H; try now auto.  
+  destruct t; inversion H; subst. simpl.
+  split; auto. now apply (IHp t). 
+Qed.
+
 Lemma same_x_ext : forall x1 x2 t, xprefix x1 t -> xprefix x2 t -> xpr x1 x2 \/ xpr x2 x1. 
 Proof.
   intros []; induction p; intros x2 t H1 H2. 
@@ -192,6 +223,18 @@ Proof.
        rewrite H0 in H4. exfalso. symmetry in H4.
        now apply no_silent_and_stop in H4.     
   + left. now case x2.
+  + destruct t; inversion H1; subst.
+    destruct x2; simpl in H2.
+    ++ destruct p0; inversion H2; subst.
+       simpl. destruct (IHp (xstop p0 e0) t); auto. 
+    ++ destruct p0; inversion H2; subst.
+       simpl. now right.
+       simpl. destruct (IHp (xtbd p0) t); auto. 
+    ++ admit.
+  + destruct t; try now auto.
+    destruct x2; simpl in  H2; 
+    destruct p; try now auto.
+    now left.  
   + admit.    
 Admitted.
 
@@ -259,7 +302,8 @@ Proof.
          right. right.
          exists p, i1, i2. repeat (split; try now auto); simpl in *;
                         [ now apply ftbd_prefix_stop_sublist in m_prefix1
-                        | now apply ftbd_prefix_stop_sublist in m_prefix2].                                   -  apply unique_continuation_stop in xpref1.
+                        | now apply ftbd_prefix_stop_sublist in m_prefix2].
+       -  apply unique_continuation_stop in xpref1.
           rewrite xpref1 in m_prefix1.  
           (* p1 and (p; i2)  are comparable as both have t2 as extension, 
              if p1 ≤ p then by m_prefix1, p1 ≤ (xstop p0 e) and go in the first 2 disjuncts 
@@ -313,6 +357,7 @@ Proof.
                         | now apply ftbd_prefix_silent_sublist in m_prefix2].   
 Admitted.
 
+    
 
 (* CA: painful but resonable, 
        if t = m;stop and we can use an argument similar to longest_in_psem 
@@ -324,8 +369,18 @@ Lemma  longest_in_xsem :
   forall W t, ~ sem tgt W t ->
     exists x, xprefix x t /\ xsem W x /\
      (forall x', xprefix x' t -> xsem W x' -> xpr x' x).
-Admitted.
-
+Proof.
+  intros W t HsemWt. destruct (fin_or_inf t) as [t_fin | t_inf]. 
+  + apply (fin_equal t) in t_fin. destruct t_fin as [m Hm]; auto. 
+    (* now exists xembed m *) admit.
+  + (* now if t = m; silent then use a similar argument to 
+       previous case, you will probably need a "silent_equal" lemma/defn  
+    
+       if t does not diverge then apply semantics_safety_like 
+       and get an m, conclude by exists "xembed m"
+     *) admit.
+Admitted. 
+ 
 
 
 Definition  two_rRXC : Prop :=
@@ -338,8 +393,23 @@ Definition  two_rRXC : Prop :=
                   r x1 x2)).
 
 Lemma R2rXP_two : R2rXP <->  two_rRXC.
-Admitted. 
-
+Proof. 
+  rewrite R2rXP_R2rXC.  
+  unfold R2rXP, two_rRXC. split.
+  - intros H r P1 P2 H' Ct m1 m2 Hsem1 Hsem2.
+    specialize (H Ct P1 P2 m1 m2 Hsem1 Hsem2).
+    destruct H as [Cs [Hsem1' Hsem2']].
+    specialize (H' Cs m1 m2 Hsem1' Hsem2'). now assumption.
+  - intros H Ct P1 P2 m1 m2 Hsem1 Hsem2.
+    specialize (H (fun m1 m2 => exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)); simpl in H.
+    specialize (H P1 P2).    
+    assert (H' : forall Cs m1 m2, xsem (Cs [P1]) m1 -> xsem (Cs [P2]) m2 ->
+                             (exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)).
+    { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
+    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
+Qed.
+    
+  
 Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
     is_input i1 -> is_input i2 -> 
     xsem W (xtbd (snoc p i1)) -> xsem W (xtbd (snoc p i2)).
