@@ -10,7 +10,7 @@ The best entry points for this work are the paper above followed by the [online 
 
 ### Prerequisites for the Coq proofs ###
 
-The Coq development is known to work with Coq v8.7.X, but it has very few dependencies, so it will likely work with other versions as well.
+The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.0  but it has very few dependencies, so it will likely work with other versions as well.
 
 ### Replaying the Coq proofs ###
 

@@ -56,9 +56,9 @@ Proof.
     destruct (H2rsc P1 Ct m1 m2) as [Cs Hspref].
     ++ intros x [Hx | Hx]; [exists t1 | exists t2]; subst; auto.
     ++ exists Cs. split.
-       +++ destruct (Hspref m1) as [tt1 Hpref11]; auto.
+       +++ destruct (Hspref m1) as [tt1 Hpref11]; simpl; auto.
            now exists tt1.
-       +++ destruct (Hspref m2) as [tt2 Hpref22]; auto.
+       +++ destruct (Hspref m2) as [tt2 Hpref22]; simpl; auto.
            now exists tt2.
   + apply R2HSP_RSP in H2rsc.
     destruct (H2rsc P1 Ct t1 H1 m1 Hpref1) as [Cs1 [t1' [H' H'']]].

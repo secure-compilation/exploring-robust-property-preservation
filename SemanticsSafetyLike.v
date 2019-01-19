@@ -812,7 +812,7 @@ Proof.
   apply sem'_cons with (a := an_A).
   generalize dependent an_A.
   generalize dependent t. generalize dependent c.
-  cofix. intros c t Hndiv Hnstopped H a.
+  cofix ind_hyp. intros c t Hndiv Hnstopped H a.
   destruct t as [| | e t'].
   - apply False_ind. apply Hnstopped. now constructor.
   - apply False_ind. apply Hndiv. now constructor.
