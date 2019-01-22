@@ -1,5 +1,5 @@
-Require Import TraceModel.
-Require Import Properties.
+Require Import TraceModel.   
+Require Import Properties. 
 Require Import ClassicalExtras.
 Require Import Events.
 
@@ -113,15 +113,14 @@ Definition hrsat2 {K : language} (P1 P2 : @par K) (r : rel_hprop) : Prop :=
 (**************************************************************************)
 
 Definition input_totality (K : language) : Prop :=
-  forall (P : prg K) m e1 e2,
-    is_input e1  -> is_input e2 -> fstopped m = false ->
-    psem P (fsnoc m e1) -> psem P (fsnoc m e2).
+  forall (P : prg K) l e1 e2,
+    is_input e1  -> is_input e2 -> psem P (ftbd (snoc l e1)) -> psem P (ftbd (snoc l e2)).
 
 Definition traces_match (t1 t2 : trace) : Prop :=
  t1 = t2 \/
- (exists (m : finpref) (e1 e2 : event),
+ (exists (l : list event) (e1 e2 : event),
    is_input e1 /\ is_input e2 /\  e1 <> e2 /\
-   fstopped m = false /\ prefix (fsnoc m e1) t1 /\ prefix (fsnoc m e2) t2).
+   prefix (ftbd (snoc l e1)) t1 /\ prefix (ftbd (snoc l e2)) t2).
 
 Definition determinacy (K : language) : Prop :=
   forall (P : prg K) t1 t2,
@@ -130,4 +129,4 @@ Definition determinacy (K : language) : Prop :=
 Definition semantics_safety_like (K : language) : Prop :=
   forall t P,
     ~ sem K P t -> inf t -> ~ diverges t ->
-    (exists m ebad, psem P m /\ prefix (fsnoc m ebad) t /\ ~ psem P (fsnoc m ebad)).
+    (exists l ebad, psem P (ftbd l) /\ prefix (ftbd (snoc l ebad)) t /\ ~ psem P (ftbd (snoc l ebad))).

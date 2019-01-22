@@ -406,12 +406,10 @@ Qed.
 Definition Embedding (M : finpref -> Prop) : prop :=
   fun t => exists m es, M m /\ t = embedding es m.
 
-Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (constant_trace an_event).
+Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (tstream (constant_stream an_event)).
 Proof.
   intros M hf. inversion hf. destruct H as [es [h1 h2]].
-  assert (inf (constant_trace an_event)) by now apply inf_constant_trace.
-  assert (fin (embedding es x)) by now apply embed_fin.
-  rewrite <- h2 in H0.  now apply (H H0).
+  unfold embedding in h2. destruct x; inversion h2.  
 Qed.
 
 Lemma bad_HyperLiv : forall C' P,
@@ -421,7 +419,9 @@ Proof.
   assert (sem tgt (C' [P ↓]) = Embedding M \/  sem tgt (C' [P ↓]) <> Embedding M)
     by now apply classic.
   destruct H.
-  + rewrite H; clear H. exists (fun t => (exists m es, M m /\ t = embedding es m) \/ t = constant_trace an_event).
+  + rewrite H; clear H. exists (fun t =>
+                             (exists m es, M m /\ t = embedding es m) \/
+                                       t = tstream (constant_stream an_event)).
     split.
     ++ unfold spref. intros m hm. exists (embedding an_endstate m).
        split.
@@ -615,23 +615,23 @@ Definition xafety2 r := forall (t1 t2 : trace),
 (* Admitted. *)
 
 (* While this seems natural, it is simply not true *)
-Lemma xafety2_safety2 : forall r, xafety2 r -> safety2 r.
-Proof.
-  unfold xafety2, safety2. intros r Hxafety2 t1 t2 Hnr.
-  specialize (Hxafety2 t1 t2 Hnr). destruct Hxafety2 as [m1 [m2 [Hm1 [Hm2 H]]]].
-  destruct m1 as [p1 e1 | p1 | p1];
-  destruct m2 as [p2 e2 | p2 | p2]; simpl in *.
-  - exists (fstop p1 e1), (fstop p2 e2); simpl. do 2 (split; [assumption|]).
-    intros t1' t2' H1 H2. apply H; assumption.
-  - exists (fstop p1 e1), (ftbd p2); simpl. do 2 (split; [assumption|]).
-    intros t1' t2' H1 H2. apply H; assumption.
-  - exists (fstop p1 e1), (ftbd p2); simpl. split; [assumption|].
-    split. now apply xsilent_prefix_ftbd_prefix.
-    intros t1' t2' H1 H2.
-    (* assert (Ht1: t1 = t1') by (eapply frop_prefix_functional; eauto). subst t1'. *)
-    (* however can't get the same for t2 and t2', need to apply H *)
-    apply H. assumption. (* stuck, this is simply not true *)
-Abort.
+(* Lemma xafety2_safety2 : forall r, xafety2 r -> safety2 r. *)
+(* Proof. *)
+(*   unfold xafety2, safety2. intros r Hxafety2 t1 t2 Hnr. *)
+(*   specialize (Hxafety2 t1 t2 Hnr). destruct Hxafety2 as [m1 [m2 [Hm1 [Hm2 H]]]]. *)
+(*   destruct m1 as [p1 e1 | p1 | p1]; *)
+(*   destruct m2 as [p2 e2 | p2 | p2]; simpl in *. *)
+(*   - exists (fstop p1 e1), (fstop p2 e2); simpl. do 2 (split; [assumption|]). *)
+(*     intros t1' t2' H1 H2. apply H; assumption. *)
+(*   - exists (fstop p1 e1), (ftbd p2); simpl. do 2 (split; [assumption|]). *)
+(*     intros t1' t2' H1 H2. apply H; assumption. *)
+(*   - exists (fstop p1 e1), (ftbd p2); simpl. split; [assumption|]. *)
+(*     split. now apply xsilent_prefix_ftbd_prefix. *)
+(*     intros t1' t2' H1 H2. *)
+(*     (* assert (Ht1: t1 = t1') by (eapply frop_prefix_functional; eauto). subst t1'. *) *)
+(*     (* however can't get the same for t2 and t2', need to apply H *) *)
+(*     apply H. assumption. (* stuck, this is simply not true *) *)
+(* Abort. *)
 
 Definition R2rXP := forall P1 P2 r,
     xafety2 r ->

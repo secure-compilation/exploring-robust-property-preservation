@@ -13,7 +13,8 @@ Proof. easy. Qed.
 Lemma full_observable : Observable  (fun t => True).
 Proof.
   unfold Observable. intros t ff.
-  now exists (ftbd nil).
+  exists (ftbd nil); firstorder.
+  now case t.  
 Qed.
 
 Lemma union_observable : forall H : hprop,
@@ -23,7 +24,7 @@ Proof.
   unfold Observable. intros H h t [A [ha At]].
   destruct (h A ha t At) as [m [h1 h2]].
   exists m. split; try now auto.
-  intros t' pmt'. specialize (h2 t' pmt'). now exists A.
+  intros t' pmt'. specialize (h2 t' pmt'). now exists A. 
 Qed.
 
 Lemma intersection_observable : forall A1 A2,

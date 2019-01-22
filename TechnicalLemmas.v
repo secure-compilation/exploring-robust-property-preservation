@@ -7,19 +7,50 @@ Require Import ClassicalExtras.
 
 (** This file contains several lemmas that are used in other proofs *)
 
-Lemma longest_in_psem {K : language} : forall (P' : prg K) m,
-    exists mm, (fpr mm m) /\ (psem P' mm) /\
-          (fstopped mm = false) /\
-          (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm).
-Proof.
-  intros P'.
-  destruct m as [p | p]; induction p using pref_ind_snoc.
-  - exists (ftbd nil); repeat (try split); try now auto.
-    + unfold psem. pose proof (non_empty_sem K P').
-      destruct H as [t Ht].
-      exists t; split. reflexivity. assumption.
-    + intros. destruct m'; now auto.
-  - rename e into f. rename e0 into e.
+(* Fixpoint reverse_list {A : Type} (l : list A) := *)
+(*   match l with *)
+(*   | nil => nil *)
+(*   | cons x xs => snoc (reverse_list xs) x *)
+(*   end. *)
+
+(* Lemma reverse_snoc {A : Type} : forall (l : list A) (a : A), *)
+(*     reverse_list (snoc l a) = cons a (reverse_list l).  *)
+(* Proof. *)
+(*   induction l; auto. intros a0. *)
+(*   simpl; now rewrite IHl.  *)
+(* Qed.  *)
+  
+(* Lemma reverse_involutive {A : Type}: forall (l : list A), *)
+(*     reverse_list (reverse_list l) = l. *)
+(* Proof. *)
+(*   induction l; auto. *)
+(*   simpl. rewrite reverse_snoc. now rewrite IHl. *)
+(* Qed. *)
+
+(* Lemma snoc_nil {A : Type} : forall (l : list A) (a : A), nil <> snoc l a. *)
+(* Proof. *)
+(*   induction l; intros a0; intros Hf; inversion Hf.  *)
+(* Qed. *)
+
+
+Lemma longest_in_psem {K : language} : forall (P' : prg K) l,
+    exists ll, (list_list_prefix ll l) /\ (psem P' (ftbd ll)) /\
+          (forall l', list_list_prefix l' l -> psem P' (ftbd l') -> list_list_prefix l' ll).
+Proof.  
+  intros P' l.
+  induction l using list_ind_snoc.
+  - exists nil; repeat (split; try now auto).
+    + destruct (non_empty_sem K P') as [t Ht].
+      exists t; split; simpl; auto. now case t. 
+  - destruct IHl as [ll [Hprefll [Hpsem Hmaxll]]].
+    destruct (classic (psem P' (ftbd (snoc l a)))) as [Hsnoc | Hsnoc].
+    + exists (snoc l a).  repeat (split; try now auto).
+      now apply list_list_prefix_ref. 
+    + exists ll. repeat (split; try now auto).
+      ++ simpl. now apply (list_prefix_snoc_list_prefix ll l a).
+      ++ TODO. 
+
+    rename e into f. rename e0 into e.
     pose proof (classic (psem P' (ftbd (snoc p e)))). (* /!\ classic *)
     destruct H.
     + exists (ftbd (snoc p e)); repeat (try split).

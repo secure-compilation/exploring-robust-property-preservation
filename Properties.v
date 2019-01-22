@@ -45,6 +45,7 @@ Proof.
     intros. rewrite H. now exists m.
 Qed.
 
+(*
 Lemma safety_bad_finite_prefix : forall π, Safety π ->
   forall t:trace, ~(π t) -> (exists (m:finpref) (es:endstate), prefix m t /\ ~(π (embedding es m))).
 Proof.
@@ -55,6 +56,7 @@ Proof.
 Unshelve.
   exact an_endstate.
 Qed.
+*)
 
 (* some notes about liveness *)
 
@@ -65,12 +67,12 @@ Lemma all_fin_in_all_liv :
    (forall t, fin t -> π t).
 Proof.
   unfold Liveness. intros π. split.
-  - intros Hl t Hfin.
-    destruct (single_cont_consequence _ Hfin) as [m H].
-    destruct (Hl m) as [t' [H1 H2]]. erewrite H; eauto.
-  - intros H m. exists (embedding an_endstate m). split.
-    + now apply embed_pref.
-    + apply H. now apply embed_fin.
+  - intros Hl [] Hfin; try contradiction.  
+    destruct (Hl (fstop l e)) as [t' [Hpref πt']].
+    destruct t'; inversion Hpref; now subst. 
+  - intros H []; [exists (tstop l es) | exists (tstop l an_endstate)];
+      split; simpl; try now auto; now apply H.
+      now apply list_list_prefix_ref.       
 Qed.
 
 (* or equivalently if it excludes only infinite traces *)
@@ -82,9 +84,9 @@ Proof.
   - intros Hl t nt Hfin. apply nt.
     now apply all_fin_in_all_liv.
   - intros H m. exists (embedding an_endstate m). split.
-    + now apply embed_pref.
-    + apply NNPP. intros ff. specialize (H (embedding an_endstate m) ff).
-      apply H. now apply embed_fin.
+    + now apply embed_pref. 
+    + apply NNPP. intros ff. specialize (H (embedding an_endstate m) ff). 
+      apply H. now case m. 
 Qed.
 
 (* an example: the property excluding one single infinite trace
@@ -93,7 +95,9 @@ Qed.
 Lemma inf_excluded_is_liv :
   forall ta, inf ta -> Liveness (fun b => b <> ta).
 Proof.
-  unfold Liveness. intros ta Hta m. pose proof many_continuations. now eauto.
+  unfold Liveness.
+  intros ta Hta m.
+  pose proof many_continuations. now eauto.
 Qed.
 
 
