@@ -450,20 +450,14 @@ Lemma same_ext : forall m1 m2 t,
     fpr m1 m2 \/ fpr m2 m1.
 Proof.
   intros m1 m2 [] Hpref1 Hpref2.
-  + destruct m1, m2; simpl in *.
+  + destruct m1, m2; simpl in *; try now auto. 
     ++ inversion Hpref1; inversion Hpref2; subst; now auto.
     ++ inversion Hpref1; subst; now right.
     ++ inversion Hpref2; subst; now left.
     ++ now apply (list_list_same_ext l0 l1 l).
-  + destruct m1, m2; simpl in *.
-    ++ inversion Hpref1; inversion Hpref2; subst; now auto.
-    ++ inversion Hpref1; subst; now right.
-    ++ inversion Hpref2; subst; now left.
+  + destruct m1, m2; simpl in *; try now auto. 
     ++ now apply (list_list_same_ext l0 l1 l).
-  +  destruct m1, m2; simpl in *.
-    ++ inversion Hpref1; inversion Hpref2; subst; now auto.
-    ++ inversion Hpref1; subst; now right.
-    ++ inversion Hpref2; subst; now left.
+  +  destruct m1, m2; simpl in *; try now auto. 
     ++ now apply (list_stream_same_ext l l0 s).
 Qed.   
 
@@ -1101,3 +1095,38 @@ Qed.
 (*   Unshelve. *)
 (*   exact an_event. exact an_event. *)
 (* Qed. *)
+
+
+Lemma snoc_nil {A : Type} : forall (l : list A) (a : A), snoc l a <> nil.
+Proof.
+  induction l; intros a0; intros Hf; inversion Hf.
+Qed.
+
+Lemma nil_bottom {A : Type} : forall (l : list A), list_list_prefix l nil -> l = nil. 
+Proof. now induction l. Qed.  
+  
+Lemma list_proper_or_equal {A : Type}: forall (l1 l2 : list A),
+    list_list_prefix l1 l2 -> l1 = l2 \/ exists a, list_list_prefix (snoc l1 a) l2.
+Proof.
+  induction l1.
+  + intros []; try now left.
+    intros H. right. now exists a.
+  + intros [] Hpref; inversion Hpref; subst.
+    simpl. destruct (IHl1 l) as [K | [a K]]; auto;
+             [left; now rewrite K | right; now exists a].
+Qed.
+
+
+Lemma list_pref_snoc_pref {A : Type} : forall (l1 l2 : list A) (a1 a2 : A),
+    list_list_prefix (snoc l1 a1) (snoc l2 a2) ->
+    list_list_prefix l1 l2. 
+Proof.
+  induction l1; try now auto.
+  intros [] a1 a2 Hpref; inversion Hpref; subst.
+  + apply nil_bottom in H0. exfalso. now apply snoc_nil in H0. 
+  + simpl. split; auto. now apply (IHl1 l a1 a2).
+Qed.    
+
+Lemma snoc_longer {A : Type} : forall (l : list A) (a : A),
+    list_list_prefix l (snoc l a).
+Proof. now induction l. Qed. 

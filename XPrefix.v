@@ -41,6 +41,35 @@ Proof. intros [] []; auto.  Qed.
 Lemma xprefix_xembed_prefix : forall m t, xprefix (xembed m) t -> prefix m t.
 Proof. intros [] []; auto.  Qed.
 
+
+Definition xpr (x1 x2 : xpref) :=
+  match x1, x2 with
+  | xtbd l1, xtbd l2 => list_list_prefix l1 l2
+  | xtbd l1, xstop l2 e2 => list_list_prefix l1 l2
+  | xtbd l1, xsilent l2  => list_list_prefix l1 l2
+  | xstop l1 e1, xstop l2 e2 => e1 = e2 /\ l1 = l2
+  | xsilent l1, xsilent l2 => l1 = l2
+  | _, _ => False
+  end. 
+
+Lemma xsame_ext : forall x1 x2 t, xprefix x1 t -> xprefix x2 t -> xpr x1 x2 \/ xpr x2 x1.
+Proof.
+  intros m1 m2 [] Hpref1 Hpref2.
+  + destruct m1, m2; simpl in *; try now auto. 
+    ++ inversion Hpref1; inversion Hpref2; subst; now auto.
+    ++ inversion Hpref1; subst; now right.
+    ++ inversion Hpref2; subst; now left.
+    ++ now apply (list_list_same_ext l0 l1 l).
+ + destruct m1, m2; simpl in *; try now auto. 
+   ++ now apply (list_list_same_ext l0 l1 l).
+   ++ subst; now left.
+   ++ subst; now right.
+   ++ subst; now auto. 
+ + destruct m1, m2; simpl in *; try now auto.  
+   ++ now apply (list_stream_same_ext l l0 s).
+Qed.   
+
+
 (* Also definitions corresponding to CommonST *)
 
 Require Import CommonST.
