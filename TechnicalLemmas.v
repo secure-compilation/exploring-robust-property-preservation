@@ -28,7 +28,7 @@ Require Import ClassicalExtras.
 (* Qed. *)
 
 
-Lemma longest_in_psem {K : language} : forall (P' : prg K) l,
+Lemma list_longest_in_psem {K : language} : forall (P' : prg K) l,
     exists ll, (list_list_prefix ll l) /\ (psem P' (ftbd ll)) /\
           (forall l', list_list_prefix l' l -> psem P' (ftbd l') -> list_list_prefix l' ll).
 Proof.  

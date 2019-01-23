@@ -10,6 +10,7 @@ Require Import List.
 
 Require Import XPrefix.
 Require Import Criteria.
+Require Import TechnicalLemmas. 
 
 (** *our assumptions *)
 (**********************************************************)
@@ -293,25 +294,29 @@ Proof.
   + destruct x2, t2; simpl in xprefix2; simpl in l_prefix1, l_prefix2; try now auto.   
     ++ inversion xprefix2; subst.  
        right. right. now exists ll, i1, i2.
-    ++ destruct (list_list_same_ext l ll l0); auto.
-       apply (list_list_prefix_trans ll (snoc ll i2) l0); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit. (* contradiction! *)
-    ++ destruct (list_list_same_ext l ll l0); auto.
-       apply (list_list_prefix_trans ll (snoc ll i2) l0); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit.
-    ++ destruct (list_stream_same_ext l ll s); auto.
-       apply (list_stream_prefix_trans ll (snoc ll i2) s); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit. 
-Admitted.
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.  
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.
+    ++ destruct (list_stream_same_ext l (snoc ll i2) s); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.  
+    ++ subst. right. right. now exists ll, i1, i2. 
+Qed. 
 
 Lemma auXiliary_tsilent :
   forall x2 l1 t2, xprefix x2 t2 ->
@@ -320,34 +325,77 @@ Proof.
   intros x2 l1 t2 xprefix2 [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]].
   + rewrite <- Heq in *. destruct (xsame_ext (xsilent l1) x2 (tsilent l1)); simpl; auto;
                           [now left |  right; now left].
-  + destruct x2, t2; simpl in xprefix2; simpl in l_prefix1, l_prefix2; try now auto.   
+   + destruct x2, t2; simpl in xprefix2; simpl in l_prefix1, l_prefix2; try now auto.   
     ++ inversion xprefix2; subst.  
        right. right. now exists ll, i1, i2.
-    ++ destruct (list_list_same_ext l ll l0); auto.
-       apply (list_list_prefix_trans ll (snoc ll i2) l0); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit. (* contradiction! *)
-    ++ destruct (list_list_same_ext l ll l0); auto.
-       apply (list_list_prefix_trans ll (snoc ll i2) l0); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit.
-    ++ destruct (list_stream_same_ext l ll s); auto.
-       apply (list_stream_prefix_trans ll (snoc ll i2) s); auto.
-       now apply snoc_longer.
-       +++ right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1); auto.
-           apply (list_list_prefix_trans l ll _ ); auto. now apply snoc_longer.
-       +++ admit. 
-Admitted.
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.  
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.
+    ++ destruct (list_stream_same_ext l (snoc ll i2) s); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.  
+    ++ subst. right. right. now exists ll, i1, i2.
+Qed. 
 
 
-Lemma auXiliary_lemma:
-  forall x1 x2 t1 t2, xprefix x1 t1 -> xprefix x2 t2 -> traces_match t1 t2 -> myXr x1 x2.
+Lemma auXiliary_xtbd:
+  forall l1 l2 t1 t2, xprefix (xtbd l1) t1 -> xprefix (xtbd l2) t2 ->
+                  traces_match t1 t2 -> myXr (xtbd l1) (xtbd l2).
 Proof.
-  intros x1 x2 t1 t2 xprefix1 xprefix2 [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]]. 
+  intros l1 l2 t1 t2 xpref1 xpref2 [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]].
+  + subst. destruct (xsame_ext (xtbd l1) (xtbd l2) t2); auto; [now left | right; now left]. 
+  + assert (H1: xprefix (xtbd (snoc ll i1)) t1).
+    { destruct t1; simpl in *; now auto. }
+    assert (H2 : xprefix (xtbd (snoc ll i2)) t2).
+    { destruct t2; simpl in *; now auto. }
+    destruct (xsame_ext (xtbd l1) (xtbd (snoc ll i1)) t1) as [l1_shorter | l1_longer]; auto. 
+    ++ destruct (xsame_ext (xtbd l2) (xtbd (snoc ll i2)) t2) as [l2_shorter | l2_longer]; auto.
+       destruct (list_proper_or_equal _ _ l1_shorter) as [l1_ll | [a1 l1_ll]]; subst.
+       * destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+          ** right. right. now exists ll, i1, i2. 
+          ** apply list_pref_snoc_pref in l2_ll. right. left. simpl.
+             apply (list_list_prefix_trans l2 ll _); auto. now apply snoc_longer.  
+       * apply list_pref_snoc_pref in l1_ll.
+         destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+         **  left. simpl. apply (list_list_prefix_trans l1 ll _ ); auto. now apply snoc_longer.  
+         ** apply list_pref_snoc_pref in l2_ll. destruct (list_list_same_ext l1 l2 ll); auto;
+                                                  [now left | right; now left].  
+       * destruct (list_proper_or_equal  _ _ l1_shorter); auto; subst. 
+         ** right. right. now exists ll, i1, i2.  
+         ** destruct H as [a H]. apply list_pref_snoc_pref in H. left.
+            simpl. apply (list_list_prefix_trans l1 ll l2); auto.
+            simpl in l2_longer. apply (list_list_prefix_trans ll (snoc ll i2) l2); auto.
+            now apply snoc_longer.  
+    ++ destruct (xsame_ext (xtbd l2) (xtbd (snoc ll i2)) t2) as [l2_shorter | l2_longer]; auto.
+       * destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+          ** right. right. now exists ll, i1, i2. 
+          ** apply list_pref_snoc_pref in l2_ll. right. left. simpl.
+             apply (list_list_prefix_trans l2 ll _); auto.
+             apply (list_list_prefix_trans ll (snoc ll i1) _); auto. now apply snoc_longer.
+        * right. right. now exists ll, i1, i2.
+Qed.   
+    
+
+Lemma auXiliary_lemma (t1 t2 : trace) :
+  traces_match t1 t2 ->
+  forall x1 x2,  xprefix x1 t1 -> xprefix x2 t2 -> myXr x1 x2.
+Proof.
+  intros [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]] x1 x2 xprefix1 xprefix2. 
   - subst. unfold myXr. destruct (xsame_ext x1 x2 t2) as [go_left | go_right_left]; auto. 
   - destruct x1, x2.
     ++ destruct t1, t2; inversion xprefix1; inversion xprefix2; subst.
@@ -360,14 +408,19 @@ Proof.
     ++ destruct t2; inversion xprefix2; subst. apply myXr_symmetric. 
        apply (auXiliary_tstop (xtbd l) l1 e0 t1); auto.
        right. exists ll, i2, i1. repeat (split; try now auto). 
-    ++ admit.   
-    ++ admit. 
+    ++ apply (auXiliary_xtbd l l0 t1 t2); auto. right. now exists ll, i1, i2.  
+    ++ destruct t2; inversion xprefix2; subst. apply myXr_symmetric.  
+       apply (auXiliary_tsilent (xtbd l) l1 t1); auto.
+       right. exists ll, i2, i1. repeat (split; try now auto).  
     ++ destruct t1, t2; inversion xprefix1; inversion xprefix2; subst.
        simpl in *. right. right. now exists ll, i1, i2.
-    ++ admit.
+    ++ destruct t1; inversion xprefix1; subst.   
+       apply (auXiliary_tsilent (xtbd l0) l1 t2); auto.
+       right. now exists ll, i1, i2.
     ++ destruct t1, t2; inversion xprefix1; inversion xprefix2; subst.
-       simpl in *. right. right. now exists ll, i1, i2.  
- 
+       simpl in *. right. right. now exists ll, i1, i2.   
+Qed. 
+  
 Lemma teq_premises_myXr_holds : forall P1 P2,
     (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
     (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
@@ -376,151 +429,46 @@ Proof.
   intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]].
     rewrite (H Cs t1) in sem1.
    specialize (determinacy_src (Cs[P2]) t1 t2 sem1 sem2). 
-   intros Hmatch. now apply (auXiliary_lemma x1 x2 t1 t2).
+   intros Hmatch. now apply (auXiliary_lemma t1 t2).
 Qed.
-
-   destruct (determinacy_src (Cs[P2]) t1 t2 sem1 sem2) as [t_eq | matching]; try now auto.  
-  + subst.  destruct (xsame_ext _ _ _ xpref1 xpref2) as  [go_left | go_right];
-      [now left | right; now left].
-  + destruct matching as [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]].
-    destruct t1, t2; inversion xpref1; inversion xpref2; subst.
-    simpl in *. right. right. now exists ll, i1, i2.
-  + subst.  destruct (xsame_ext _ _ _ xpref1 xpref2) as  [go_left | go_right];
-              [now left | right; now left].
-  + apply 
-    destruct matching as [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]].
-    destruct t1, t2; inversion xpref1; subst. 
-    ++ simpl in *. 
-    
-    apply list_proper_or_equal in xpref2. destruct xpref2 as [K | [a K]].
-    subst.
-     ++ right. right. now exists ll, i1, i2.
-     ++ destruct (list_list_same_ext (snoc ll i2) (snoc l0 a) l2) as [F | F]; auto.
-        * 
-        * apply list_pref_snoc_pref in F. right. left.
-          simpl. apply (list_list_prefix_trans l0 ll l1); auto.
-          apply (list_list_prefix_trans ll (snoc ll i1) l1); auto.
-          now apply snoc_longer.
-     ++  
-
-    
-  + inversion xpref1; inversion xpref2; subst.
-    destruct (determinacy_src (Cs[P2]) (tstop l1 e1) (tstop l2 e2) sem1 sem2) as [t_eq | matching]. 
-  + admit. 
-  
-  + destruct t1, t2; inversion xpref1; inversion xpref2; subst; auto. 
-    rewrite (H Cs (tstop l1 e1)) in sem1.
-    destruct (determinacy_src (Cs[P2]) (tstop l1 e1) (tstop l2 e2) sem1 sem2) as [t_eq | matching].
-    ++ rewrite t_eq in *.
-    destruct (xsame_ext _ _ _ xpref1 xpref2) as  [go_left | go_right];
-      [now left | right; now left].
-    ++ destruct matching as [l [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]].
-       simpl in l_prefix1, l_prefix2.
-       right. right. exists l, i1, i2. repeat (split; try now auto).
-  +  destruct t1, t2; inversion xpref1; subst; auto.
-     rewrite (H Cs (tstop l1 e0)) in sem1.
-     destruct (determinacy_src (Cs[P2]) (tstop l1 e0) (tstop l2 e1) sem1 sem2) as [t_eq | matching].
-     inversion t_eq; subst. simpl in xpref2. right. left. now simpl. 
-     destruct matching as [l [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]].
-     simpl in *.
-     
-
-     
-  intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]].
-  rewrite (H Cs t1) in sem1.
-  destruct (determinacy_src (Cs[P2]) t1 t2 sem1 sem2) as [t_eq | matching].
-  + rewrite t_eq in *.
-    destruct (xsame_ext x1 x2 t2 xpref1 xpref2) as  [go_left | go_right];
-      [now left | right; now left].
-  + destruct matching as [l [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]].
-    destruct l. 
-    ++ simpl in l_prefix1, l_prefix2.
-       destruct x1, x2.
-       - apply unique_continuation_stop in xpref1.
-         apply unique_continuation_stop in xpref2.
-         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
-         right. right.
-         exists p, i1, i2. repeat (split; try now auto); simpl in *;
-                        [ now apply ftbd_prefix_stop_sublist in m_prefix1
-                        | now apply ftbd_prefix_stop_sublist in m_prefix2].
-       -  apply unique_continuation_stop in xpref1.
-          rewrite xpref1 in m_prefix1.  
-          (* p1 and (p; i2)  are comparable as both have t2 as extension, 
-             if p1 ≤ p then by m_prefix1, p1 ≤ (xstop p0 e) and go in the first 2 disjuncts 
-             if p1 = p;i2  then go right-right  
-             if p1 > p;i2 then go right-right
-           *) admit.
-       - apply unique_continuation_stop in xpref1.
-         apply unique_continuation_silent in xpref2.
-         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
-         right. right.
-         exists p, i1, i2. repeat (split; try now auto); simpl in *;
-                        [ now apply ftbd_prefix_stop_sublist in m_prefix1
-                        | now apply ftbd_prefix_silent_sublist in m_prefix2].     
-       -  apply unique_continuation_stop in xpref2.
-          rewrite xpref2 in m_prefix2.
-          (* p0 and (p; i1)  are comparable as both have t1 as extension, 
-             if p0 ≤ p then by m_prefix2, p0 ≤ (xstop p1 e) and go in the first 2 disjuncts 
-             if p0 = p;i1  then go right-right  
-             if p0 > p;i1 then go right-right
-           *) admit.
-       - (* p0 and p1 are comparable with (snoc p i1) and (snoc p i2) respectively 
-            from that deduce they are in myXr
-          *) admit.
-       - apply unique_continuation_silent in xpref2.
-         rewrite xpref2 in m_prefix2.
-         (* p0 and (p; i1) are comparable as both have t1 as extension 
-            if p0 ≤ p then by m_prefix2, p0 ≤ (xsilent p1) and go in the first 2 disjuncts 
-            if p0 = p;i1  then go right-right  
-            if p0 > p;i1 then go right-right
-          *) admit.
-       - apply unique_continuation_silent in xpref1.
-         apply unique_continuation_stop in xpref2.
-         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
-         right. right.
-         exists p, i1, i2. repeat (split; try now auto); simpl in *;
-                        [ now apply ftbd_prefix_silent_sublist in m_prefix1
-                        | now apply ftbd_prefix_stop_sublist in m_prefix2].   
-       - apply unique_continuation_silent in xpref1.
-          rewrite xpref1 in m_prefix1.  
-          (* p1 and (p; i2)  are comparable as both have t2 as extension, 
-             if p1 ≤ p then by m_prefix1, p1 ≤ (xsilent p0) and go in the first 2 disjuncts 
-             if p1 = p;i2  then go right-right  
-             if p1 > p;i2 then go right-right
-           *) admit.
-       - apply unique_continuation_silent in xpref1.
-         apply unique_continuation_silent in xpref2.
-         rewrite xpref1 in m_prefix1. rewrite xpref2 in m_prefix2.
-         right. right.
-         exists p, i1, i2. repeat (split; try now auto); simpl in *;
-                        [ now apply ftbd_prefix_silent_sublist in m_prefix1
-                        | now apply ftbd_prefix_silent_sublist in m_prefix2].   
-Admitted.
-
     
 
-(* CA: painful but resonable, 
-       if t = m;stop and we can use an argument similar to longest_in_psem 
-       if t = m;silent ' '        ''         ''           ''         ''
-       if t is infinite then we have to use semantics_safety_like and then 
-       embed the given prefix 
- *)
 Lemma  longest_in_xsem :
   forall W t, ~ sem tgt W t ->
     exists x, xprefix x t /\ xsem W x /\
      (forall x', xprefix x' t -> xsem W x' -> xpr x' x).
 Proof.
-  intros W t HsemWt. destruct (fin_or_inf t) as [t_fin | t_inf]. 
-  + apply (fin_equal t) in t_fin. destruct t_fin as [m Hm]; auto. 
-    (* now exists xembed m *) admit.
-  + (* now if t = m; silent then use a similar argument to 
-       previous case, you will probably need a "silent_equal" lemma/defn  
-    
-       if t does not diverge then apply semantics_safety_like 
-       and get an m, conclude by exists "xembed m"
-     *) admit.
-Admitted. 
- 
+  intros W [] HsemWt.  
+  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
+    exists (xtbd ll). repeat (split; try now auto). 
+    intros [] Hx Hsemx.
+    ++ inversion Hx; subst. destruct Hsemx as [tx [Hprefxtx Hsemx]].
+       destruct tx; inversion Hprefxtx; subst. contradiction.  
+    ++ simpl in *. apply Hmax; auto. 
+    ++ inversion Hx. 
+  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
+    exists (xtbd ll). repeat (split; try now auto). 
+    intros [] Hx Hsemx.
+    ++ inversion Hx; subst.   
+    ++ simpl in *. apply Hmax; auto. 
+    ++ inversion Hx; subst. simpl in *.
+       destruct Hsemx as [tx [Hprefxtx Hsemx]].
+       destruct tx; inversion Hprefxtx; subst. contradiction.
+  + destruct (tgt_sem (tstream s) W) as [l [ebad [Hseml [Hprefl Hnsem_longer]]]]; auto. 
+    exists (xtbd l). simpl in *. repeat (split; try now auto).
+    ++ apply (list_stream_prefix_trans l (snoc l ebad) s); auto.
+       now apply snoc_longer.
+    ++ intros [] Hpref_x HxsemW; try now inversion Hpref_x.   
+       simpl in *. destruct (list_stream_same_ext l0 (snoc l ebad) s); auto.
+       * apply list_proper_or_equal in H. destruct H as [H | [a H]].
+         ** subst. exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]]. 
+                 now exists tx. 
+         ** now apply list_pref_snoc_pref in H.
+       * exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]].
+             exists tx. split; try now auto.
+             destruct tx; simpl in *; try now apply (list_list_prefix_trans (snoc l ebad) l0 l1). 
+             now apply (list_stream_prefix_trans (snoc l ebad) l0 s0).
+Qed.
 
 
 Definition  two_rRXC : Prop :=
@@ -549,7 +497,7 @@ Proof.
     specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
     
-  
+   
 Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
     is_input i1 -> is_input i2 -> 
     xsem W (xtbd (snoc p i1)) -> xsem W (xtbd (snoc p i2)).
