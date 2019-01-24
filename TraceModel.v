@@ -571,21 +571,11 @@ Qed.
 (*     ++ right. inversion H. now subst. *)
 (* Qed. *)
 
-(* Lemma snoc_diff : forall m a b, *)
-(*     fstopped m = false -> *)
-(*     fpr (fsnoc m a) (fsnoc m b) -> *)
-(*     a = b. *)
-(* Proof. *)
-(*   intros [m|m] a b H H0; [now inversion H |]. *)
-(*   clear H. simpl in *. *)
-(*   eapply (compare_with_snoc (fsnoc (ftbd m) a) (ftbd m) b) in H0. *)
-(*   destruct H0 as [H0 | H0]; auto. *)
-(*   - induction m; inversion H0; auto; try now apply IHm. *)
-(*   - induction m; inversion H0; auto. *)
-(*     assert (H: fsnoc (ftbd m) a = fsnoc (ftbd m) b). *)
-(*     { simpl. now rewrite H1. } *)
-(*     now specialize (IHm H). *)
-(* Qed. *)
+Lemma list_snoc_diff {A : Type} : forall (l : list A) (a b : A),
+        list_list_prefix (snoc l a) (snoc l b) ->  a = b.
+Proof.
+  induction l; intros a1 b1 H; simpl in H; inversion H; auto.     
+Qed.
 
 (* Lemma no_snoc_fpr_ftb : forall m e, ~ fpr (fsnoc m e) (ftbd nil). *)
 (* Proof. destruct m as [m | m]; now induction m. Qed. *)

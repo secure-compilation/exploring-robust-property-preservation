@@ -496,111 +496,96 @@ Proof.
     { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
     specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
-    
-   
-Lemma input_tot_consequence (W : prg tgt): forall p i1 i2,
+
+
+Lemma input_tot_consequence (W : prg tgt): forall l i1 i2,
     is_input i1 -> is_input i2 -> 
-    xsem W (xtbd (snoc p i1)) -> xsem W (xtbd (snoc p i2)).
+    xsem W (xtbd (snoc l i1)) -> xsem W (xtbd (snoc l i2)).
 Proof.
-  intros p i1 i2 Hi1 Hi2 [t [xpref_x_t Hsemt]].
-  assert (psem W (fsnoc (ftbd p) i1)).
+  intros l i1 i2 Hi1 Hi2 [t [xpref_x_t Hsemt]].
+  assert (psem W (ftbd  (snoc l i1))).
   { simpl in *. now exists t. }
-  now apply (input_totality_tgt W (ftbd p) i1 i2) in H.
+  now apply (input_totality_tgt W l i1 i2) in H.
 Qed.  
 
-Lemma t_being_tstop_leads_to_contra (W1 W2 : prg tgt) t t2 p
-                                    (t2stop: exists e, t2 = list_to_stop_trace p e) 
-                                    (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
-                                    (nsem12: ~ sem tgt W2 t) 
-                                    (xpref_x_t : xprefix (xtbd p) t)
-                                    (x_t2 : xprefix (xtbd p) t2)
-  :
-  (forall x1 x2, xsem W1 x1 -> xsem W2 x2 -> myXr x1 x2) -> False. 
+Lemma t_being_tstop_leads_to_contra (W1 W2 : prg tgt) t l2 e2 
+                                    (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 (tstop l2 e2))
+                                    (nsem12: ~ sem tgt W2 t)
+                                    (xpref_x_t : xprefix (xtbd l2) t)
+  : 
+    (forall x1 x2, xsem W1 x1 -> xsem W2 x2 -> myXr x1 x2) -> False.
 Proof.
-  intros twoX. 
- destruct (three_continuations_tbd p t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct t2stop as [e2 t2stop]. destruct ttstop as [e ttstop].
-             assert (xsem1 : xsem W1 (xstop p e)).
-             { exists t. split; auto.
-               rewrite ttstop. now apply xstop_prefix_list. }
-             assert (xsem2 : xsem W2 (xstop p e2)).
-             { exists t2. split; auto.
-               rewrite t2stop. now apply xstop_prefix_list. }
-             specialize (twoX (xstop p e) (xstop p e2) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- inversion xpr1. now subst.
-             -- inversion xpr2. now subst.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                apply Hdiff. now apply (snocs_same_continuation xx p i1 i2).  
-           -  destruct t2stop as [e t2stop].
-               assert (xsem1 : xsem W1 (xsilent p)).
-             { exists t. split; auto.
-               rewrite ttsilent. now apply xsilent_prefix_list. }
-             assert (xsem2 : xsem W2 (xstop p e)).
-             { exists t2. split; auto.
-               rewrite t2stop. now apply xstop_prefix_list. }
-             specialize (twoX (xsilent p) (xstop p e) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- inversion xpr1.
-             -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                 apply Hdiff. now apply (snocs_same_continuation xx p i1 i2). 
-           - destruct t2stop as [e2 t2stop]. destruct ttlonger as [a ttstop].
-             assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
-             assert (xsem2 : xsem W2 (xstop p e2)).
-             { exists t2. split; auto.
-               rewrite t2stop. now apply xstop_prefix_list. }
-             specialize (twoX (xtbd (snoc p a)) (xstop p e2) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- now apply xpr_longer_stop_contra in xpr1.
-             -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                now apply (snocs_aux_lemma xx p i1 i2 a).
+ intros twoX. destruct t.
+ - simpl in *. destruct (twoX (xstop l e) (xstop l2 e2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]].
+   now exists (tstop l e). now exists (tstop l2 e2).
+   + inversion xpr1; subst. contradiction.
+   + inversion xpr2; subst. contradiction.                                
+   + simpl in Hxpr1, Hxpr2.
+     apply (list_list_prefix_trans (snoc xx i2) l2 l Hxpr2) in xpref_x_t.   
+     destruct (list_list_same_ext (snoc xx i1) (snoc xx i2) l) as [F | F]; auto;
+       apply Hdiff; apply (list_snoc_diff xx _ _ ) in F; congruence.
+ - simpl in xpref_x_t.  destruct (twoX (xsilent l) (xstop l2 e2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]].
+    now exists (tsilent l). try now exists (tstop l2 e2).  
+    + now inversion xpr1.                              
+    + now inversion xpr2.
+    + simpl in Hxpr1, Hxpr2.
+     apply (list_list_prefix_trans (snoc xx i2) l2 l Hxpr2) in xpref_x_t.   
+     destruct (list_list_same_ext (snoc xx i1) (snoc xx i2) l) as [F | F]; auto;
+       apply Hdiff; apply (list_snoc_diff xx _ _ ) in F; congruence.
+ - simpl in xpref_x_t.
+   destruct (tgt_sem (tstream s) W2 nsem12) as [l [ebad [Hpsem [Hpref Hnpsem]]]]; auto. 
+   simpl in Hpref.
+   destruct (twoX (xtbd (snoc l ebad)) (xstop l2 e2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]]; auto.  
+   now exists (tstream s). now exists (tstop l2 e2).
+   + simpl in xpr1. apply Hnpsem. now exists (tstop l2 e2).
+   + simpl in *.
+     apply (list_stream_prefix_trans _ _ s) in Hxpr1; auto.  
+     apply (list_stream_prefix_trans _ _ s) in Hxpr2; auto.  
+     destruct (list_stream_same_ext (snoc xx i1) (snoc xx i2) s) as [F | F]; auto;                              apply Hdiff; apply (list_snoc_diff xx _ _) in F; congruence.         
+Qed. 
+
+Lemma t_being_tsilent_leads_to_contra (W1 W2 : prg tgt) t l2  
+                                      (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 (tsilent l2))
+                                      (nsem12: ~ sem tgt W2 t)
+                                      (xpref_x_t : xprefix (xtbd l2) t)
+  : 
+    (forall x1 x2, xsem W1 x1 -> xsem W2 x2 -> myXr x1 x2) -> False.
+Proof.
+ intros twoX. destruct t.
+ - simpl in *. destruct (twoX (xstop l e) (xsilent l2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]].
+   now exists (tstop l e). now exists (tsilent l2).
+   + now inversion xpr1. 
+   + now inversion xpr2.                                
+   + simpl in Hxpr1, Hxpr2.
+     apply (list_list_prefix_trans (snoc xx i2) l2 l Hxpr2) in xpref_x_t.   
+     destruct (list_list_same_ext (snoc xx i1) (snoc xx i2) l) as [F | F]; auto;
+       apply Hdiff; apply (list_snoc_diff xx _ _ ) in F; congruence.
+ - simpl in xpref_x_t.  destruct (twoX (xsilent l) (xsilent l2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]].
+    now exists (tsilent l). try now exists (tsilent l2).  
+    + simpl in xpr1. now subst.                              
+    + simpl in xpr2. now subst. 
+    + simpl in Hxpr1, Hxpr2.
+     apply (list_list_prefix_trans (snoc xx i2) l2 l Hxpr2) in xpref_x_t.   
+     destruct (list_list_same_ext (snoc xx i1) (snoc xx i2) l) as [F | F]; auto;
+       apply Hdiff; apply (list_snoc_diff xx _ _ ) in F; congruence.
+ - simpl in xpref_x_t.
+   destruct (tgt_sem (tstream s) W2 nsem12) as [l [ebad [Hpsem [Hpref Hnpsem]]]]; auto. 
+   simpl in Hpref.
+   destruct (twoX (xtbd (snoc l ebad)) (xsilent l2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]]; auto.  
+   now exists (tstream s). now exists (tsilent l2).
+   + simpl in xpr1. apply Hnpsem. now exists (tsilent l2).
+   + simpl in *.
+     apply (list_stream_prefix_trans _ _ s) in Hxpr1; auto.  
+     apply (list_stream_prefix_trans _ _ s) in Hxpr2; auto.  
+     destruct (list_stream_same_ext (snoc xx i1) (snoc xx i2) s) as [F | F]; auto;                              apply Hdiff; apply (list_snoc_diff xx _ _) in F; congruence.         
 Qed. 
  
-
-Lemma t_being_tsilent_leads_to_contra (W1 W2 : prg tgt) t t2 p
-                                      (t2silent: t2 = list_to_silent_trace p) 
-                                      (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
-                                      (nsem12: ~ sem tgt W2 t) 
-                                      (xpref_x_t : xprefix (xtbd p) t)
-                                      (x_t2 : xprefix (xtbd p) t2)
-  :
-  (forall x1 x2, xsem W1 x1 -> xsem W2 x2 -> myXr x1 x2) -> False. 
-Proof.
-  intros twoX. 
- destruct (three_continuations_tbd p t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct ttstop as [e ttstop].
-             assert (xsem1 : xsem W1 (xstop p e)).
-             { exists t. split; auto.
-               rewrite ttstop. now apply xstop_prefix_list. }
-             assert (xsem2 : xsem W2 (xsilent p)).
-             { exists t2. split; auto.
-               rewrite t2silent. now apply xsilent_prefix_list. }
-             specialize (twoX (xstop p e) (xsilent p) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- inversion xpr1. 
-             -- inversion xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                 apply Hdiff. now apply (snocs_same_continuation xx p i1 i2).
-           - rewrite <- t2silent in ttsilent. now subst. 
-           - destruct ttlonger as [a ttstop].
-             assert (xsem1 : xsem W1 (xtbd (snoc p a))) by now exists t.
-             assert (xsem2 : xsem W2 (xsilent p)).
-             { exists t2. split; auto.
-               rewrite t2silent. now apply xsilent_prefix_list. }
-             specialize (twoX (xtbd (snoc p a)) (xsilent p) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- now apply xpr_longer_silent_contra in xpr1.
-             -- inversion xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                now apply (snocs_aux_lemma xx p i1 i2 a).
-Qed. 
 
 Lemma violates_xmax  (W1 W2 : prg tgt) t t2 p a aa
                      (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
