@@ -26,6 +26,13 @@ Fixpoint list_list_prefix {A : Type} (l1 l2 : list A) :=
 Lemma list_list_prefix_ref {A : Type} (l : list A) : list_list_prefix l l. 
 Proof. now induction l. Qed. 
 
+Lemma list_list_prefix_asym {A : Type} : forall (l1 l2 : list A),
+    list_list_prefix l1 l2 -> list_list_prefix l2 l1 -> l1 = l2. 
+Proof.
+  induction l1, l2; try now auto.
+  simpl. intros [afoo Hpref] [afoo' Hpref']; subst; now rewrite (IHl1 l2). 
+Qed.
+
 Lemma list_list_prefix_trans {A : Type} : forall l1 l2 l3 : list A,
   list_list_prefix l1 l2 -> list_list_prefix l2 l3 -> list_list_prefix l1 l3.
 Proof.
@@ -1120,3 +1127,26 @@ Qed.
 Lemma snoc_longer {A : Type} : forall (l : list A) (a : A),
     list_list_prefix l (snoc l a).
 Proof. now induction l. Qed. 
+
+Lemma snoc_strictly_longer {A : Type} : forall (l : list A) (a : A),
+    ~ list_list_prefix (snoc l a) l.
+Proof.
+  induction l; try now auto.
+  intros a0. simpl. intros [afoo H]; now apply (IHl a0).   
+Qed.
+
+Lemma list_snoc_pointwise: forall (l p : list event) i1 i2 a1 a2,
+                          i1 <> i2 ->
+                          list_list_prefix (snoc l i1) (snoc p a1) ->
+                          list_list_prefix (snoc l i2) (snoc p a2) ->
+                          (i1 = a1 /\ i2 = a2).
+Proof.
+  induction l; intros p i1 i2 a1 a2 diff_i l1_pref l2_pref.
+  + destruct p; inversion l1_pref; inversion l2_pref; auto.
+    subst. exfalso. now apply diff_i.
+  + destruct p; simpl in l1_pref, l2_pref.
+    ++ destruct l1_pref as [aa1 contra].
+       now destruct l.
+    ++ destruct l1_pref as [ae l1_pref]. destruct l2_pref as [foo l2_pref].
+       now apply (IHl p i1 i2 a1 a2).
+Qed.

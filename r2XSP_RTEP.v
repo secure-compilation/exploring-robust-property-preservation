@@ -19,256 +19,36 @@ Hypothesis determinacy_src    : determinacy src.
 Hypothesis tgt_sem           : semantics_safety_like tgt.
 (**********************************************************)
 
-(* CA: before trying to prove a lemma check if it is actually used or not! *)
-
-(* Definition xsnoc (m : xpref) (e : event) := *)
-(*   match m with *)
-(*   | xstop _ _ | xsilent _ => m *)
-(*   | xtbd  l               => xtbd (snoc l e) *)
-(*   end.  *)
-
-
-(* Fixpoint list_pref { A : Type } (l1 l2 : list A) : Prop := *)
-(*   match l1, l2 with *)
-(*   | nil, _ => True *)
-(*   | cons x xs, cons y ys => x = y /\ list_pref xs ys *)
-(*   | _, _ => False *)
-(*   end. *)
-
-(* Fixpoint list_pref_trace (l : list event) (t : trace) : Prop := *)
-(*   match l with   *)
-(*   | nil => True *)
-(*   | cons x xs => match t with *)
-(*                 | tcons e t' => x = e /\ list_pref_trace xs t' *)
-(*                 | _ => False *)
-(*                 end *)
-(*   end.  *)
-
-    
-(* Definition xpr (x1 x2 : xpref) : Prop := *)
-(*   match x1 with *)
-(*   | xstop m1 s1 => match x2 with *)
-(*                   | xstop m2 s2 => m1 = m2 /\ s1 = s2 *)
-(*                   | _ => False *)
-(*                   end *)
-                    
-(*   | xsilent m1 => match x2 with *)
-(*                  | xsilent m2 => m1 = m2 *)
-(*                  | _ => False *)
-(*                  end *)
-                   
-(*   | xtbd m1 => match x2 with *)
-(*               | xstop m2 s1 => list_pref m1 m2 *)
-(*               | xsilent m2  => list_pref m1 m2 *)
-(*               | xtbd m2 =>  list_pref m1 m2 *)
-(*               end *)
-                
-(*   end. *)
-
-(* Definition xstopped x : bool := *)
-(*   match x with *)
-(*   | xstop _ _ => true *)
-(*   | _ => false *)
-(*   end. *)
-
-(* Lemma xpr_snoc : forall p a1 a2,  *)
-(*     xpr (xtbd (snoc p a1)) (xtbd (snoc p a2)) -> a1 = a2. *)
-(* Proof. *)
-(*   induction p; intros a1 a2 H; simpl in *; destruct H as [H1 H2]; auto.    *)
-(* Qed. *)
-
-(* Fixpoint list_to_stop_trace (l : list event) (e : endstate) : trace := *)
-(*   match l with *)
-(*   | nil => tstop e *)
-(*   | cons l ls => tcons l (list_to_stop_trace ls e) *)
-(*   end.  *)
-
-(* Lemma xstop_prefix_list : forall p e, xprefix (xstop p e) (list_to_stop_trace p e). *)
-(* Proof. *)
-(*   induction p; intros e; simpl; auto.   *)
-(*   split; auto. now apply IHp. *)
-(* Qed. *)
-
-(* Lemma unique_continuation_stop: forall l e t, xprefix (xstop l e) t -> t = list_to_stop_trace l e.  *)
-(* Proof. *)
-(*   intros l e. induction l. *)
-(*   + intros [] Hxpref; auto; inversion Hxpref; now subst.  *)
-(*   + intros [] Hxpref; inversion Hxpref. subst.  *)
-(*     simpl. now rewrite (IHl t).     *)
-(* Qed. *)
-
-(* Fixpoint list_to_silent_trace (l : list event) : trace := *)
-(*   match l with *)
-(*   | nil => tsilent *)
-(*   | cons l ls => tcons l (list_to_silent_trace ls) *)
-(*   end. *)
-
-(* Lemma xsilent_prefix_list : forall p, xprefix (xsilent p) (list_to_silent_trace p). *)
-(* Proof. *)
-(*   induction p; simpl; auto.   *)
-(* Qed. *)
-
-(* Lemma unique_continuation_silent : forall l t, xprefix (xsilent l) t -> t = list_to_silent_trace l. *)
-(* Proof.   *)
-(*    intros l. induction l; intros [] Hxpref; auto; inversion Hxpref; subst.  *)
-(*    simpl. now rewrite (IHl t).     *)
-(* Qed.  *)
   
-(* Lemma three_continuations_tbd : *)
-(*   forall l t, xprefix (xtbd l) t -> *)
-(*          ( (exists e, t = list_to_stop_trace l e) \/                                      *)
-(*                  (t = list_to_silent_trace l) \/ *)
-(*             (exists e, xprefix (xtbd (snoc l e)) t)).  *)
-(* Proof. *)
-(*   intros l. induction l. *)
-(*   + intros [] Hxpref. *)
-(*     ++ left. now exists e. *)
-(*     ++ right. now left. *)
-(*     ++ right. right. now exists e. *)
-(*   + intros [] Hxpref; inversion Hxpref; subst. *)
-(*     destruct  (IHl t) as [K1 | [K2 | K3]]; auto.   *)
-(*     ++ left. destruct K1 as [e0 K1]. exists e0. simpl. now rewrite K1. *)
-(*     ++ right. left. simpl. now rewrite K2. *)
-(*     ++ right. right. destruct K3 as [e0 K3]. now exists e0. *)
-(* Qed. *)
-
-(* Lemma xpr_longer_stop_contra : forall p a e, xpr (xtbd (snoc p a)) (xstop p e) -> False. *)
-(* Proof. *)
-(*   induction p; auto. *)
-(*   simpl. intros a0 e [Hfoo H]. now apply (IHp a0 e).  *)
-(* Qed. *)
-
-(* Lemma xpr_longer_silent_contra : forall p a, xpr (xtbd (snoc p a)) (xsilent p) -> False. *)
-(* Proof. *)
-(*   induction p; auto. *)
-(*   simpl. intros a0 [Hfoo H]. now apply (IHp a0). *)
-(* Qed.  *)
-
-(* Lemma xpr_longer_xtbd_contra: forall p a, xpr (xtbd (snoc p a)) (xtbd p) -> False. *)
-(* Proof. *)
-(*   induction p; auto. *)
-(*   simpl. intros a0 [Hfoo H]. now apply (IHp a0). *)
-(* Qed.  *)
-
-(* Lemma list_snoc_pointwise: forall (l p : list event) i1 i2 a1 a2, *)
-(*                           i1 <> i2 -> *)
-(*                           list_pref (snoc l i1) (snoc p a1) -> *)
-(*                           list_pref (snoc l i2) (snoc p a2) -> *)
-(*                           (i1 = a1 /\ i2 = a2). *)
-(* Proof. *)
-(*   induction l; intros p i1 i2 a1 a2 diff_i l1_pref l2_pref. *)
-(*   + destruct p; inversion l1_pref; inversion l2_pref; auto.  *)
-(*     subst. exfalso. now apply diff_i. *)
-(*   + destruct p; simpl in l1_pref, l2_pref. *)
-(*     ++ destruct l1_pref as [aa1 contra]. *)
-(*        now destruct l. *)
-(*     ++ destruct l1_pref as [ae l1_pref]. destruct l2_pref as [foo l2_pref]. *)
-(*        now apply (IHl p i1 i2 a1 a2). *)
-(* Qed.    *)
-
-(* Lemma no_silent_and_stop: forall l1 l2 e, *)
-(*     list_to_silent_trace l1 <> list_to_stop_trace l2 e. *)
-(* Proof.   *)
-(*   intros l. induction l; intros []; try now auto.  *)
-(*   + intros e1. intros Hf. inversion Hf. *)
-(*     apply ((IHl l0 e1) H1). *)
-(* Qed.     *)
-
-(* Lemma list_same_ext : forall l1 l2 t, *)
-(*     list_pref_trace l1 t -> *)
-(*     list_pref_trace l2 t -> *)
-(*     list_pref l1 l2 \/ list_pref l2 l1. *)
-(* Proof. *)
-(*   induction l1; intros l2 t H1 H2. *)
-(*   + now left. *)
-(*   + destruct l2. *)
-(*     ++ now right. *)
-(*     ++ destruct t; inversion H1; inversion H2; subst. *)
-(*        simpl. destruct (IHl1 l2 t); auto.  *)
-(* Qed.  *)
-
-(* Lemma xsilent_prefix_xftbd_prefix : forall p t, *)
-(*     xprefix (xsilent p) t -> xprefix (xtbd p) t.  *)
-(* Proof. *)
-(*   induction p; intros t H; try now auto.   *)
-(*   destruct t; inversion H; subst. simpl. *)
-(*   split; auto. now apply (IHp t).  *)
-(* Qed. *)
-
-(* Lemma same_x_ext : forall x1 x2 t, xprefix x1 t -> xprefix x2 t -> xpr x1 x2 \/ xpr x2 x1.  *)
-(* Proof. *)
-(*   intros []; induction p; intros x2 t H1 H2.  *)
-(*   + apply unique_continuation_stop in H1. subst. *)
-(*     destruct x2. *)
-(*     ++ destruct p. simpl in H2. subst. now left. *)
-(*        simpl in *. contradiction. *)
-(*     ++ destruct p. simpl in H2. subst. now right. *)
-(*        simpl in *. contradiction. *)
-(*     ++ destruct p. simpl in H2. contradiction. *)
-(*        simpl in *. contradiction. *)
-(*   + destruct t; simpl in H1; try contradiction.  *)
-(*     inversion H1. subst. *)
-(*     destruct x2. *)
-(*     ++ destruct p0; simpl in H2. contradiction. *)
-(*        inversion H2. subst. *)
-(*        destruct (IHp (xstop p0 e1) t) as [K1 | K2]; auto.  *)
-(*        +++ left. subst. simpl in *. firstorder. now rewrite H. *)
-(*        +++ right. simpl in *. firstorder. now rewrite H. *)
-(*     ++ destruct p0; simpl in H2. now right.  *)
-(*        destruct (IHp (xtbd p0) t) as [K1 | K2]; auto.  *)
-(*        +++ simpl. now destruct H2.   *)
-(*        +++ right. simpl. firstorder. *)
-(*     ++ apply unique_continuation_silent in H2.  *)
-(*        apply unique_continuation_stop in H0. *)
-(*        destruct p0; inversion H2.   *)
-(*        rewrite H0 in H4. exfalso. symmetry in H4. *)
-(*        now apply no_silent_and_stop in H4.      *)
-(*   + left. now case x2. *)
-(*   + destruct t; inversion H1; subst. *)
-(*     destruct x2; simpl in H2. *)
-(*     ++ destruct p0; inversion H2; subst. *)
-(*        simpl. destruct (IHp (xstop p0 e0) t); auto.  *)
-(*     ++ destruct p0; inversion H2; subst. *)
-(*        simpl. now right. *)
-(*        simpl. destruct (IHp (xtbd p0) t); auto.  *)
-(*     ++ admit. *)
-(*   + destruct t; try now auto. *)
-(*     destruct x2; simpl in  H2;  *)
-(*     destruct p; try now auto. *)
-(*     now left.   *)
-(*   + admit.     *)
-(* Admitted. *)
+Lemma three_continuations_tbd :
+  forall l t, xprefix (xtbd l) t ->
+         ( (exists e, t = tstop l e) \/
+                 (t = tsilent l) \/
+            (exists e, xprefix (xtbd (snoc l e)) t)).
+Proof.
+  intros l [] Hpref.
+  + simpl in Hpref. apply list_proper_or_equal in Hpref. destruct Hpref.
+    ++ subst. left. now exists e.
+    ++ right. right. firstorder.  
+  + simpl in Hpref. apply list_proper_or_equal in Hpref. destruct Hpref.
+    ++ subst. right. now left.
+    ++ right. right. firstorder. 
+  + generalize dependent s. induction l.
+    ++ right. right. destruct s. now exists e. 
+    ++ intros [] Hpref. inversion Hpref. simpl.
+       destruct (IHl s) as [ [ef FALSE] | [ FALSE | [e0 HH] ]]; try now inversion FALSE; auto.
+       now simpl. right. right. exists e0; firstorder.  
+Qed.
 
 
-(* Lemma ftbd_prefix_stop_sublist: forall l p e, ftbd_prefix l (list_to_stop_trace p e) -> list_pref l p.  *)
-(* Proof. *)
-(*   induction l; intros p e Hpref; auto. *)
-(*   destruct p; inversion Hpref. *)
-(*   subst. simpl. split; auto. now apply (IHl p e).  *)
-(* Qed. *)
-
-(* Lemma ftbd_prefix_silent_sublist: forall l p, ftbd_prefix l (list_to_silent_trace p) -> list_pref l p. *)
-(* Proof. *)
-(*   induction l; intros p Hpref; auto. *)
-(*   destruct p; inversion Hpref. *)
-(*   subst. simpl. split; auto. *)
-(* Qed. *)
-
-(* Lemma snocs_same_continuation: forall (l p : list event) e1 e2, *)
-(*     list_pref (snoc l e1) p -> list_pref (snoc l e2) p -> e1 = e2.  *)
-(* Proof. *)
-(*   induction l; intros [] e1 e2 H1 H2; inversion H1; inversion H2; subst; auto.   *)
-(*   now apply (IHl l0 e1 e2).    *)
-(* Qed.  *)
-
-(* Lemma snocs_aux_lemma: forall (l p : list event) i1 i2 a, *)
-(*     i1 <> i2 -> list_pref (snoc l i1) (snoc p a) -> list_pref (snoc l i2) p -> False. *)
-(* Proof. *)
-(*   induction l; intros [] i1 i2 ev Hdiff Hpref1 Hpref2; *)
-(*     inversion Hpref1; inversion Hpref2; subst. *)
-(*   + now apply Hdiff.  *)
-(*   + now apply (IHl l0 i1 i2 ev).      *)
-(* Qed. *)
+Lemma snocs_aux_lemma {A : Type }: forall (l p : list A) (i1 i2 a : A),
+    i1 <> i2 -> list_list_prefix (snoc l i1) (snoc p a) -> list_list_prefix (snoc l i2) p -> False.
+Proof.
+  induction l; intros [] i1 i2 ev Hdiff Hpref1 Hpref2;
+    inversion Hpref1; inversion Hpref2; subst.
+  + now apply Hdiff.
+  + now apply (IHl l0 i1 i2 ev).
+Qed.
 
 (*********************************************************************************)
 
@@ -587,34 +367,34 @@ Proof.
 Qed. 
  
 
-Lemma violates_xmax  (W1 W2 : prg tgt) t t2 p a aa
+Lemma violates_xmax  (W1 W2 : prg tgt) t t2 l a aa
                      (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
                      (nsem12: ~ sem tgt W2 t)
-                     (xpref_x_t : xprefix (xtbd (snoc p aa)) t)
-                     (x_t2 : xprefix (xtbd (snoc p a)) t2)
+                     (xpref_x_t : xprefix (xtbd (snoc l aa)) t)
+                     (x_t2 : xprefix (xtbd (snoc l a)) t2)
                        
   :
-    (forall x' : xpref, xprefix x' t -> xsem W2 x' -> xpr x' (xtbd p)) -> 
+    (forall x' : xpref, xprefix x' t -> xsem W2 x' -> xpr x' (xtbd l)) -> 
     (forall x1 x2, xsem W1 x1 -> xsem W2 x2 ->  myXr x1 x2) -> False.
 Proof.
   intros xmax twoX.
-  assert (xsem1 : xsem W1 (xtbd (snoc p aa))) by now exists t.
-  assert (xsem2 : xsem W2 (xtbd (snoc p a))) by now exists t2.
-  specialize (twoX (xtbd (snoc p aa)) (xtbd (snoc p a)) xsem1 xsem2).
+  assert (xsem1 : xsem W1 (xtbd (snoc l aa))) by now exists t.
+  assert (xsem2 : xsem W2 (xtbd (snoc l a))) by now exists t2.
+  specialize (twoX (xtbd (snoc l aa)) (xtbd (snoc l a)) xsem1 xsem2).
   destruct twoX as [xpr1 | [xpr2 | matching]].
-  + apply xpr_snoc in xpr1. subst.
-    specialize (xmax (xtbd (snoc p a)) xpref_x_t xsem2).
-    now apply xpr_longer_xtbd_contra in xmax.
-  + apply xpr_snoc in xpr2. subst.
-    specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
-    now apply xpr_longer_xtbd_contra in xmax.
+  + simpl in xpr1. apply list_snoc_diff in xpr1. subst.
+    specialize (xmax (xtbd (snoc l a)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
+  + simpl in xpr2. apply list_snoc_diff in xpr2. subst.
+    specialize (xmax (xtbd (snoc l aa)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
   + destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff_is [Hxpr1 Hxpr2 ]]]]]]].
     simpl in Hxpr1, Hxpr2.  
-    apply (list_snoc_pointwise xx p i1 i2 aa a) in Hxpr2; auto.  
+    apply (list_snoc_pointwise xx l i1 i2 aa a) in Hxpr2; auto.  
     destruct Hxpr2 as [H1 H2]. subst.
-    apply (input_tot_consequence W2 p a aa) in xsem2; auto. 
-    specialize (xmax (xtbd (snoc p aa)) xpref_x_t xsem2).
-    now apply xpr_longer_xtbd_contra in xmax. 
+    apply (input_tot_consequence W2 l a aa) in xsem2; auto. 
+    specialize (xmax (xtbd (snoc l aa)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
 Qed. 
     
 
@@ -623,54 +403,78 @@ Proof.
   rewrite R2rXP_two. unfold two_rRXC, teq_preservation.
   intros twoX P1 P2 Hsrc Ct t.
   specialize (twoX myXr P1 P2 (teq_premises_myXr_holds P1 P2 Hsrc) Ct).
-  split.
+  split. 
   + intros case1.
     apply NNPP. intros t_not_sem2.
     destruct (longest_in_xsem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
     destruct xsem2_x as [t2 [x_t2 t2_sem2]].
     destruct x.
     ++ (* it can only be t2 '=' xstop p e = t *)
-       apply (unique_continuation_stop p e t) in xpref_x_t.
-       apply (unique_continuation_stop p e t2) in x_t2.
-       congruence.
-    ++ destruct (three_continuations_tbd p t2 x_t2) as [t2stop | [t2silent | t2longer]].
-       +++ now apply (t_being_tstop_leads_to_contra (Ct [P1↓]) (Ct [P2↓]) t t2 p).
-         
-       +++ now apply (t_being_tsilent_leads_to_contra  (Ct [P1↓]) (Ct [P2↓]) t t2 p).
-         
+       destruct t, t2; auto.
+       inversion xpref_x_t; inversion x_t2; subst; congruence.  
+    ++ destruct (three_continuations_tbd l t2 x_t2) as [t2stop | [t2silent | t2longer]].
+       +++ destruct t2stop as [e2 Ht2]. rewrite Ht2 in *. 
+           now apply (t_being_tstop_leads_to_contra (Ct [P1↓]) (Ct [P2↓]) t l e2).
+       +++ rewrite t2silent in *. 
+           now apply (t_being_tsilent_leads_to_contra  (Ct [P1↓]) (Ct [P2↓]) t l).         
        +++ destruct t2longer as [a t2longer].
-           assert (xsem2 : xsem (Ct [P2↓]) (xtbd (snoc p a))) by now exists t2. 
-           destruct (three_continuations_tbd p t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct ttstop as [e ttstop].
-             assert (xsem1 : xsem (Ct [P1↓]) (xstop p e)).
-             { exists t. split; auto.
-               rewrite ttstop. now apply xstop_prefix_list. }
-             specialize (twoX (xstop p e) (xtbd (snoc p a)) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- inversion xpr1. 
-             -- now apply xpr_longer_stop_contra in xpr2. 
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
+           - destruct ttstop as [e ttstop]. subst. 
+             destruct (twoX (xstop l e) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tstop l e). now exists t2. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
+           - subst. 
+             destruct (twoX (xsilent l) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tsilent l). now exists t2. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2.
              -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
                 simpl in Hxpr1, Hxpr2.
-                apply (snocs_aux_lemma xx p i2 i1 a); congruence.       
-           - assert (xsem1 : xsem (Ct [P1↓]) (xsilent p)).
-             { exists t. split; auto.
-               rewrite ttsilent. now apply xsilent_prefix_list. }
-             specialize (twoX (xsilent p) (xtbd (snoc p a)) xsem1 xsem2).
-             destruct twoX as [xpr1 | [xpr2 | matching]].
-             -- inversion xpr1.
-             -- now apply xpr_longer_silent_contra in xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                 apply (snocs_aux_lemma xx p i2 i1 a); congruence. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence. 
            - destruct ttlonger as [aa ttlonger].
-             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 p a aa).              
+             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 l a aa).              
    ++ (*  it can only be t2 '=' xsilent p e = t *)
-      apply (unique_continuation_silent p t) in xpref_x_t.
-      apply (unique_continuation_silent p t2) in x_t2.
-      congruence.
-     
-  + admit. (* symmetric case *)
-Admitted. 
+      destruct t, t2; auto. 
+      inversion xpref_x_t; inversion x_t2; subst; congruence. 
+  + intros case2.
+    apply NNPP. intros t_not_sem1.
+    destruct (longest_in_xsem (Ct [P1↓]) t t_not_sem1) as [x [xpref_x_t [xsem1_x x_max]]].
+    destruct xsem1_x as [t1 [x_t1 t1_sem1]].
+    assert (twoX' : forall x1 x2, xsem (Ct [P2 ↓]) x1 -> xsem (Ct [P1 ↓]) x2 -> myXr x1 x2).
+    { intros x1 x2 H H0. apply myXr_symmetric. now apply twoX. } 
+    destruct x.
+    ++ (* it can only be t1 '=' xstop p e = t *)
+       destruct t, t1; auto.
+       inversion xpref_x_t; inversion x_t1; subst; congruence.  
+    ++ destruct (three_continuations_tbd l t1 x_t1) as [t1stop | [t1silent | t1longer]].
+       +++ destruct t1stop as [e1 Ht1]. rewrite Ht1 in *. 
+           now apply (t_being_tstop_leads_to_contra (Ct [P2↓]) (Ct [P1↓]) t l e1). 
+       +++ rewrite t1silent in *. 
+           now apply (t_being_tsilent_leads_to_contra  (Ct [P2↓]) (Ct [P1↓]) t l).         
+       +++ destruct t1longer as [a t1longer].
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
+           - destruct ttstop as [e ttstop]. subst. 
+             destruct (twoX' (xstop l e) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tstop l e). now exists t1. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
+           - subst. 
+             destruct (twoX' (xsilent l) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tsilent l). now exists t1. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2.
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence. 
+           - destruct ttlonger as [aa ttlonger].
+             now apply (violates_xmax (Ct [P2↓]) (Ct [P1↓]) t t1 l a aa).              
+   ++ (*  it can only be t2 '=' xsilent p e = t *)
+      destruct t, t1; auto. 
+      inversion xpref_x_t; inversion x_t1; subst; congruence. 
+Qed.  
 
      
     
