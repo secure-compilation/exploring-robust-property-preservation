@@ -1150,3 +1150,12 @@ Proof.
     ++ destruct l1_pref as [ae l1_pref]. destruct l2_pref as [foo l2_pref].
        now apply (IHl p i1 i2 a1 a2).
 Qed.
+
+Lemma snocs_aux_lemma {A : Type }: forall (l p : list A) (i1 i2 a : A),
+    i1 <> i2 -> list_list_prefix (snoc l i1) (snoc p a) -> list_list_prefix (snoc l i2) p -> False.
+Proof.
+  induction l; intros [] i1 i2 ev Hdiff Hpref1 Hpref2;
+    inversion Hpref1; inversion Hpref2; subst.
+  + now apply Hdiff.
+  + now apply (IHl l0 i1 i2 ev).
+Qed.

@@ -8,17 +8,18 @@ Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
 Require Import List.
 Require Import TechnicalLemmas.
+Require Import Criteria. 
 
 (** This file proves that r2RSC can imply RTEP *)
 
-Definition two_rRSC : Prop :=
-  forall (r : finpref -> finpref -> Prop) P1 P2 ,
-    ((forall Cs m1 m2, psem (Cs [P1]) m1 ->
-                  psem (Cs [P2]) m2 ->
-                   r m1 m2) ->
-     (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 ->
-                  psem (Ct [P2 ↓]) m2 ->
-                  r m1 m2)).
+(* Definition two_rRSC : Prop := *)
+(*   forall (r : finpref -> finpref -> Prop) P1 P2 , *)
+(*     ((forall Cs m1 m2, psem (Cs [P1]) m1 -> *)
+(*                   psem (Cs [P2]) m2 -> *)
+(*                    r m1 m2) -> *)
+(*      (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 -> *)
+(*                   psem (Ct [P2 ↓]) m2 -> *)
+(*                   r m1 m2)). *)
 
 
 (** *our assumptions *)
@@ -26,7 +27,28 @@ Definition two_rRSC : Prop :=
 Hypothesis input_totality_tgt : input_totality tgt.
 Hypothesis determinacy_src    : determinacy src.
 Hypothesis tgt_sem            : semantics_safety_like tgt.
+Hypothesis no_divergence : forall P' t, sem tgt P' t -> ~ diverges t.
 (**********************************************************)
+
+Lemma three_continuations_tbd :
+  forall l t, prefix (ftbd l) t ->
+         ( (exists e, t = tstop l e) \/
+                 (t = tsilent l) \/
+            (exists e, prefix (ftbd (snoc l e)) t)).
+Proof.
+  intros l [] Hpref.
+  + simpl in Hpref. apply list_proper_or_equal in Hpref. destruct Hpref.
+    ++ subst. left. now exists e.
+    ++ right. right. firstorder.  
+  + simpl in Hpref. apply list_proper_or_equal in Hpref. destruct Hpref.
+    ++ subst. right. now left.
+    ++ right. right. firstorder. 
+  + generalize dependent s. induction l.
+    ++ right. right. destruct s. now exists e. 
+    ++ intros [] Hpref. inversion Hpref. simpl.
+       destruct (IHl s) as [ [ef FALSE] | [ FALSE | [e0 HH] ]]; try now inversion FALSE; auto.
+       now simpl. right. right. exists e0; firstorder.  
+Qed.
 
 Definition myr ( m1 m2 : finpref) : Prop :=
   (fpr m1 m2) \/ (fpr m2 m1) \/
@@ -36,333 +58,278 @@ Definition myr ( m1 m2 : finpref) : Prop :=
                fpr (ftbd (snoc l i1)) m1 /\
                fpr (ftbd (snoc l i2)) m2).
 
-(* (* *)
-(*    is we choose myr we can porve that *)
-(*    the premises in teq_preservation hold *)
-(* *) *)
-(* Lemma teq_premises_myr_holds : forall P1 P2, *)
-(*     (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) -> *)
-(*     (forall Cs m1 m2, psem (Cs [P1]) m1 -> psem (Cs [P2]) m2 -> *)
-(*                  myr m1 m2). *)
-(* Proof. *)
-(*   intros P1 P2 H Cs m1 m2 H0 H1. unfold myr. *)
-(*   assert (Hc :(fpr m1 m2 \/ fpr m2 m1) \/ ~ (fpr m1 m2 \/ fpr m2 m1)) by now apply classic. *)
-(*   destruct Hc. *)
-(*   + destruct H2; now auto. *)
-(*   + destruct H0 as [b1 [H11 H12]].  destruct H1 as [b2 [H21 H22]]. *)
-(*     rewrite <- (H Cs b2) in H22. assert (Hdiff : b1 <> b2). *)
-(*     { intros ff. subst. apply H2. now apply (same_ext m1 m2 b2). } *)
-(*     right. right. *)
-(*     destruct (determinacy_src (Cs [P1]) b1 b2 H12 H22) as [ff | K]; try now auto. *)
-(*     destruct K as [m [e1 [e2 [He1 [He2 [Hdist [Hstop [Hp1 Hp2]]]]]]]]. *)
-(*     assert (Hcomp1 : fpr m1 (fsnoc m e1) \/ fpr (fsnoc m e1) m1) by now apply (same_ext _ _ b1). *)
-(*     assert (Hcomp2 : fpr m2 (fsnoc m e2) \/ fpr (fsnoc m e2) m2) by now apply (same_ext _ _ b2). *)
-(*     destruct Hcomp1, Hcomp2. *)
-(*     ++ apply compare_with_snoc in H0. apply compare_with_snoc in H1. *)
-(*        destruct H0, H1; try now auto. *)
-(*        +++ exfalso. apply H2. now apply (same_fpr m1 m2 m). *)
-(*        +++ exfalso. apply H2. apply (fpr_snoc_fpr m1 m e2) in H0. subst. now left. *)
-(*        +++ exfalso. apply H2. apply (fpr_snoc_fpr m2 m e1) in H1. subst. now right. *)
-(*        +++ exists m, e1, e2. *)
-(*            repeat (split; try now auto); subst; apply fpr_reflexivity. *)
-(*     ++ apply compare_with_snoc in H0. destruct H0. *)
-(*        +++ exfalso. apply H2. apply (fpr_snoc_fpr m1 m e2) in H0. subst. left. *)
-(*            now apply (fpr_transitivity m1 (fsnoc m e2) m2). *)
-(*        +++ exists m, e1, e2. repeat (split; try now auto); subst; apply fpr_reflexivity. *)
-(*     ++ apply compare_with_snoc in H1. destruct H1. *)
-(*        +++ exfalso. apply H2. apply (fpr_snoc_fpr m2 m e1) in H1. subst. right. *)
-(*            now apply (fpr_transitivity m2 (fsnoc m e1) m1). *)
-(*        +++ exists m, e1, e2. repeat (split; try now auto); subst; apply fpr_reflexivity. *)
-(*     ++ now exists m, e1, e2. *)
-(* Qed. *)
+Lemma myr_symmetric : forall m1 m2, myr m1 m2 -> myr m2 m1.
+Proof. firstorder. Qed. 
 
-(* Lemma longest_in_psem : forall (P' : prg tgt) m, *)
-(*     exists mm, (fpr mm m) /\ (psem P' mm) /\ *)
-(*           (fstopped mm = false) /\ *)
-(*           (forall m', fpr m' m -> psem P' m'->  fstopped m' = false -> fpr m' mm). *)
-(* Proof. *)
-(*   apply TechnicalLemmas.longest_in_psem. *)
-(* Qed. *)
+(* equivalent version of auXiliary_tstop.
+   CA: one might think to show myXr m1 m2 -> myr m1 m2  
+       and get a shorter proof. 
+       Here we re-do the proof to have it independent from Xprefix.v 
+*)
+Lemma auxiliary_tstop :
+  forall m2 l1 e1 t2, prefix m2 t2 ->
+                  traces_match (tstop l1 e1) t2 -> myr (fstop l1 e1) m2.
+Proof.
+  intros m2 l1 e1 t2 prefix2 [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]].
+  + rewrite <- Heq in *. destruct (same_ext (fstop l1 e1) m2 (tstop l1 e1)); simpl; auto;
+                          [now left |  right; now left].
+  + destruct m2, t2; simpl in prefix2; simpl in l_prefix1, l_prefix2; try now auto.   
+    ++ inversion prefix2; subst.  
+       right. right. now exists ll, i1, i2.
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.  
+    ++ destruct (list_list_same_ext l (snoc ll i2) l0); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.
+    ++ destruct (list_stream_same_ext l (snoc ll i2) s); auto.
+       * destruct (list_proper_or_equal _ _ H) as [HH | [a HH]].        
+         ** subst. right. right. now exists ll, i1, i2.
+         ** apply list_pref_snoc_pref in HH.
+            right. left. simpl. apply (list_list_prefix_trans l (snoc ll i1) l1);auto.
+            apply (list_list_prefix_trans l ll _); auto. now apply snoc_longer. 
+       * right. right. now exists ll, i1, i2.   
+Qed. 
+
+Lemma auxiliary_ftbd:
+  forall l1 l2 t1 t2, prefix (ftbd l1) t1 -> prefix (ftbd l2) t2 ->
+                  traces_match t1 t2 -> myr (ftbd l1) (ftbd l2).
+Proof.
+  intros l1 l2 t1 t2 pref1 pref2 [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]].
+  + subst. destruct (same_ext (ftbd l1) (ftbd l2) t2); auto; [now left | right; now left]. 
+  + assert (H1: prefix (ftbd (snoc ll i1)) t1).
+    { destruct t1; simpl in *; now auto. }
+    assert (H2 : prefix (ftbd (snoc ll i2)) t2).
+    { destruct t2; simpl in *; now auto. }
+    destruct (same_ext (ftbd l1) (ftbd (snoc ll i1)) t1) as [l1_shorter | l1_longer]; auto. 
+    ++ destruct (same_ext (ftbd l2) (ftbd (snoc ll i2)) t2) as [l2_shorter | l2_longer]; auto.
+       destruct (list_proper_or_equal _ _ l1_shorter) as [l1_ll | [a1 l1_ll]]; subst.
+       * destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+          ** right. right. now exists ll, i1, i2. 
+          ** apply list_pref_snoc_pref in l2_ll. right. left. simpl.
+             apply (list_list_prefix_trans l2 ll _); auto. now apply snoc_longer.  
+       * apply list_pref_snoc_pref in l1_ll.
+         destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+         **  left. simpl. apply (list_list_prefix_trans l1 ll _ ); auto. now apply snoc_longer.  
+         ** apply list_pref_snoc_pref in l2_ll. destruct (list_list_same_ext l1 l2 ll); auto;
+                                                  [now left | right; now left].  
+       * destruct (list_proper_or_equal  _ _ l1_shorter); auto; subst. 
+         ** right. right. now exists ll, i1, i2.  
+         ** destruct H as [a H]. apply list_pref_snoc_pref in H. left.
+            simpl. apply (list_list_prefix_trans l1 ll l2); auto.
+            simpl in l2_longer. apply (list_list_prefix_trans ll (snoc ll i2) l2); auto.
+            now apply snoc_longer.  
+    ++ destruct (same_ext (ftbd l2) (ftbd (snoc ll i2)) t2) as [l2_shorter | l2_longer]; auto.
+       * destruct (list_proper_or_equal _ _ l2_shorter) as [l2_ll | [a2 l2_ll]]; subst. 
+          ** right. right. now exists ll, i1, i2. 
+          ** apply list_pref_snoc_pref in l2_ll. right. left. simpl.
+             apply (list_list_prefix_trans l2 ll _); auto.
+             apply (list_list_prefix_trans ll (snoc ll i1) _); auto. now apply snoc_longer.
+        * right. right. now exists ll, i1, i2.
+Qed.   
     
-(* (* Informal proof: *) *)
-(* (* By induction on the length of m, |m|. *)
 
-(*   - Base case: |m| = 0. *)
-(*     Then either m = ftbd or m = fstop. *)
-(*     Let mm = ftbd. It is clear that (fpr ftbd m), that psem P' ftbd (because the semantics are not *)
-(*     empty), that ftbd is not stopped. *)
-(*     Let m' be a prefix of m, such that psem P' m' and m' is not stopped. Then, m' = ftbd. *)
-(*     Hence the result. *)
-(*   - Inductive case: let m be a finite prefix of length n + 1. Suppose the property is true *)
-(*     for any finite prefix m' of length n' <= n. *)
+Lemma auxiliary_lemma (t1 t2 : trace) :
+  traces_match t1 t2 ->
+  forall m1 m2, prefix m1 t1 -> prefix m2 t2 -> myr m1 m2.
+Proof.
+  intros [Heq | [ll [i1 [i2 [I1 [I2 [Idiff [l_prefix1 l_prefix2]]]]]]]] m1 m2 prefix1 prefix2. 
+  - subst. unfold myr. destruct (same_ext m1 m2 t2) as [go_left | go_right_left]; auto. 
+  - destruct m1, m2.
+    ++ destruct t1, t2; inversion prefix1; inversion prefix2; subst.
+       right. right. now exists ll, i1, i2.
+    ++ destruct t1; inversion prefix1; subst.  
+       apply (auxiliary_tstop (ftbd l0) l1 e t2); auto.
+       right. now exists ll, i1, i2. 
+    ++ destruct t2; inversion prefix2; subst. apply myr_symmetric. 
+       apply (auxiliary_tstop (ftbd l) l1 e t1); auto.
+       right. exists ll, i2, i1. repeat (split; try now auto). 
+    ++ apply (auxiliary_ftbd l l0 t1 t2); auto. right. now exists ll, i1, i2.  
+Qed. 
+  
+Lemma teq_premises_myXr_holds : forall P1 P2,
+    (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
+    (forall Cs m1 m2, psem (Cs [P1]) m1 -> psem (Cs [P2]) m2 ->
+                 myr m1 m2).
+Proof.
+  intros P1 P2 H Cs m1 m2 [t1 [pref1 sem1]] [t2 [pref2 sem2]].
+    rewrite (H Cs t1) in sem1.
+   specialize (determinacy_src (Cs[P2]) t1 t2 sem1 sem2). 
+   intros Hmatch. now apply (auxiliary_lemma t1 t2).
+Qed.
+    
 
-(*     First, we can see that since m is of length n + 1, there exists m' such that |m'| = n, *)
-(*     m' = m_1 ftbd, and m = m_1 e fstop or m = m_1 e ftbd. *)
-(*     By induction hypothesis on m' of length n, there exists mm' such that fpr mm' m', *)
-(*     psem P' mm', fstopped mm' = false, and *)
-(*     (∀ m'', fpr m'' m' -> psem P' m''->  fstopped m'' = false -> fpr m'' mm'). *)
+Lemma  longest_in_psem :
+  forall W t, ~ sem tgt W t ->
+    exists m, prefix m t /\ psem W m /\
+     (forall m', prefix m' t -> psem W m' -> fpr m' m).
+Proof.
+  intros W [] HsemWt.  
+  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
+    exists (ftbd ll). repeat (split; try now auto). 
+    intros [] Hm Hsem.
+    ++ inversion Hm; subst. destruct Hsem as [tm [Hprefmtm Hsemm]].
+       destruct tm; inversion Hprefmtm; subst. contradiction.  
+    ++ simpl in *. apply Hmax; auto. 
+  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
+    exists (ftbd ll). repeat (split; try now auto). 
+    intros [] Hx Hsemx.
+    ++ inversion Hx; subst.   
+    ++ simpl in *. apply Hmax; auto. 
+  + destruct (tgt_sem (tstream s) W) as [l [ebad [Hseml [Hprefl Hnsem_longer]]]]; auto. 
+    exists (ftbd l). simpl in *. repeat (split; try now auto).
+    ++ apply (list_stream_prefix_trans l (snoc l ebad) s); auto.
+       now apply snoc_longer.
+    ++ intros [] Hpref_x HxsemW; try now inversion Hpref_x.   
+       simpl in *. destruct (list_stream_same_ext l0 (snoc l ebad) s); auto.
+       * apply list_proper_or_equal in H. destruct H as [H | [a H]].
+         ** subst. exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]]. 
+                 now exists tx. 
+         ** now apply list_pref_snoc_pref in H.
+       * exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]].
+             exists tx. split; try now auto.
+             destruct tx; simpl in *; try now apply (list_list_prefix_trans (snoc l ebad) l0 l1). 
+             now apply (list_stream_prefix_trans (snoc l ebad) l0 s0).
+Qed.
 
-(*     Let us consider two cases: *)
-(*     + psem P' (m_1 e ftbd). *)
-(*       Here, let mm = m_1 e ftbd (i.e. m, where the terminator is replaced by ftbd) *)
-(*       ++ fpr m m therefore fpr (m_1 e ftbd) m *)
-(*       ++ psem P' (m_1 e ftbd) *)
-(*       ++ fstopped (m_1 e ftbd) = false *)
-(*       ++ let m'' be such that fpr m'' m, psem P' m'', fstopped m'' = false. *)
-(*          let us show that fpr m'' (m_1 e ftbd). This is true: any prefix of m that is not stopped *)
-(*          is also a prefix of m where the terminator is replaced by ftbd. *)
-(*     + ~ (psem P' (m_1 e ftbd)) *)
-(*       Let mm = mm'. *)
-(*       ++ fpr mm' m' and fpr m' m so by transitivity fpr m'' m. *)
-(*       ++ psem P' mm' *)
-(*       ++ fstopped mm' = false *)
-(*       ++ let m'' be such that fpr m'' m, psem P' m'', fstopped m'' = false. *)
-(*          let us show that fpr m'' mm'. *)
-(*          first, since ~(psem P' (m_1 e ftbd)), (psem P' mm'), and (fpr m'' m), we have that *)
-(*          (fpr m'' (m_1 ftbd)) i.e. (fpr m'' m') By the induction hypothesis, *)
-(*          we obtain the result, fpr m'' mm. *)
-(*     Hence, the theorem is proved for any finite prefix m. *)
-(* *) *)
+Lemma input_tot_consequence (W : prg tgt): forall l i1 i2,
+    is_input i1 -> is_input i2 -> 
+    psem W (ftbd (snoc l i1)) -> psem W (ftbd (snoc l i2)).
+Proof.
+  intros l i1 i2 Hi1 Hi2 [t [pref_x_t Hsemt]].
+  assert (psem W (ftbd  (snoc l i1))).
+  { simpl in *. now exists t. }
+  now apply (input_totality_tgt W l i1 i2) in H.
+Qed.  
+ 
+Lemma t_being_tstop_leads_to_contra (W1 W2 : prg tgt) t l2 e2 
+                                    (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 (tstop l2 e2))
+                                    (nsem12: ~ sem tgt W2 t)
+                                    (xpref_x_t : prefix (ftbd l2) t)
+  : 
+    (forall m1 m2, psem W1 m1 -> psem W2 m2 -> myr m1 m2) -> False.
+Proof.
+ intros twoX. destruct t.
+ - simpl in *. destruct (twoX (fstop l e) (fstop l2 e2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]].
+   now exists (tstop l e). now exists (tstop l2 e2).
+   + inversion xpr1; subst. contradiction.
+   + inversion xpr2; subst. contradiction.                                
+   + simpl in Hxpr1, Hxpr2.
+     apply (list_list_prefix_trans (snoc xx i2) l2 l Hxpr2) in xpref_x_t.   
+     destruct (list_list_same_ext (snoc xx i1) (snoc xx i2) l) as [F | F]; auto;
+       apply Hdiff; apply (list_snoc_diff xx _ _ ) in F; congruence.
+ - now apply (no_divergence W1 (tsilent l)).  
+ - simpl in xpref_x_t.
+   destruct (tgt_sem (tstream s) W2 nsem12) as [l [ebad [Hpsem [Hpref Hnpsem]]]]; auto. 
+   simpl in Hpref.
+   destruct (twoX (ftbd (snoc l ebad)) (fstop l2 e2))
+     as [xpr1 | [xpr2 | [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2]]]]]]]]]; auto.  
+   now exists (tstream s). now exists (tstop l2 e2).
+   + simpl in xpr1. apply Hnpsem. now exists (tstop l2 e2).
+   + simpl in *.
+     apply (list_stream_prefix_trans _ _ s) in Hxpr1; auto.  
+     apply (list_stream_prefix_trans _ _ s) in Hxpr2; auto.  
+     destruct (list_stream_same_ext (snoc xx i1) (snoc xx i2) s) as [F | F]; auto;
+     apply Hdiff; apply (list_snoc_diff xx _ _) in F; congruence.         
+Qed. 
+ 
 
-(* Hypothesis no_divergence : forall P' t, sem tgt P' t -> ~ diverges t. *)
-(* Theorem two_rRSC_teq : two_rRSC -> teq_preservation. *)
-(* Proof. *)
-(*   unfold two_rRSC, teq_preservation. intros twoR P1 P2 H0 Ct t. *)
-(*   apply NNPP. intros ff. rewrite not_iff in ff. *)
-(*   destruct ff as [[f0 f1] | [f0 f1]]. *)
-(*   + specialize (twoR myr P1 P2 (teq_premises_myr_holds P1 P2 H0)). *)
-(*      destruct (fin_or_inf t) as [Hfin | Hinf]. *)
-(*     ++ apply fin_equal in Hfin. destruct Hfin as [m Hm]. *)
-(*        destruct (longest_in_psem  (Ct [P2 ↓]) m) as [mm [Hfpr [Hpsem2 [Hstopmm Hmax]]]]. *)
-(*        destruct Hpsem2 as [t2 [Hpref2 Hsem2]]. *)
-(*        assert (H : (exists es, (embedding es mm) = t2) \/ ~ (exists es, (embedding es mm) = t2)) by now apply classic. *)
-(*        rewrite not_ex_forall_not in H. *)
-(*        destruct H as [[es Ht2t] | H]. *)
-(*        * assert (embedding es m <> embedding es mm). *)
-(*          { intros ff. apply (equal_embedding es) in Hm. subst. now rewrite <- ff in Hsem2. } *)
-(*          destruct (twoR Ct m (mm[fstop es/ftbd])). *)
-(*          ** exists t. split; try now auto. now apply equal_prefix. *)
-(*          ** exists t2. split; try now auto. rewrite <- Ht2t. now apply with_stop_prefix_embedding. *)
-(*          ** apply H. apply (equal_stopped m t) in Hm. *)
-(*             now apply equal_with_stop_same_embedding. *)
-(*          ** destruct H1 as [H1 | H1]. *)
-(*             *** apply H. assert (Heq : mm[fstop es/ftbd] = m). *)
-(*                 { apply (fpr_stop_equal (mm[fstop es/ftbd]) m); try now auto. *)
-(*                   now apply with_stop_fstopped. } *)
-(*                 rewrite (embedding_is_the_same es mm) in *. now rewrite <- Heq. *)
-(*             *** destruct H1 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]]. *)
-(*                 apply (proper_fpr es (fsnoc m0 i2) mm) in Hfpr2; try now auto. *)
-(*                 apply (fpr_transitivity (fsnoc m0 i2) mm m Hfpr2) in Hfpr; try now auto. *)
-(*                 destruct (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m) *)
-(*                   as [Hfalse | Hfalse]; try now auto. *)
-(*                 now apply (snoc_m_event_equal m0 i1 i2) in Hfalse; auto. *)
-(*                 apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence. *)
-(*                 now apply snoc_stop. *)
-(*        * destruct (proper_prefix mm t2) as [e He]; try now auto. *)
-(*          eapply no_divergence; eassumption. *)
-(*          assert (Hnot : ~ fpr (fsnoc mm e) m). *)
-(*          { intros ff. assert (Hfoo1 : psem (Ct [P2 ↓]) (fsnoc mm e)) by now exists t2. *)
-(*            assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. *)
-(*            specialize (Hmax (fsnoc mm e) ff Hfoo1 Hfoo2). *)
-(*            now apply (not_stop_not_snoc_pref mm e). } *)
-(*          destruct (twoR Ct m (fsnoc mm e)) as [K1 | [K2 | K3]]; try now auto. *)
-(*          exists t. split; auto. now apply (equal_prefix m t). *)
-(*          now exists t2. *)
-(*          assert (fstopped m = true) by now apply (equal_stopped m t). *)
-(*          assert (m = fsnoc mm e) by now apply fpr_stop_equal. now subst. *)
-(*          destruct K3 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]]. *)
-(*          assert ((fpr (fsnoc m0 i2)) mm \/ (fsnoc m0 i2) = fsnoc mm e) by *)
-(*              now apply (compare_with_snoc (fsnoc m0 i2) mm e). *)
-(*          destruct H1. *)
-(*          ** apply (fpr_transitivity (fsnoc m0 i2) mm m) in H1; try now auto. *)
-(*             apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1. *)
-(*             destruct H1; apply Hdiffi; *)
-(*               [now apply (snoc_diff m0 i1 i2) | symmetry; now apply (snoc_diff m0 i2 i1) ]. *)
-(*          ** apply same_snoc_same_pointwise in H1; try now auto. *)
-(*             destruct H1 as [Heq1 Heq2]. *)
-(*             subst. *)
-(*             assert (psem (Ct [P2 ↓]) (fsnoc mm i1)). *)
-(*             { apply (input_totality_tgt ((Ct [P2 ↓])) mm e i1); try now auto. *)
-(*             now exists t2. } *)
-(*             rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0). *)
-(*             now apply (not_stop_not_snoc_pref mm i1). *)
-(*     ++ destruct (non_empty_sem tgt (Ct [P2 ↓])) as [b Hb]. *)
-(*        destruct t,b; try now auto. *)
-(*        * unfold inf in Hinf. apply Hinf. constructor. *)
-(*        * eapply no_divergence in Hb. apply Hb. constructor. *)
-(*        * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *) *)
-(*          destruct (twoR Ct (fstop nil e) (ftbd (cons e0 nil))); try now auto. *)
-(*          now exists (tstop e). now exists (tcons e0 b). destruct H; try now auto. *)
-(*          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].  *)
-(*          destruct m as [m | m]; now destruct m. *)
-(*        * eapply no_divergence in f0. apply f0. constructor. *)
-(*        * eapply no_divergence in f0. apply f0. constructor. *)
-(*        * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *) *)
-(*          destruct (twoR Ct (ftbd (cons e nil)) (fstop nil e0)); try now auto. *)
-(*          now (exists (tcons e t)). now (exists (tstop e0)). destruct H; try now auto. *)
-(*          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].  *)
-(*          destruct m as [m | m]; now destruct m. *)
-(*        * eapply no_divergence in Hb. apply Hb. constructor. *)
-(*        * destruct (tgt_sem (tcons e t) (Ct [P2 ↓]) f1 Hinf) as *)
-(*              [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption. *)
-(*          assert ( (exists egood, psem     (Ct [P2 ↓]) (fsnoc m egood)) \/ *)
-(*                   (exists es, psem (Ct [P2 ↓]) (m[fstop es/ftbd]))  \/ *)
-(*                   (exists t, prefix m t /\ diverges t /\  sem tgt (Ct [P2 ↓]) t)) by now apply a_technical_lemma. *)
-(*         destruct H as [k1 | k2]. *)
-(*         ** destruct k1 as [egood Hpsem]. *)
-(*             assert (fstopped m = false \/ fstopped m = true) by *)
-(*                (destruct (fstopped m); now auto). *)
-(*             destruct H as [K | K]. *)
-(*          -- destruct (twoR Ct (fsnoc m ebad) (fsnoc m egood)) as [H | [H | H]]; try now auto. *)
-(*             now exists (tcons e t). apply snoc_m_event_equal in H. now subst. assumption. *)
-(*             apply snoc_m_event_equal in H. now subst. assumption. *)
-(*             destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. *)
-(*             destruct (same_snoc_same_finpref m m' egood ebad i2 i1); try now auto. *)
-(*             intros ff. now subst. *)
-(*             apply snoc_diff in Hp1; try now auto. *)
-(*             apply snoc_diff in Hp2; try now auto.  subst. *)
-(*              specialize (input_totality_tgt (Ct [P2 ↓]) m' egood ebad); try now auto. *)
-(*          -- specialize (stop_snoc_id m ebad K). *)
-(*             specialize (stop_snoc_id m egood K). *)
-(*             intros H3 H4. rewrite H3 in Hpsem. now rewrite H4 in Hpsem'. *)
-(*         ** destruct k2 as [[es k2] | [t' [k21 [k22 k23]]]]. *)
-(*            - destruct (twoR Ct  (fsnoc m ebad) (m[fstop es/ftbd])) as [H | [H | H]]; try now auto. *)
-(*              now exists (tcons e t). *)
-(*              apply Hpsem'. destruct k2 as [x [Hx HHx]]. exists x. split; try now auto. *)
-(*              now apply (fpr_pref_pref (fsnoc m ebad) (m[fstop es/ftbd]) x). *)
-(*              apply fpr_stop_equal in H. now rewrite <- H in Hpsem'. *)
-(*              now apply with_stop_fstopped. *)
-(*              destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. *)
-(*              apply proper_fpr in Hp2; try apply with_stop_fstopped; try (now apply snoc_stop). *)
-(*              apply compare_with_snoc in Hp1. destruct Hp1 as [K1 | K2]. *)
-(*              apply (same_fpr (fsnoc m' i1) (fsnoc m' i2) m K1) in Hp2. *)
-(*              destruct Hp2 as [Hp | Hp]; apply snoc_m_event_equal in Hp; now congruence. *)
-(*              assert (fstopped m = false). *)
-(*              { destruct (fstopped m) eqn : Hm; try now auto. *)
-(*                rewrite (stop_snoc_id m ebad) in K2; try now auto. *)
-(*                rewrite <- K2 in Hp2. apply snoc_m_event_equal in Hp2; auto. *)
-(*                congruence. } *)
-(*              apply same_snoc_same_pointwise in K2; try now auto. *)
-(*              destruct K2 as [K21 K22]. rewrite K21 in Hp2. *)
-(*              now apply not_stop_not_snoc_pref in Hp2. *)
-(*            - apply no_divergence in k23. contradiction. *)
-(*  + assert (Hsymm0 : forall (Cs : ctx src) (t : trace), sem src (Cs [P2]) t <-> sem src (Cs [P1]) t) *)
-(*           by now firstorder. *)
-(*    specialize (twoR myr P2 P1 (teq_premises_myr_holds P2 P1 Hsymm0)). *)
-(*      destruct (fin_or_inf t) as [Hfin | Hinf]. *)
-(*     ++ apply fin_equal in Hfin. destruct Hfin as [m Hm]. *)
-(*        destruct (longest_in_psem  (Ct [P1 ↓]) m) as [mm [Hfpr [Hpsem2 [Hstopmm Hmax]]]]. *)
-(*        destruct Hpsem2 as [t2 [Hpref2 Hsem2]]. *)
-(*        assert (H : (exists es, (embedding es mm) = t2) \/ ~ (exists es, (embedding es mm) = t2)) by now apply classic. *)
-(*        rewrite (not_ex_forall_not) in H. *)
-(*        destruct H as [[es Ht2t] | H]. *)
-(*        * assert (embedding es m <> embedding es mm). *)
-(*          { intros ff. apply (equal_embedding es) in Hm. subst. now rewrite <- ff in Hsem2. } *)
-(*          destruct (twoR Ct m (mm[fstop es/ftbd])). *)
-(*          ** exists t. split; try now auto. now apply equal_prefix. *)
-(*          ** exists t2. split; try now auto. rewrite <- Ht2t. now apply with_stop_prefix_embedding. *)
-(*          ** apply H. apply (equal_stopped m t) in Hm. *)
-(*             now apply equal_with_stop_same_embedding. *)
-(*          ** destruct H1 as [H1 | H1]. *)
-(*             *** apply H. assert (Heq : mm[fstop es/ftbd] = m). *)
-(*                 { apply (fpr_stop_equal (mm[fstop es/ftbd]) m); try now auto. *)
-(*                   now apply with_stop_fstopped. } *)
-(*                 rewrite (embedding_is_the_same es mm) in *. now rewrite <- Heq. *)
-(*             *** destruct H1 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]]. *)
-(*                 apply (proper_fpr es (fsnoc m0 i2) mm) in Hfpr2; try now auto. *)
-(*                 apply (fpr_transitivity (fsnoc m0 i2) mm m Hfpr2) in Hfpr; try now auto. *)
-(*                 destruct (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m) *)
-(*                   as [Hfalse | Hfalse]; try now auto. *)
-(*                 now apply (snoc_m_event_equal m0 i1 i2) in Hfalse; auto. *)
-(*                 apply (snoc_m_event_equal m0 i2 i1) in Hfalse; congruence. *)
-(*                 now apply snoc_stop. *)
-(*        * destruct (proper_prefix mm t2) as [e He]; try now auto. *)
-(*          eapply no_divergence; eassumption. *)
-(*          assert (Hnot : ~ fpr (fsnoc mm e) m). *)
-(*          { intros ff. assert (Hfoo1 : psem (Ct [P1 ↓]) (fsnoc mm e)) by now exists t2. *)
-(*            assert (Hfoo2 : (fstopped (fsnoc mm e) = false)) by now apply snoc_stop. *)
-(*            specialize (Hmax (fsnoc mm e) ff Hfoo1 Hfoo2). *)
-(*            now apply (not_stop_not_snoc_pref mm e). } *)
-(*          destruct (twoR Ct m (fsnoc mm e)) as [K1 | [K2 | K3]]; try now auto. *)
-(*          exists t. split; auto. now apply (equal_prefix m t). *)
-(*          now exists t2. *)
-(*          assert (fstopped m = true) by now apply (equal_stopped m t). *)
-(*          assert (m = fsnoc mm e) by now apply fpr_stop_equal. now subst. *)
-(*          destruct K3 as [m0 [i1 [i2 [Hin1 [Hin2 [Hdiffi [Hfpr1 [Hfpr2 Hstop0]]]]]]]]. *)
-(*          assert ((fpr (fsnoc m0 i2)) mm \/ (fsnoc m0 i2) = fsnoc mm e) by *)
-(*              now apply (compare_with_snoc (fsnoc m0 i2) mm e). *)
-(*          destruct H1. *)
-(*          ** apply (fpr_transitivity (fsnoc m0 i2) mm m) in H1; try now auto. *)
-(*             apply (same_fpr (fsnoc m0 i1) (fsnoc m0 i2) m Hfpr1) in H1. *)
-(*             destruct H1; apply Hdiffi; *)
-(*               [now apply (snoc_diff m0 i1 i2) | symmetry; now apply (snoc_diff m0 i2 i1) ]. *)
-(*          ** apply same_snoc_same_pointwise in H1; try now auto. *)
-(*             destruct H1 as [Heq1 Heq2]. *)
-(*             subst. *)
-(*             assert (psem (Ct [P1 ↓]) (fsnoc mm i1)). *)
-(*             { apply (input_totality_tgt ((Ct [P1 ↓])) mm e i1); try now auto. *)
-(*             now exists t2. } *)
-(*             rewrite <- snoc_stop in Hstop0. specialize (Hmax (fsnoc mm i1) Hfpr1 H1 Hstop0). *)
-(*             now apply (not_stop_not_snoc_pref mm i1). *)
-(*     ++ destruct (non_empty_sem tgt (Ct [P1 ↓])) as [b Hb]. *)
-(*        destruct t,b; try now auto. *)
-(*        * apply Hinf. constructor. *)
-(*        * eapply no_divergence in Hb. apply Hb. constructor. *)
-(*        * (* destruct (twoR Ct (fstop) (fcons e ftbd)); try now auto. *) *)
-(*          destruct (twoR Ct (fstop nil e) (ftbd (cons e0 nil))); try now auto. *)
-(*          now (exists (tstop e)). now (exists (tcons e0 b)). destruct H; try now auto. *)
-(*          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. *)
-(*          destruct m as [m | m]; now destruct m. *)
-(*        * eapply no_divergence in f1. apply f1. constructor. *)
-(*        * eapply no_divergence in f1. apply f1. constructor. *)
-(*        * (* destruct (twoR Ct (fcons e ftbd) (fstop)); try now auto. *) *)
-(*          destruct (twoR Ct (ftbd (cons e nil)) (fstop nil e0)); try now auto. *)
-(*          now (exists (tcons e t)). now (exists (tstop e0)). destruct H; try now auto. *)
-(*          destruct H as [m [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]].  *)
-(*          destruct m as [m | m]; now destruct m. *)
-(*        * eapply no_divergence in Hb. apply Hb. constructor. *)
-(*        * destruct (tgt_sem (tcons e t) (Ct [P1 ↓]) f0 Hinf) as *)
-(*                      [m [ebad [Hpsemm [Hpref Hpsem']]]]. eapply no_divergence; eassumption. *)
-(*          assert ( (exists egood, psem (Ct [P1 ↓]) (fsnoc m egood)) \/ *)
-(*                   (exists es, psem (Ct [P1 ↓]) (m[fstop es/ftbd]))  \/ *)
-(*                   (exists t, prefix m t /\ diverges t /\  sem tgt (Ct [P1 ↓]) t)) *)
-(*            by now apply a_technical_lemma. *)
-(*         destruct H as [k1 | k2]. *)
-(*         ** destruct k1 as [egood Hpsem]. *)
-(*             assert (fstopped m = false \/ fstopped m = true) by *)
-(*                (destruct (fstopped m); now auto). *)
-(*             destruct H as [K | K]. *)
-(*          -- destruct (twoR Ct (fsnoc m ebad) (fsnoc m egood)) as [H | [H | H]]; try now auto. *)
-(*             now exists (tcons e t). apply snoc_m_event_equal in H. now subst. assumption. *)
-(*             apply snoc_m_event_equal in H. now subst. assumption. *)
-(*             destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. *)
-(*             destruct (same_snoc_same_finpref m m' egood ebad i2 i1); try now auto. *)
-(*             intros ff. now subst. *)
-(*             apply snoc_diff in Hp1; try now auto. *)
-(*             apply snoc_diff in Hp2; try now auto.  subst. *)
-(*              specialize (input_totality_tgt (Ct [P1 ↓]) m' egood ebad); try now auto. *)
-(*          -- specialize (stop_snoc_id m ebad K). *)
-(*             specialize (stop_snoc_id m egood K). *)
-(*             intros H3 H4. rewrite H3 in Hpsem. now rewrite H4 in Hpsem'. *)
-(*         ** destruct k2 as [[es k2] | [t' [k21 [k22 k23]]]]. *)
-(*            - destruct (twoR Ct  (fsnoc m ebad) (m[fstop es/ftbd])) as [H | [H | H]]; try now auto. *)
-(*              now exists (tcons e t). *)
-(*              apply Hpsem'. destruct k2 as [x [Hx HHx]]. exists x. split; try now auto. *)
-(*              now apply (fpr_pref_pref (fsnoc m ebad) (m[fstop es/ftbd]) x). *)
-(*              apply fpr_stop_equal in H. now rewrite <- H in Hpsem'. *)
-(*              now apply with_stop_fstopped. *)
-(*              destruct H as  [m' [i1 [i2 [H1 [H2 [Hdiff [Hp1 [Hp2 Hstop]]]]]]]]. *)
-(*              apply proper_fpr in Hp2; try apply with_stop_fstopped; try (now apply snoc_stop). *)
-(*              apply compare_with_snoc in Hp1. destruct Hp1 as [K1 | K2]. *)
-(*              apply (same_fpr (fsnoc m' i1) (fsnoc m' i2) m K1) in Hp2. *)
-(*              destruct Hp2 as [Hp | Hp]; apply snoc_m_event_equal in Hp; now congruence. *)
-(*              assert (fstopped m = false). *)
-(*              { destruct (fstopped m) eqn : Hm; try now auto. *)
-(*                rewrite (stop_snoc_id m ebad) in K2; try now auto. *)
-(*                rewrite <- K2 in Hp2. apply snoc_m_event_equal in Hp2; auto. *)
-(*                congruence. } *)
-(*              apply same_snoc_same_pointwise in K2; try now auto. *)
-(*              destruct K2 as [K21 K22]. rewrite K21 in Hp2. *)
-(*              now apply not_stop_not_snoc_pref in Hp2. *)
-(*            - apply no_divergence in k23. contradiction. *)
-(* Qed. *)
+Lemma violates_xmax  (W1 W2 : prg tgt) t t2 l a aa
+                     (sem1 : sem tgt W1 t) (sem2 : sem tgt W2 t2)
+                     (nsem12: ~ sem tgt W2 t)
+                     (xpref_x_t : prefix (ftbd (snoc l aa)) t)
+                     (x_t2 : prefix (ftbd (snoc l a)) t2)
+                       
+  :
+    (forall m' : finpref, prefix m' t -> psem W2 m' -> fpr m' (ftbd l)) -> 
+    (forall m1 m2, psem W1 m1 -> psem W2 m2 ->  myr m1 m2) -> False.
+Proof.
+  intros xmax twoX.
+  assert (xsem1 : psem W1 (ftbd (snoc l aa))) by now exists t.
+  assert (xsem2 : psem W2 (ftbd (snoc l a))) by now exists t2.
+  specialize (twoX (ftbd (snoc l aa)) (ftbd (snoc l a)) xsem1 xsem2).
+  destruct twoX as [xpr1 | [xpr2 | matching]].
+  + simpl in xpr1. apply list_snoc_diff in xpr1. subst.
+    specialize (xmax (ftbd (snoc l a)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
+  + simpl in xpr2. apply list_snoc_diff in xpr2. subst.
+    specialize (xmax (ftbd (snoc l aa)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
+  + destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff_is [Hxpr1 Hxpr2 ]]]]]]].
+    simpl in Hxpr1, Hxpr2.  
+    apply (list_snoc_pointwise xx l i1 i2 aa a) in Hxpr2; auto.  
+    destruct Hxpr2 as [H1 H2]. subst.
+    apply (input_tot_consequence W2 l a aa) in xsem2; auto. 
+    specialize (xmax (ftbd (snoc l aa)) xpref_x_t xsem2).
+    simpl in xmax. now apply snoc_strictly_longer in xmax. 
+Qed. 
+
+Theorem R2rSP_RTEP : R2rSP -> teq_preservation.
+Proof.  
+  rewrite R2rSP_R2rSC. rewrite R2rSC_R2rSC'.
+  unfold R2rSC', teq_preservation.
+  intros twoX P1 P2 Hsrc Ct t.
+  specialize (twoX P1 P2 myr (teq_premises_myXr_holds P1 P2 Hsrc) Ct).
+  split. 
+  + intros case1.
+    apply NNPP. intros t_not_sem2.
+    destruct (longest_in_psem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
+    destruct xsem2_x as [t2 [x_t2 t2_sem2]].
+    destruct x.
+    ++ (* it can only be t2 '=' fstop p e = t *)
+       destruct t, t2; auto.
+       inversion xpref_x_t; inversion x_t2; subst; congruence.  
+    ++ destruct (three_continuations_tbd l t2 x_t2) as [t2stop | [t2silent | t2longer]].
+       +++ destruct t2stop as [e2 Ht2]. rewrite Ht2 in *. 
+           now apply (t_being_tstop_leads_to_contra (Ct [P1↓]) (Ct [P2↓]) t l e2).
+       +++ rewrite t2silent in *. 
+           now apply (no_divergence (Ct [P2↓]) (tsilent l)).         
+       +++ destruct t2longer as [a t2longer].
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
+           - destruct ttstop as [e ttstop]. subst. 
+             destruct (twoX (fstop l e) (ftbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tstop l e). now exists t2. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
+           - subst. now apply (no_divergence (Ct [P1↓]) (tsilent l)).
+           - destruct ttlonger as [aa ttlonger].
+             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 l a aa).              
+  + intros case2.
+    apply NNPP. intros t_not_sem1.
+    destruct (longest_in_psem (Ct [P1↓]) t t_not_sem1) as [x [xpref_x_t [xsem1_x x_max]]].
+    destruct xsem1_x as [t1 [x_t1 t1_sem1]].
+    assert (twoX' : forall m1 m2, psem (Ct [P2 ↓]) m1 -> psem (Ct [P1 ↓]) m2 -> myr m1 m2).
+    { intros x1 x2 H H0. apply myr_symmetric. now apply twoX. } 
+    destruct x.
+    ++ (* it can only be t2 '=' fstop p e = t *)
+       destruct t, t1; auto.
+       inversion xpref_x_t; inversion x_t1; subst; congruence.  
+    ++ destruct (three_continuations_tbd l t1 x_t1) as [t1stop | [t1silent | t1longer]].
+       +++ destruct t1stop as [e1 Ht1]. rewrite Ht1 in *. 
+           now apply (t_being_tstop_leads_to_contra (Ct [P2↓]) (Ct [P1↓]) t l e1).
+       +++ rewrite t1silent in *. 
+           now apply (no_divergence (Ct [P1↓]) (tsilent l)).         
+       +++ destruct t1longer as [a t1longer].
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
+           - destruct ttstop as [e ttstop]. subst. 
+             destruct (twoX' (fstop l e) (ftbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tstop l e). now exists t1. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
+           - subst. now apply (no_divergence (Ct [P2↓]) (tsilent l)).
+           - destruct ttlonger as [aa ttlonger].
+             now apply (violates_xmax (Ct [P2↓]) (Ct [P1↓]) t t1 l a aa). 
+Qed.    
