@@ -797,18 +797,22 @@ Definition diverges (t : trace) : Prop :=
 
 (* (*******************************************************************************) *)
 
+CoInductive stream_eq {A : Type} : stream -> stream -> Prop :=
+  | econs : forall (a : A) s1 s2, stream_eq s1 s2 -> stream_eq (scons a s1) (scons a s2). 
+
 (* CoInductive t_eq : trace -> trace -> Prop := *)
 (* | estop : forall f, t_eq (tstop f) (tstop f) *)
 (* | esilent : t_eq tsilent tsilent *)
 (* | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2). *)
-
-(* Lemma t_eq_symm : forall t1 t2, t_eq t1 t2 -> t_eq t2 t1. *)
-(* Proof. *)
-(*   cofix CH. *)
-(*   intros t1 t2 Heq. *)
-(*   inversion Heq; subst; constructor. *)
-(*   now apply CH. *)
-(* Qed. *)
+  
+  
+Lemma stream_eq_sym {A : Type} : forall (s1 s2 : stream), @stream_eq A s1 s2 -> @stream_eq A s2 s1.
+Proof.
+  cofix CH.
+  intros s1 s2 Heq.
+  inversion Heq; subst; constructor.
+  now apply CH.
+Qed.
 
 (* Lemma prefix_preserved : forall m t1 t2, prefix m t1 -> t_eq t1 t2 -> prefix m t2. *)
 (* Proof. *)
@@ -832,6 +836,14 @@ Definition diverges (t : trace) : Prop :=
 (*   now apply t_eq_symm. *)
 (* Qed. *)
 
+Lemma stream_eq_finetely_refutable {A : Type} : forall s1 s2,
+    ~ (stream_eq s1 s2) <-> (exists l (a1 a2 : A),
+                              list_stream_prefix (snoc l a1) s1 /\
+                              list_stream_prefix (snoc l a2) s2 /\
+                          a1 <> a2). 
+Admitted.
+  
+  
 (* Lemma neq_finitely_refutable : forall t1 t2, *)
 (*     ~ (t_eq t1 t2) <-> (exists m1 m2, prefix m1 t1 /\ prefix m2 t2 /\ ~ (prefix m1 t2 /\ prefix m2 t1)). *)
 (* Proof. *)
