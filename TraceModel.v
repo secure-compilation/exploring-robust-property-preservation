@@ -841,9 +841,21 @@ Lemma stream_eq_finetely_refutable {A : Type} : forall s1 s2,
                               list_stream_prefix (snoc l a1) s1 /\
                               list_stream_prefix (snoc l a2) s2 /\
                           a1 <> a2). 
-Admitted.
-  
-  
+Proof.
+  intros s1 s2. split.
+  + rewrite contra. intros H.
+    rewrite <- dne. rewrite not_ex_forall_not in H.
+    admit. 
+    
+  + intros [l [a1 [a2 [Hpref1 [Hpref2 Hdiff]]]]] Heq.
+    generalize dependent s1. generalize dependent s2.
+    induction l.
+    ++ intros [] Hpref2 [] Hpref1 Heq; simpl in *. inversion Hpref1; inversion Hpref2; subst.
+       apply Hdiff. now inversion Heq.
+    ++  intros [] Hpref2 [] Hpref1 Heq; simpl in *. inversion Hpref1; inversion Hpref2; subst.
+        apply (IHl s H2 s0 H0). now inversion Heq.   
+Admitted. 
+        
 (* Lemma neq_finitely_refutable : forall t1 t2, *)
 (*     ~ (t_eq t1 t2) <-> (exists m1 m2, prefix m1 t1 /\ prefix m2 t2 /\ ~ (prefix m1 t2 /\ prefix m2 t1)). *)
 (* Proof. *)
