@@ -94,62 +94,10 @@ Proof.
     apply omega_fact. now apply IHl1.
 Qed. 
 
-
-(* Fixpoint take_nth_pref (t : trace) (n : nat) : finpref := *)
-(*   match n, t with *)
-(*   | 0, _ | _ ,tstop | _, tsilent => ftbd *)
-(*   | S m, tcons x xs => fcons x (take_nth_pref xs m) *)
-(*   end.                            *)    
-
-(* Lemma nth_pref_pref : forall t n, prefix (take_nth_pref t n) t. *)
-(* Proof. *)
-(*   intros t n. generalize dependent t. induction n; intros t; try now auto. *)
-(*   destruct t; simpl in *; try now auto.  *)
-(* Qed.  *)
-
-(* Lemma pref_take_pref : forall m t, *)
-(*     prefix m t -> *)
-(*     prefix m (take_n t (length m)). *)
-(* Proof. *)
-(*   intros m t. generalize dependent t. destruct m as [m | m]; induction m; intros t hpref; try now auto. *)
-(*   + destruct t; try now auto. *)
-(*   + destruct t; try now auto. *)
-(*     simpl in *. destruct hpref as [h1 h2]. split; try now auto. *)
-(*   + destruct t; try now auto. *)
-(*     simpl in *; destruct hpref as [h1 h2]. split; try now auto. *)
-(* Qed.    *)
-
-(* Lemma take_embedding : forall t m, *)
-(*     prefix m t -> *)
-(*     exists es, (take_n t (length m)) = embedding es m. *)
-(* Proof. *)
-(*   intros t m. generalize dependent t. *)
-(*   destruct m as [m | m]; induction m; intros t hpref; simpl in *; *)
-(*     destruct t; subst; try now eauto. *)
-(*   - destruct hpref as [h1 h2]; subst. *)
-(*     specialize (IHm t h2). destruct IHm as [es Hes]. now rewrite Hes. *)
-(*   - destruct hpref as [h1 h2]; subst. *)
-(*     destruct (IHm t h2) as [es Hes]. eexists; now rewrite Hes. *)
-(* Qed.  *)
-
 Definition ϕ_sem : ϕ_prg -> prop :=
   fun P =>
   (fun t : trace =>
      exists l es, t = tstop l es  /\ psem (snd P) (ftbd l) /\ length l <= (fst P)).
-
-  
-(*   intros n. induction n; intros t; try now auto. *)
-(*   destruct t; simpl; try now auto. *)
-(*   + omega. *)
-(*   + omega. *)
-(*   + apply omega_fact. now apply IHn. *)
-(* Qed. *)
-
-(* Lemma length_smaller : forall P t, *)
-(*     sem L (snd P) t -> length (take_nth_pref t (fst P)) <= fst P. *)
-(* Proof. *)
-(*   intros P t hsem. now apply length_take_n. *)
-(* Qed. *)
 
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
 Proof.
@@ -161,34 +109,6 @@ Proof.
   + now apply take_n_prefix.
   + now apply take_n_lenght. 
 Qed.
-
-(* Lemma fpr_shorter: forall m1 m2, fpr m1 m2 -> length m1 <= length m2. *)
-(* Proof. *)
-(*   destruct m1 as [m1 | m1]; induction m1; intros m2 hpref; simpl; try omega. *)
-(*   + destruct m2; try now auto. inversion hpref; subst. *)
-(*     simpl. apply omega_fact. omega. *)
-(*   + destruct m2 as [m2 | m2]; destruct m2; try now auto. *)
-(*     ++ simpl. inversion hpref; subst. *)
-(*        apply omega_fact. now apply (IHm1 (fstop m2 an_endstate) H0). *)
-(*     ++ simpl. inversion hpref; subst. *)
-(*        apply omega_fact. now apply (IHm1 (ftbd m2) H0). *)
-(* Qed. *)
-  
-(* (*TODO : move to Tracemdel.v *)          *)
-(* Lemma prefix_embeding_fpr : forall m1 m2 es, *)
-(*     prefix m1 (embedding es m2) -> fpr m1 (m2[fstop es/ftbd]). *)
-(* Proof. *)
-(*   destruct m1 as [m1 | m1]; induction m1; intros [m2 | m2]; intros es hpref; try now auto; *)
-(*     try now destruct m2. *)
-(*   + destruct m2; try now auto. inversion hpref. subst. *)
-(*     simpl. specialize (IHm1 (fstop m2 e0) e H0). destruct IHm1; now subst. *)
-(*   + destruct m2; try now auto. inversion hpref. subst. *)
-(*     simpl. specialize (IHm1 (fstop m2 es) e H0). destruct IHm1; now subst. *)
-(*   + destruct m2; try now auto. inversion hpref. subst. *)
-(*     simpl. specialize (IHm1 (fstop m2 e) es H0). simpl in *; now subst.   *)
-(*   + destruct m2; try now auto. inversion hpref. subst. *)
-(*     simpl. specialize (IHm1 (fstop m2 es) es H0). simpl in *; now subst. *)
-(* Qed. *)
 
 Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
 Proof. intros n1 n2 n3 h1 h2. omega. Qed.
@@ -263,9 +183,8 @@ Qed.
 Definition my_pi :=
   fun t =>
     match t with
-    | tstop _ _ => True
     | tstream s  => stream_eq s an_omega
-    | _ => False
+    | _ => True
     end. 
 
 Lemma my_pi_liveness : Liveness my_pi.
@@ -318,8 +237,10 @@ Qed.
 (**********************************************************)
 
 Hypothesis only_an_omega_produced : exists P, forall C,
-      (sem L (plug L P C) an_omega /\
-      (forall t, sem L (plug L P C) t -> t_eq t an_omega)).
+      (sem L (plug L P C) (tstream an_omega) /\
+       (forall t, sem L (plug L P C) t ->
+         (exists s, t = tstream s /\ stream_eq s an_omega))).   
+
 
 Definition c2 : par L -> par ϕ :=
   fun P => P.
@@ -333,27 +254,17 @@ Proof.
   intros h0 [n C] t hsem.
   simpl in hsem.
   unfold ϕ_sem, ϕ_plug in hsem.
-  destruct hsem as [m [hembed [hpsem hlen]]].
+  destruct hsem as [l [es [hembed [hpsem hlen]]]].
   subst. apply all_fin_in_all_liv; try now auto.
-  now apply embed_fin.
 Qed.
 
 
 Definition my_pi2 : prop :=
-  fun t => t_eq t an_omega.
-
-
-(* the trick to unfold cofixpoint *)
-Definition frob (t : trace) : trace :=
-  match t with
-  | tstop es => tstop es
-  | tsilent => tsilent
-  | tcons e t' => tcons e t'
-  end.
-
-Theorem frob_eq : forall (t : trace), t = frob t.
-  destruct t; reflexivity.
-Qed.
+  fun t =>
+    match t with
+    | tstream s => stream_eq s an_omega
+    | _ => False
+    end. 
 
 
 Theorem separation_RLP_RPP :
@@ -364,28 +275,17 @@ Proof.
   + now apply c2_robustly_liveness.
   + intros ff. destruct only_an_omega_produced as [P h].
     specialize (ff P my_pi2).
-    unfold c2_RPP, rsat, sat in ff.
+    unfold c2_RPP, rsat, sat in ff. 
     assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
     { intros C t hsem. specialize (h C). destruct h as [h1 h2].
-      now apply h2. }
-    specialize (ff H (0, some_ctx_L) (tstop an_endstate)).
-    assert  (sem ϕ ((0, some_ctx_L) [c2 P]) (tstop an_endstate)).
-    simpl. unfold ϕ_sem, ϕ_plug. exists (ftbd nil). 
-    repeat (split; try now auto). simpl. exists an_endstate. repeat (split; try now auto).
-    exists an_omega.
-    split; try now auto. now apply (h some_ctx_L).
-    specialize (ff H0). unfold my_pi2 in ff. inversion ff.
-    unfold an_omega in H0.
-    assert (forall e, constant_trace e = tcons e (constant_trace e)).
-    { clear.
-      intros e. remember (constant_trace e) as t.
-      rewrite (frob_eq t) at 1. subst. reflexivity.
-    }
-    subst. 
-    specialize (H1 an_event).
-    simpl in *.
-    unfold an_omega in H3.
-    rewrite H1 in H3. inversion H3.      
+      destruct (h2 t hsem) as [s [H1 H2]]; now subst. }
+    specialize (ff H (0, some_ctx_L) (tstop nil an_endstate)).
+    assert  (sem ϕ ((0, some_ctx_L) [c2 P]) (tstop nil an_endstate)).
+    { simpl. unfold ϕ_sem, ϕ_plug. exists nil, an_endstate. 
+      repeat (split; try now auto). simpl. 
+      exists (tstream an_omega).  
+      split; try now auto. now apply (h some_ctx_L). } 
+    specialize (ff H0). inversion ff.    
 Qed.
 
 Require Import TopologyTrace.
