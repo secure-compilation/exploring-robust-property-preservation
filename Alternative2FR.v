@@ -7,7 +7,8 @@ Require Import Robustdef.
 Require Import Properties.
 Require Import Criteria.
 
-(** Equivalent formulations of classes 2-relational (hyper)properties
+(** Equivalent formulations for the robust preservation
+    of classes 2-relational (hyper)properties
     in terms of pair of (hyper)properties of the corresponding class 
  *)
 
