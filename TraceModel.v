@@ -3,6 +3,7 @@ Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import List.
 
+
 (** In this file, we define the trace model that will be used
     in the rest of the development, and prove several results
     about these traces. *)
@@ -805,7 +806,6 @@ CoInductive stream_eq {A : Type} : stream -> stream -> Prop :=
 (* | esilent : t_eq tsilent tsilent *)
 (* | etrace : forall (e : event) t1 t2, t_eq t1 t2 -> t_eq (tcons e t1) (tcons e t2). *)
   
-  
 Lemma stream_eq_sym {A : Type} : forall (s1 s2 : stream), @stream_eq A s1 s2 -> @stream_eq A s2 s1.
 Proof.
   cofix CH.
@@ -836,6 +836,26 @@ Qed.
 (*   now apply t_eq_symm. *)
 (* Qed. *)
 
+Definition stream_hd {A : Type} (s : @stream A) : A :=
+  match s with
+  | scons a _ => a
+  end. 
+
+Definition stream_tl {A : Type} (s : @stream A): @stream A :=
+  match s with
+  | scons _ s' => s'
+  end.
+
+Lemma stream_eq_hd_tl {A : Type} : forall (s1 s2 : @stream A),
+    stream_hd s1 = stream_hd s2 ->
+    stream_eq (stream_tl s1) (stream_tl s2) ->
+    stream_eq s1 s2.
+Proof.
+  intros [] [] H H0. simpl in *.
+  subst. now constructor. 
+Qed.
+
+
 Lemma stream_eq_finetely_refutable {A : Type} : forall s1 s2,
     ~ (stream_eq s1 s2) <-> (exists l (a1 a2 : A),
                               list_stream_prefix (snoc l a1) s1 /\
@@ -845,17 +865,34 @@ Proof.
   intros s1 s2. split.
   + rewrite contra. intros H.
     rewrite <- dne. rewrite not_ex_forall_not in H.
-    admit. 
-    
+    generalize dependent s2.
+    generalize dependent s1.
+    cofix Heq.
+    intros [] [] H.
+    assert (e = e0).
+    { specialize (H nil). rewrite not_ex_forall_not in H.
+       specialize (H e). rewrite not_ex_forall_not in H.
+       specialize (H e0). rewrite de_morgan1 in H.
+       destruct H as [H | H].  
+       * exfalso. now apply H.  
+       * rewrite de_morgan1 in H. destruct H as [H | H].
+         ** exfalso. now apply H.
+         ** now rewrite <- dne in H. }
+    subst. constructor. 
+    apply Heq.
+    intros l [a1 [a2 [Hpref1 [Hpref2 Hdiff]]]].
+    specialize (H (cons e0 l)). apply H. 
+    exists a1, a2. repeat split; try now auto.
   + intros [l [a1 [a2 [Hpref1 [Hpref2 Hdiff]]]]] Heq.
     generalize dependent s1. generalize dependent s2.
     induction l.
     ++ intros [] Hpref2 [] Hpref1 Heq; simpl in *. inversion Hpref1; inversion Hpref2; subst.
        apply Hdiff. now inversion Heq.
-    ++  intros [] Hpref2 [] Hpref1 Heq; simpl in *. inversion Hpref1; inversion Hpref2; subst.
-        apply (IHl s H2 s0 H0). now inversion Heq.   
-Admitted. 
-        
+    ++ intros [] Hpref2 [] Hpref1 Heq; simpl in *. inversion Hpref1; inversion Hpref2; subst.
+       apply (IHl s H2 s0 H0). now inversion Heq.
+Qed.
+
+
 (* Lemma neq_finitely_refutable : forall t1 t2, *)
 (*     ~ (t_eq t1 t2) <-> (exists m1 m2, prefix m1 t1 /\ prefix m2 t2 /\ ~ (prefix m1 t2 /\ prefix m2 t1)). *)
 (* Proof. *)
