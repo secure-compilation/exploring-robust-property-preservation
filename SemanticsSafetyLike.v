@@ -545,6 +545,72 @@ Proof.
 Qed.
 
 
+Lemma sem'_stream_of (c : cfg) (H1 : ~ can_get_stuck c) (H2 : ~ can_ev_loop_silent c) :
+  sem' c (tstream (stream_of c H1 H2)).
+Proof.
+  (* This is probably a stupid way of doing this proof, but it is certainly quicker than
+   taking the time to think about it *)
+  destruct (order_inf an_A) as [a' Ha'].
+  apply sem'_cons with (a := a').
+  generalize dependent c. generalize dependent a'.
+  cofix Hfix.
+  intros a' Ha' c H1 H2.
+  rewrite stream_of_eta. simpl.
+  (* rewrite (frob_eq (stream_of c H1 H2)). simpl. *)
+  destruct (indefinite_description event (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
+              (Morphisms.subrelation_proper Morphisms_Prop.ex_iff_morphism tt
+                 (Morphisms.subrelation_respectful
+                    (Morphisms.subrelation_refl (Morphisms.pointwise_relation event iff))
+                    Morphisms.iff_impl_subrelation)
+                 (fun n : event => ~ (forall c' : cfg, ~ step c n c'))
+                 (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
+                 (fun n : event => not_forall_ex_not cfg (fun n0 : cfg => ~ step c n n0))
+                 (Morphisms.iff_impl_subrelation (~ (forall (n : event) (c' : cfg), ~ step c n c'))
+                    (exists n : event, ~ (forall c' : cfg, ~ step c n c'))
+                    (not_forall_ex_not event (fun n : event => forall c' : cfg, ~ step c n c'))
+                    (not_can_get_stuck_not_stuck c H1)))) as [e H].
+  destruct (indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H) as [c' H0].
+  destruct (classicT (silent e)) as [He | He].
+  destruct (indefinite_description (list event)
+              (fun m : list event => exists c'0 : cfg, steps' c m c'0 /\ (stuck c'0 \/ m <> []))
+              (not_can_loop_silent' c (not_can_ev_loop_silent c H2))) as [m Hnsilent].
+  destruct (indefinite_description cfg (fun c'0 : cfg => steps' c m c'0 /\ (stuck c'0 \/ m <> []))
+                                   Hnsilent) as [c'' [Hc''1 Hc''2]].
+  destruct (indefinite_description event (fun e' : event => exists p' : list event, m = e' :: p')
+              (match
+                 m as l
+                 return
+                   (steps' c l c'' ->
+                    stuck c'' \/ l <> [] -> exists (e' : event) (p' : list event), l = e' :: p')
+               with
+               | [] =>
+                   fun (Hc''0 : steps' c [] c'') (Hc''3 : stuck c'' \/ [] <> []) =>
+                   match Hc''3 with
+                   | or_introl H3 =>
+                       False_ind (exists (e' : event) (p' : list event), [] = e' :: p')
+                         (H1 (can_get_stuck_steps' c [] c'' Hc''0 (stuck_now c'' H3)))
+                   | or_intror H3 =>
+                       False_ind (exists (e' : event) (p' : list event), [] = e' :: p') (H3 eq_refl)
+                   end
+               | e' :: p' =>
+                   fun (_ : steps' c (e' :: p') c'') (_ : stuck c'' \/ e' :: p' <> []) =>
+                   ex_intro (fun e'0 : event => exists p'0 : list event, e' :: p' = e'0 :: p'0) e'
+                     (ex_intro (fun p'0 : list event => e' :: p' = e' :: p'0) p' eq_refl)
+                end Hc''1 Hc''2)) as [e' Hm].
+  destruct (indefinite_description (list event) (fun p' : list event => m = e' :: p') Hm) as [p' Heq].
+  unfold eq_rec_r; unfold eq_rec; unfold eq_rect; subst; simpl in *.
+  destruct (indefinite_description cfg (fun c''0 : cfg => steps' c [e'] c''0 /\ steps' c''0 p' c'')
+                                   (steps'_cons c c'' e' p' Hc''1)) as [c'0 [Hc''11 Hc''12]].
+  assert (Hre : forall s', tstream (scons e' s') = tapp (ftbd [e']) (tstream s')) by reflexivity.
+  rewrite Hre.
+  eapply SAppN. congruence. eassumption. apply Hfix. eassumption.
+  assert (Hre : forall s', tstream (scons e s') = tapp (ftbd [e]) (tstream s')) by reflexivity.
+  rewrite Hre.
+  eapply SAppN. congruence. econstructor. apply NNPP in H0. apply H0. assumption.
+  constructor. apply Hfix. eassumption.
+Qed.
+
+
 Definition trace_of (c : cfg) : exists (t : trace), sem' c t.
 Proof.
   destruct (classicT (can_get_stuck c)) as [H | H].
@@ -574,10 +640,10 @@ Proof.
            econstructor. eapply SAppN with (c' := c').
            congruence. eauto.  apply H1.
     + exists (tstream (stream_of c H Hc)).
-      admit.
+      apply sem'_stream_of.
       Unshelve.
       exact an_A. exact an_A. exact an_A.
-Admitted.
+Qed.
 
 
 Lemma non_empty_sem : forall W, exists t, sem W t.
