@@ -167,39 +167,6 @@ Proof.
 Qed.
     
 
-Lemma  longest_in_psem :
-  forall W t, ~ sem tgt W t ->
-    exists m, prefix m t /\ psem W m /\
-     (forall m', prefix m' t -> psem W m' -> fpr m' m).
-Proof.
-  intros W [] HsemWt.  
-  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
-    exists (ftbd ll). repeat (split; try now auto). 
-    intros [] Hm Hsem.
-    ++ inversion Hm; subst. destruct Hsem as [tm [Hprefmtm Hsemm]].
-       destruct tm; inversion Hprefmtm; subst. contradiction.  
-    ++ simpl in *. apply Hmax; auto. 
-  + destruct (list_longest_in_psem W l) as [ll [Hpref [Hpsem Hmax]]].
-    exists (ftbd ll). repeat (split; try now auto). 
-    intros [] Hx Hsemx.
-    ++ inversion Hx; subst.   
-    ++ simpl in *. apply Hmax; auto. 
-  + destruct (tgt_sem (tstream s) W) as [l [ebad [Hseml [Hprefl Hnsem_longer]]]]; auto. 
-    exists (ftbd l). simpl in *. repeat (split; try now auto).
-    ++ apply (list_stream_prefix_trans l (snoc l ebad) s); auto.
-       now apply snoc_longer.
-    ++ intros [] Hpref_x HxsemW; try now inversion Hpref_x.   
-       simpl in *. destruct (list_stream_same_ext l0 (snoc l ebad) s); auto.
-       * apply list_proper_or_equal in H. destruct H as [H | [a H]].
-         ** subst. exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]]. 
-                 now exists tx. 
-         ** now apply list_pref_snoc_pref in H.
-       * exfalso. apply Hnsem_longer. destruct HxsemW as [tx [H1 H2]].
-             exists tx. split; try now auto.
-             destruct tx; simpl in *; try now apply (list_list_prefix_trans (snoc l ebad) l0 l1). 
-             now apply (list_stream_prefix_trans (snoc l ebad) l0 s0).
-Qed.
-
 Lemma input_tot_consequence (W : prg tgt): forall l i1 i2,
     is_input i1 -> is_input i2 -> 
     psem W (ftbd (snoc l i1)) -> psem W (ftbd (snoc l i2)).
@@ -282,7 +249,7 @@ Proof.
   split. 
   + intros case1.
     apply NNPP. intros t_not_sem2.
-    destruct (longest_in_psem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
+    destruct (longest_in_psem tgt_sem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
     destruct xsem2_x as [t2 [x_t2 t2_sem2]].
     destruct x.
     ++ (* it can only be t2 '=' fstop p e = t *)
@@ -307,7 +274,7 @@ Proof.
              now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 l a aa).              
   + intros case2.
     apply NNPP. intros t_not_sem1.
-    destruct (longest_in_psem (Ct [P1↓]) t t_not_sem1) as [x [xpref_x_t [xsem1_x x_max]]].
+    destruct (longest_in_psem tgt_sem (Ct [P1↓]) t t_not_sem1) as [x [xpref_x_t [xsem1_x x_max]]].
     destruct xsem1_x as [t1 [x_t1 t1_sem1]].
     assert (twoX' : forall m1 m2, psem (Ct [P2 ↓]) m1 -> psem (Ct [P1 ↓]) m2 -> myr m1 m2).
     { intros x1 x2 H H0. apply myr_symmetric. now apply twoX. } 
