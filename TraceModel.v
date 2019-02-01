@@ -63,13 +63,13 @@ Variant finpref : Set :=
 | fstop (l : list event) (es : endstate) : finpref
 | ftbd  (l : list event) : finpref. 
 
-(* Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(f) ident(p) := *)
-(*   destruct m as [ [| e p] f *)
-(*                 | [| e p] *)
-(*                 ]. *)
+Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(f) ident(p) :=
+  destruct m as [ [| e p] f
+                | [| e p]
+                ].
 
-(* Tactic Notation "induction" "finpref" ident(m) "as" ident(e) ident(f) ident(p) ident(Hp) := *)
-(*   destruct m as [m f | m]; induction m as [|e p Hp]. *)
+Tactic Notation "induction" "finpref" ident(m) "as" ident(e) ident(f) ident(p) ident(Hp) :=
+  destruct m as [m f | m]; induction m as [|e p Hp].
 
 (** Prefix relation between finite prefixes and traces *)
 (** *prefix relation *)
@@ -1025,25 +1025,34 @@ Qed.
 
 (* (* Axiom tapp : finpref -> trace -> trace. *) (* Where have all the flowers gone? *) *)
 
-(* Fixpoint tapp' (p : pref) (t : trace) : trace := *)
-(*   match p with *)
-(*   | nil => t *)
-(*   | cons e p' => tcons e (tapp' p' t) *)
-(*   end. *)
+Print finpref.
+Print trace.
 
-(* Definition tapp (m : finpref) (t : trace) : trace := *)
-(*   match m with *)
-(*   | fstop p f => embedding f (fstop p f) (* justification: *)
-(*                            we can't really add anything after a stopped trace. *) *)
-(*   | ftbd  p => tapp' p t *)
-(*   end. *)
+Fixpoint app_list_stream (l : list event) (s : stream) : stream :=
+  match l with
+  | nil => s
+  | cons e l' => scons e (app_list_stream l' s)
+  end.
 
-(* Lemma tapp_pref : forall (m : finpref) (t : trace), *)
-(*     prefix m (tapp m t). *)
-(* Proof. *)
-(*   induction finpref m as e f p IHp; intros; try now auto; *)
-(*     split; simpl in *; now auto. *)
-(* Qed. *)
+Definition tapp (m : finpref) (t : trace) : trace :=
+  match m, t with
+  | fstop l f, _ => tstop l f (* justification: *)
+(*                            we can't really add anything after a stopped trace. *)
+  | ftbd l, tstop l' f => tstop (l ++ l') f
+  | ftbd l, tsilent l' => tsilent (l ++ l')
+  | ftbd l, tstream s => tstream (app_list_stream l s)
+  end.
+
+Lemma tapp_pref : forall (m : finpref) (t : trace),
+    prefix m (tapp m t).
+Proof.
+  induction finpref m as e f p IHp; intros; try now auto.
+  - simpl in *. now destruct t.
+  - destruct t; split; simpl in *; try now auto.
+    specialize (IHp (tstop l e0)); assumption.
+    specialize (IHp (tsilent l)); assumption.
+    specialize (IHp (tstream s)); assumption.
+Qed.
 
 (* Lemma tapp_div_pref : forall (t : trace), *)
 (*     diverges t -> exists (m : finpref), fstopped m = false /\ t = tapp m tsilent. *)
