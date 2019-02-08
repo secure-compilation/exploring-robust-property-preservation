@@ -73,12 +73,6 @@ Proof.
           inversion H1. congruence. now apply list_list_prefix_ref.
 Qed.
 
-Definition RTIP :=
-  forall P1 P2,
-    (forall Cs, beh(Cs[P1]) ⊆ beh(Cs[P2])) -> 
-    (forall Ct, beh(Ct[P1↓]) ⊆ beh(Ct[P2↓])).
-
-
 Theorem R2RTP_RTIP : r2RPP -> RTIP.
 Proof.
   intros r2rpp. unfold RTIP. apply NNPP.
