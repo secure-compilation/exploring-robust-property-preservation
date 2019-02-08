@@ -921,3 +921,20 @@ Proof.
   + intros scC P1 P2 r r2ssc [Ct nr]. destruct (scC P1 P2 Ct) as [Cs [K1 K2]].
     exists Cs. intros Hf. apply nr. unfold two_sc in r2ssc. eapply r2ssc; eassumption. 
 Qed.     
+
+
+(*************************************************************************)
+(* Trace inclusion Preservation                                          *)
+(*************************************************************************)
+
+Definition RTIP :=
+  forall P1 P2,
+    (forall Cs, beh(Cs[P1]) ⊆ beh(Cs[P2])) -> 
+    (forall Ct, beh(Ct[P1↓]) ⊆ beh(Ct[P2↓])).
+
+Lemma RTIP_tep : RTIP -> teq_preservation.
+Proof.
+  unfold RTIP, teq_preservation.
+  intros rtip P1 P2 Hsrc Ct t.
+  split; [apply (rtip P1 P2) | apply (rtip P2 P1)]; firstorder. 
+Qed. 

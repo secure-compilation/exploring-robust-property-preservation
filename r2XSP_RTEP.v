@@ -467,5 +467,56 @@ Proof.
       inversion xpref_x_t; inversion x_t1; subst; congruence. 
 Qed.  
 
+
+
+Lemma tinp_premises_myXr_holds : forall P1 P2,
+    (forall Cs t, sem src (Cs [P1]) t -> sem src (Cs [P2]) t) ->
+    (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
+                 myXr x1 x2).
+Proof.
+  intros P1 P2 H Cs x1 x2 [t1 [xpref1 sem1]] [t2 [xpref2 sem2]].
+  apply (H Cs t1) in sem1.
+   specialize (determinacy_src (Cs[P2]) t1 t2 sem1 sem2). 
+   intros Hmatch. now apply (auXiliary_lemma t1 t2).
+Qed.
      
-    
+Theorem R2rXP_RTIP : R2rXP -> RTIP.
+Proof.
+  rewrite R2rXP_two. unfold two_rRXC, RTIP, beh.
+  intros twoX P1 P2 Hsrc Ct t.
+  specialize (twoX myXr P1 P2 (tinp_premises_myXr_holds P1 P2 Hsrc) Ct).
+  intros case1.
+    apply NNPP. intros t_not_sem2.
+    destruct (longest_in_xsem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
+    destruct xsem2_x as [t2 [x_t2 t2_sem2]].
+    destruct x.
+    ++ (* it can only be t2 '=' xstop p e = t *)
+       destruct t, t2; auto.
+       inversion xpref_x_t; inversion x_t2; subst; congruence.  
+    ++ destruct (three_continuations_tbd l t2 x_t2) as [t2stop | [t2silent | t2longer]].
+       +++ destruct t2stop as [e2 Ht2]. rewrite Ht2 in *. 
+           now apply (t_being_tstop_leads_to_contra (Ct [P1↓]) (Ct [P2↓]) t l e2).
+       +++ rewrite t2silent in *. 
+           now apply (t_being_tsilent_leads_to_contra  (Ct [P1↓]) (Ct [P2↓]) t l).         
+       +++ destruct t2longer as [a t2longer].
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
+           - destruct ttstop as [e ttstop]. subst. 
+             destruct (twoX (xstop l e) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tstop l e). now exists t2. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2. 
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
+           - subst. 
+             destruct (twoX (xsilent l) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
+             now exists (tsilent l). now exists t2. 
+             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2.
+             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
+                simpl in Hxpr1, Hxpr2.
+                apply (snocs_aux_lemma xx l i2 i1 a); congruence. 
+           - destruct ttlonger as [aa ttlonger].
+             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 l a aa).              
+   ++ (*  it can only be t2 '=' xsilent p e = t *)
+      destruct t, t2; auto. 
+      inversion xpref_x_t; inversion x_t2; subst; congruence. 
+Qed.   
