@@ -599,6 +599,11 @@ Proof.
     specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
 
+Theorem R2rSP_R2rSC' : R2rSP <-> R2rSC'.
+Proof.
+  now rewrite R2rSP_R2rSC, R2rSC_R2rSC'.
+Qed.
+
 (*************************************************************************)
 (** Robust 2-rel Xafety Preservation *)
 (*************************************************************************)
