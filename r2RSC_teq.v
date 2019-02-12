@@ -10,7 +10,7 @@ Require Import List.
 Require Import TechnicalLemmas.
 Require Import Criteria. 
 
-(** This file proves that r2RSC can imply RTEP *)
+(** This file proves that R2rSC can imply RTEP *)
 
 (* Definition two_rRSC : Prop := *)
 (*   forall (r : finpref -> finpref -> Prop) P1 P2 , *)
@@ -240,10 +240,10 @@ Proof.
     simpl in xmax. now apply snoc_strictly_longer in xmax. 
 Qed. 
 
-Theorem R2rSP_RTEP : R2rSP -> teq_preservation.
-Proof.  
-  rewrite R2rSP_R2rSC. rewrite R2rSC_R2rSC'.
-  unfold R2rSC', teq_preservation.
+Theorem R2rSP_RTEP : R2rSP -> RTEP.
+Proof.
+  rewrite <- R2rSC_R2rSP. rewrite R2rSC_R2rSC'.
+  unfold R2rSC', RTEP.
   intros twoX P1 P2 Hsrc Ct t.
   specialize (twoX P1 P2 myr (teq_premises_myXr_holds P1 P2 Hsrc) Ct).
   split. 
@@ -261,8 +261,7 @@ Proof.
        +++ rewrite t2silent in *. 
            now apply (no_divergence (Ct [P2↓]) (tsilent l)).         
        +++ destruct t2longer as [a t2longer].
-           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct ttstop as [e ttstop]. subst. 
+           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].           - destruct ttstop as [e ttstop]. subst. 
              destruct (twoX (fstop l e) (ftbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
              now exists (tstop l e). now exists t2. 
              -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 

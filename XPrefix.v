@@ -69,12 +69,3 @@ Proof.
    ++ now apply (list_stream_same_ext l l0 s).
 Qed.   
 
-
-(* Also definitions corresponding to CommonST *)
-
-Require Import CommonST.
-
-Definition xsem {K : language}
-                (P : prg K)
-                (m : xpref) : Prop :=
-  exists t, xprefix m t /\ (sem K) P t.

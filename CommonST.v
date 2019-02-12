@@ -1,4 +1,5 @@
-Require Import TraceModel.   
+Require Import TraceModel.
+Require Import XPrefix.
 Require Import Properties. 
 Require Import ClassicalExtras.
 Require Import Events.
@@ -33,6 +34,11 @@ Definition psem {K : language}
                 (P : prg K)
                 (m : finpref) : Prop :=
   exists t, prefix m t /\ (sem K) P t.
+
+Definition xsem {K : language}
+                (P : prg K)
+                (x : xpref) : Prop :=
+  exists t, xprefix x t /\ (sem K) P t.
 
 Definition sat {K : language}
                (P : prg K)

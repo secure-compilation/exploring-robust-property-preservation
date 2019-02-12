@@ -5,7 +5,6 @@ Require Import CommonST.
 Require Import Robustdef.
 Require Import Setoid.
 Require Import ClassicalExtras.
-Require Import Logic.ClassicalFacts.
 Require Import List.
 
 Require Import XPrefix.
@@ -242,33 +241,6 @@ Proof.
 Qed.
 
 
-Definition  two_rRXC : Prop :=
-  forall (r : xpref -> xpref -> Prop) P1 P2 ,
-    ((forall Cs x1 x2, xsem (Cs [P1]) x1 ->
-                  xsem (Cs [P2]) x2 ->
-                   r x1 x2) ->
-     (forall Ct x1 x2, xsem (Ct [P1 ↓]) x1 ->
-                  xsem (Ct [P2 ↓]) x2 ->
-                  r x1 x2)).
-
-Lemma R2rXP_two : R2rXP <->  two_rRXC.
-Proof. 
-  rewrite R2rXP_R2rXC.  
-  unfold R2rXP, two_rRXC. split.
-  - intros H r P1 P2 H' Ct m1 m2 Hsem1 Hsem2.
-    specialize (H Ct P1 P2 m1 m2 Hsem1 Hsem2).
-    destruct H as [Cs [Hsem1' Hsem2']].
-    specialize (H' Cs m1 m2 Hsem1' Hsem2'). now assumption.
-  - intros H Ct P1 P2 m1 m2 Hsem1 Hsem2.
-    specialize (H (fun m1 m2 => exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)); simpl in H.
-    specialize (H P1 P2).    
-    assert (H' : forall Cs m1 m2, xsem (Cs [P1]) m1 -> xsem (Cs [P2]) m2 ->
-                             (exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)).
-    { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
-    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
-Qed.
-
-
 Lemma input_tot_consequence (W : prg tgt): forall l i1 i2,
     is_input i1 -> is_input i2 -> 
     xsem W (xtbd (snoc l i1)) -> xsem W (xtbd (snoc l i2)).
@@ -389,86 +361,6 @@ Proof.
 Qed. 
     
 
-Theorem R2rXP_RTEP : R2rXP -> teq_preservation.
-Proof.  
-  rewrite R2rXP_two. unfold two_rRXC, teq_preservation.
-  intros twoX P1 P2 Hsrc Ct t.
-  specialize (twoX myXr P1 P2 (teq_premises_myXr_holds P1 P2 Hsrc) Ct).
-  split. 
-  + intros case1.
-    apply NNPP. intros t_not_sem2.
-    destruct (longest_in_xsem (Ct [P2↓]) t t_not_sem2) as [x [xpref_x_t [xsem2_x x_max]]].
-    destruct xsem2_x as [t2 [x_t2 t2_sem2]].
-    destruct x.
-    ++ (* it can only be t2 '=' xstop p e = t *)
-       destruct t, t2; auto.
-       inversion xpref_x_t; inversion x_t2; subst; congruence.  
-    ++ destruct (three_continuations_tbd l t2 x_t2) as [t2stop | [t2silent | t2longer]].
-       +++ destruct t2stop as [e2 Ht2]. rewrite Ht2 in *. 
-           now apply (t_being_tstop_leads_to_contra (Ct [P1↓]) (Ct [P2↓]) t l e2).
-       +++ rewrite t2silent in *. 
-           now apply (t_being_tsilent_leads_to_contra  (Ct [P1↓]) (Ct [P2↓]) t l).         
-       +++ destruct t2longer as [a t2longer].
-           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct ttstop as [e ttstop]. subst. 
-             destruct (twoX (xstop l e) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
-             now exists (tstop l e). now exists t2. 
-             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2. 
-                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
-           - subst. 
-             destruct (twoX (xsilent l) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
-             now exists (tsilent l). now exists t2. 
-             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                apply (snocs_aux_lemma xx l i2 i1 a); congruence. 
-           - destruct ttlonger as [aa ttlonger].
-             now apply (violates_xmax (Ct [P1↓]) (Ct [P2↓]) t t2 l a aa).              
-   ++ (*  it can only be t2 '=' xsilent p e = t *)
-      destruct t, t2; auto. 
-      inversion xpref_x_t; inversion x_t2; subst; congruence. 
-  + intros case2.
-    apply NNPP. intros t_not_sem1.
-    destruct (longest_in_xsem (Ct [P1↓]) t t_not_sem1) as [x [xpref_x_t [xsem1_x x_max]]].
-    destruct xsem1_x as [t1 [x_t1 t1_sem1]].
-    assert (twoX' : forall x1 x2, xsem (Ct [P2 ↓]) x1 -> xsem (Ct [P1 ↓]) x2 -> myXr x1 x2).
-    { intros x1 x2 H H0. apply myXr_symmetric. now apply twoX. } 
-    destruct x.
-    ++ (* it can only be t1 '=' xstop p e = t *)
-       destruct t, t1; auto.
-       inversion xpref_x_t; inversion x_t1; subst; congruence.  
-    ++ destruct (three_continuations_tbd l t1 x_t1) as [t1stop | [t1silent | t1longer]].
-       +++ destruct t1stop as [e1 Ht1]. rewrite Ht1 in *. 
-           now apply (t_being_tstop_leads_to_contra (Ct [P2↓]) (Ct [P1↓]) t l e1). 
-       +++ rewrite t1silent in *. 
-           now apply (t_being_tsilent_leads_to_contra  (Ct [P2↓]) (Ct [P1↓]) t l).         
-       +++ destruct t1longer as [a t1longer].
-           destruct (three_continuations_tbd l t xpref_x_t) as [ttstop | [ttsilent | ttlonger]].
-           - destruct ttstop as [e ttstop]. subst. 
-             destruct (twoX' (xstop l e) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
-             now exists (tstop l e). now exists t1. 
-             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2. 
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2. 
-                apply (snocs_aux_lemma xx l i2 i1 a); congruence.       
-           - subst. 
-             destruct (twoX' (xsilent l) (xtbd (snoc l a))) as [xpr1 | [xpr2 | matching]]; auto.
-             now exists (tsilent l). now exists t1. 
-             -- simpl in xpr2. now apply snoc_strictly_longer in xpr2.
-             -- destruct matching as [xx [i1 [i2 [Hi1 [Hi2 [Hdiff [Hxpr1 Hxpr2 ]]]]]]].
-                simpl in Hxpr1, Hxpr2.
-                apply (snocs_aux_lemma xx l i2 i1 a); congruence. 
-           - destruct ttlonger as [aa ttlonger].
-             now apply (violates_xmax (Ct [P2↓]) (Ct [P1↓]) t t1 l a aa).              
-   ++ (*  it can only be t2 '=' xsilent p e = t *)
-      destruct t, t1; auto. 
-      inversion xpref_x_t; inversion x_t1; subst; congruence. 
-Qed.  
-
-
-
 Lemma tinp_premises_myXr_holds : forall P1 P2,
     (forall Cs t, sem src (Cs [P1]) t -> sem src (Cs [P2]) t) ->
     (forall Cs x1 x2, xsem (Cs [P1]) x1 -> xsem (Cs [P2]) x2 ->
@@ -482,7 +374,7 @@ Qed.
      
 Theorem R2rXP_RTIP : R2rXP -> RTIP.
 Proof.
-  rewrite R2rXP_two. unfold two_rRXC, RTIP, beh.
+  rewrite <- R2rXC_R2rXP, R2rXC_R2rXC'. unfold R2rXC', RTIP, beh.
   intros twoX P1 P2 Hsrc Ct t.
   specialize (twoX myXr P1 P2 (tinp_premises_myXr_holds P1 P2 Hsrc) Ct).
   intros case1.
@@ -519,4 +411,8 @@ Proof.
    ++ (*  it can only be t2 '=' xsilent p e = t *)
       destruct t, t2; auto. 
       inversion xpref_x_t; inversion x_t2; subst; congruence. 
-Qed.   
+Qed.
+
+
+Theorem  R2rXP_RTEP : R2rXP -> RTEP.
+Proof. intros H. apply RTIP_RTEP. exact (R2rXP_RTIP H). Qed.

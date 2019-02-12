@@ -45,9 +45,9 @@ Axiom beh_intro2 : forall P1 P2 (h : P1 <> P2) Cs1 Cs2,
     sem src ((code_intro h Cs1 Cs2) [P2]) t = sem src (Cs2 [P2]) t.                   
 
 (* R2HSP -> r2RSP and a similar argument for k >= 2 *)
-Lemma R2HSP_R2rSP : (forall P H, H2Safe H -> RHP P H) -> R2rSP.
+Lemma R2HSP_R2rSP : R2HSP -> R2rSP.
 Proof.
-  rewrite R2HSP_R2HSC, R2rSP_R2rSC.
+  rewrite <- R2HSC_R2HSP, <- R2rSC_R2rSP.
   intros H2rsc Ct P1 P2 m1 m2 H1 H2.
   destruct H1 as [t1 [Hpref1 H1]]. 
   destruct H2 as [t2 [Hpref2 H2]].
@@ -60,7 +60,7 @@ Proof.
            now exists tt1.
        +++ destruct (Hspref m2) as [tt2 Hpref22]; simpl; auto.
            now exists tt2.
-  + apply R2HSP_RSP in H2rsc.
+  + apply R2HSC_RSC in H2rsc.
     destruct (H2rsc P1 Ct t1 H1 m1 Hpref1) as [Cs1 [t1' [H' H'']]].
     destruct (H2rsc P2 Ct t2 H2 m2 Hpref2) as [Cs2 [t2' [H2' H2'']]]. 
     exists (code_intro Hneq Cs1 Cs2). 
@@ -75,9 +75,9 @@ Qed.
 
 Hypothesis prop_ext : prop_extensionality. 
 
-Lemma RHP_R2rHP : (forall P H, RHP P H) -> R2rHP.
+Lemma RHP_R2rHP : RHP -> R2rHP.
 Proof.
-  rewrite <- RHC_RHP, R2rHP_R2rHC.
+  rewrite <- RHC_RHP, <- R2rHC_R2rHP.
   intros hrc P1 P2 Ct.
   destruct (hrc P1 Ct) as [Cs1 H1].
   destruct (hrc P2 Ct) as [Cs2 H2].
@@ -93,9 +93,9 @@ Qed.
 
 (* RSCP -> R2rSCP *)
 
-Lemma RSCP_R2rSCP : ssc_cr -> (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)).
+Lemma RSCP_R2rSCP : RSCHP -> R2rSCHP. 
 Proof.
-  rewrite two_scC. 
+  rewrite <- R2rSCHC_R2rSCHP, <- RSCHC_RSCHP.    
   intros sscr P1 P2 Ct.
   destruct (classic (P1 = P2)) as [Heq | Hneq].
   + rewrite <- Heq in *. destruct (sscr P1 Ct) as [Cs H].
@@ -104,19 +104,19 @@ Proof.
     destruct (sscr P2 Ct) as [Cs2 H2].
     exists (code_intro Hneq Cs1 Cs2).
     split; intros t H; [rewrite beh_intro1; now apply H1
-                       | rewrite beh_intro2; now apply H2].  
+                       | rewrite beh_intro2; now apply H2].        
 Qed.
 
 
-Lemma R2rSCP_R2rTP :
- (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)) -> r2RC. 
+Lemma R2rSCP_R2rTP : R2rSCHP -> R2rTP.  
 Proof.
-  rewrite two_scC. intros rp Ct P1 P2 t1 t2 H1 H2.
+  rewrite <- R2rSCHC_R2rSCHP, <- R2rTC_R2rTP.
+  intros rp Ct P1 P2 t1 t2 H1 H2.
   destruct (rp P1 P2 Ct) as [Cs [HH1 HH2]].
   exists Cs; split; [now apply HH1 | now apply HH2].
 Qed.
 
-Theorem RSCP_R2rTP : ssc_cr -> r2RC.
+Theorem RSCHP_R2rTP : RSCHP -> R2rTP.
 Proof.
   intros H. now apply R2rSCP_R2rTP; apply RSCP_R2rSCP. 
 Qed.   

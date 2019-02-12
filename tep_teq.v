@@ -19,61 +19,8 @@ Hypothesis determinacy_src    : determinacy src.
 Hypothesis tgt_sem            : semantics_safety_like tgt.
 (**********************************************************)
 
-       
-Theorem r2RPP_teq : r2RPP -> teq_preservation.
-Proof.
-  intros r2rpp. unfold teq_preservation. apply NNPP.
-  intros hf. rewrite not_forall_ex_not in hf. destruct hf as [P1 hf].
-   rewrite not_forall_ex_not in hf. destruct hf as [P2 hf].
-   rewrite not_imp in hf. destruct hf as [H1 hf].
-   rewrite not_forall_ex_not in hf. destruct hf as [Ct hf].
-   rewrite not_forall_ex_not in hf. destruct hf as [t hf].
-   rewrite not_equiv in hf. destruct hf as [K | K]; destruct K as [k1 k2].
-  +    specialize (r2rpp P1 P2 traces_match).
-       assert (Hsat : rsat2 P1 P2 traces_match).
-       { intros C b1 b2 Hb1 Hb2. rewrite (H1 C b1) in Hb1. 
-         now apply (determinacy_src (C [P2])). } 
-       specialize (r2rpp Hsat Ct t); clear Hsat.
-       assert (H : forall t2, sem tgt (Ct [P2 ↓]) t2 -> traces_match t t2). 
-       { intros t2 H. now apply r2rpp. } clear r2rpp H1.
-       destruct (longest_in_psem tgt_sem (Ct [P2 ↓]) t k2) as [l [Hmt [Hpsem_m Hmax_m]]].
-       destruct Hpsem_m as [t2 [Hmt2 Hsem_t2]].
-       specialize (H t2 Hsem_t2). destruct H; try now subst.
-       destruct H as [ll [i1 [i2 [Hi1 [Hi2 [Hdiffi [Hpref1 Hpref2]]]]]]].
-       assert (psem (Ct [P2 ↓]) (ftbd (snoc ll i1))).
-       { apply (input_totality_tgt (Ct [P2 ↓]) ll i2 i1); auto. now exists t2. }
-       assert (fpr (ftbd (snoc ll i1)) l) by now apply Hmax_m.
-       apply (fpr_pref_pref _ _ t2) in H0; auto.  
-       destruct (same_ext (ftbd (snoc ll i1)) (ftbd (snoc ll i2)) t2); auto;
-         simpl in H1.
-       ++ apply (list_snoc_pointwise ll ll i1 i2 i2 i2) in H1; auto. 
-          inversion H1. congruence. now apply list_list_prefix_ref. 
-       ++ apply (list_snoc_pointwise ll ll i2 i1 i1 i1) in H1; auto. 
-          inversion H1. congruence. now apply list_list_prefix_ref.
-   +  specialize (r2rpp P2 P1 traces_match).
-       assert (Hsat : rsat2 P2 P1 traces_match).
-       { intros C b1 b2 Hb1 Hb2. rewrite <- (H1 C b1) in Hb1. 
-         now apply (determinacy_src (C [P1])). } 
-       specialize (r2rpp Hsat Ct t); clear Hsat.
-       assert (H : forall t1, sem tgt (Ct [P1 ↓]) t1 -> traces_match t t1). 
-       { intros t1 H. now apply r2rpp. } clear r2rpp H1.
-       destruct (longest_in_psem tgt_sem (Ct [P1 ↓]) t k2) as [l [Hmt [Hpsem_m Hmax_m]]].
-       destruct Hpsem_m as [t1 [Hmt1 Hsem_t1]].
-       specialize (H t1 Hsem_t1). destruct H; try now subst.
-       destruct H as [ll [i1 [i2 [Hi1 [Hi2 [Hdiffi [Hpref1 Hpref2]]]]]]].
-       assert (psem (Ct [P1 ↓]) (ftbd (snoc ll i1))).
-       { apply (input_totality_tgt (Ct [P1 ↓]) ll i2 i1); auto. now exists t1. }
-       assert (fpr (ftbd (snoc ll i1)) l) by now apply Hmax_m.
-       apply (fpr_pref_pref _ _ t1) in H0; auto.  
-       destruct (same_ext (ftbd (snoc ll i1)) (ftbd (snoc ll i2)) t1); auto;
-         simpl in H1.
-       ++ apply (list_snoc_pointwise ll ll i1 i2 i2 i2) in H1; auto. 
-          inversion H1. congruence. now apply list_list_prefix_ref. 
-       ++ apply (list_snoc_pointwise ll ll i2 i1 i1 i1) in H1; auto. 
-          inversion H1. congruence. now apply list_list_prefix_ref.
-Qed.
 
-Theorem R2RTP_RTIP : r2RPP -> RTIP.
+Theorem R2rTP_RTIP : R2rTP -> RTIP.
 Proof.
   intros r2rpp. unfold RTIP. apply NNPP.
   intros hf. rewrite not_forall_ex_not in hf. destruct hf as [P1 hf].
@@ -106,3 +53,6 @@ Proof.
   ++ apply (list_snoc_pointwise ll ll i2 i1 i1 i1) in H1; auto. 
      inversion H1. congruence. now apply list_list_prefix_ref.
 Qed.
+
+Theorem R2rTP_RTEP : R2rTP -> RTEP.
+Proof.  intros H. apply RTIP_RTEP. exact (R2rTP_RTIP H). Qed. 

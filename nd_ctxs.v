@@ -76,9 +76,9 @@ Qed.
 (** *RTP -> R2rTP *)
 (* and with a similar argument RTP -> R r_fin TP *)
 
-Lemma RTP_R2rTP : (forall P π, RP P π) -> r2RPP. 
+Lemma RTP_R2rTP : RTP -> R2rTP. 
 Proof.
-  rewrite <- RTC_RTP, r2RPP_r2RC.
+  rewrite <- RTC_RTP, <- R2rTC_R2rTP.
   intros Hrc Ct P1 P2 t1 t2 H1 H2.
   destruct (Hrc P1 Ct t1) as [Cs1 Hs1]. specialize (Hs1 H1).
   destruct (Hrc P2 Ct t2) as [Cs2 Hs2]. specialize (Hs2 H2).
@@ -89,9 +89,9 @@ Qed.
 (* and with a similar argument RTP -> R r_fin TP *)
 
 
-Lemma RSCCP_R2SSCP : ssc_cr -> (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)).
+Lemma RSCHP_R2rSCHP : RSCHP -> R2rSCHP.
 Proof.
-  rewrite two_scC. intros sscr P1 P2 Ct.
+  rewrite <- R2rSCHC_R2rSCHP, <- RSCHC_RSCHP. intros sscr P1 P2 Ct.
   destruct (sscr P1 Ct) as [Cs1 H1].
   destruct (sscr P2 Ct) as [Cs2 H2].
   exists (Cs1 ⊕ Cs2). split.
@@ -101,11 +101,11 @@ Proof.
     now unfold "⊆". apply nd_beh2.
 Qed.
 
-Lemma RTP_R2SSCP : RTC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)). 
-Proof.
-  rewrite two_scC. 
-  intros rc P1 P2 Ct.
-Abort.
+(* Lemma RTP_R2SSCP : RTC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)).  *)
+(* Proof. *)
+(*   rewrite two_scC.  *)
+(*   intros rc P1 P2 Ct. *)
+(* Abort. *)
 (*we should apply rc for every t ∈ beh (ct[P1 ↓]) to get Cs_1 and 
                      for every t ∈ beh (ct[P2 ↓]) to get Cs_2, then 
   apply ⊕ and get the desired context. 

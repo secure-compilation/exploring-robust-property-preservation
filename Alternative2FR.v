@@ -46,7 +46,7 @@ Qed.
 
 Theorem alternative_R2rSP : R2rSP_a <-> R2rSP.
 Proof.
-  rewrite R2rSP_a_contra, R2rSP_R2rSC.
+  rewrite R2rSP_a_contra, <- R2rSC_R2rSP.
   split; intros H.
   + intros Ct P1 P2 m1 m2 H1 H2.
     specialize (H P1 P2 (fun t => ~ prefix m1 t) (fun t => ~ prefix m2 t)).
@@ -125,7 +125,7 @@ Qed.
 
 Theorem alternative_RrSP : RrSP <-> RrSP_a.
 Proof.
-  rewrite RrSP_a_contra, RrSP_RrSC. 
+  rewrite RrSP_a_contra, <- RrSC_RrSP. 
   split; intro Hr.
   + intros I ρ δ [Ct Hct].
     specialize (Hr Ct  (fun P m => psem (Ct [P↓]) m) ). 
@@ -212,9 +212,9 @@ Proof.
     exists Cs. now rewrite de_morgan2.
 Qed.     
           
-Theorem alternative_R2rTP : r2RPP <-> R2rTP_a.
+Theorem alternative_R2rTP : R2rTP <-> R2rTP_a.
 Proof.
-  rewrite r2RPP_r2RC, R2rTP_a_contra.
+  rewrite <- R2rTC_R2rTP, R2rTP_a_contra.
   split; intros Hr.
   + intros P1 P2 π1 π2 [Ct [H1 H2]].
     unfold sat in H1, H2. 
@@ -268,7 +268,7 @@ Qed.
 
 Theorem alternative_R2rHP : R2rHP <-> R2rHP_a.
 Proof.
-  rewrite R2rHP_R2rHC, R2rHP_a_contra. 
+  rewrite <- R2rHC_R2rHP, R2rHP_a_contra. 
   split; intros Hr.
   + intros P1 P2 H1 H2 [Ct [HH1 HH2]].
     destruct (Hr P1 P2 Ct) as [Cs [Heq1 Heq2]].
@@ -316,7 +316,7 @@ Qed.
 
 Theorem alternative_RrHP : RrHP <-> RrHP_a.
 Proof.
-  rewrite RrHP_RrHC, RrHP_a_contra. 
+  rewrite <- RrHC_RrHP, RrHP_a_contra. 
   split; intro Hr.
   + intros I ρ δ [Ct Ht].
     destruct (Hr Ct) as [Cs Hs].

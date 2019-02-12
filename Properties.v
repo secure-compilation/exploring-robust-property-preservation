@@ -1,11 +1,16 @@
 Require Import Events.
 Require Import TraceModel.
+Require Import XPrefix. 
 Require Import ClassicalExtras.
 
+ 
 (** This file defines properties, hyperproperties, relational properties
     and the main subclasses of these *)
 
-(*******************************************************)
+(*********************************************************)
+(** *Trace Properties                                    *)
+(*********************************************************)
+
 Definition prop := trace -> Prop.
 
 Definition Observable (π : prop) : Prop :=
@@ -22,7 +27,6 @@ Definition Liveness (π : prop) : Prop :=
   forall m : finpref, exists t : trace,
       (prefix m t /\ π t).
 
-(*******************************************************)
 
 (* some notes about safety *)
 
@@ -44,19 +48,6 @@ Proof.
     exists m. split; try now auto.
     intros. rewrite H. now exists m.
 Qed.
-
-(*
-Lemma safety_bad_finite_prefix : forall π, Safety π ->
-  forall t:trace, ~(π t) -> (exists (m:finpref) (es:endstate), prefix m t /\ ~(π (embedding es m))).
-Proof.
-  unfold Safety. intros π H t H0.
-  specialize (H t H0). destruct H as [m [H1 H2]].
-  exists m. eexists. split. assumption.
-  apply H2. now apply embed_pref.
-Unshelve.
-  exact an_endstate.
-Qed.
-*)
 
 (* some notes about liveness *)
 
@@ -101,7 +92,10 @@ Proof.
 Qed.
 
 
-(*******************************************************)
+(*********************************************************)
+(** *HyperProperties                                      *)
+(*********************************************************)
+
 
 Definition hprop := prop -> Prop.
 
@@ -130,17 +124,15 @@ Proof.
 Qed.
 
 
-(*********************************************************)
-(** SubSetClosed                                         *)
-(*********************************************************)
+(** *SubsetClosed Hyperproperties *)
 
 Definition subset (π1 π2 : prop) : Prop :=
   forall t, π1 t -> π2 t.
 
-Notation "X << Y" := (subset X Y) ( at level 50).
+Infix "⊆" := subset (at level 50).
 
 Lemma subset_trans : forall X Y Z,
-    X << Y -> Y << Z -> X << Z.
+    X ⊆ Y -> Y ⊆ Z -> X ⊆ Z.
 Proof.
   intros X Y Z H1 H2. unfold subset in *.
   intros t xt. now apply (H2 t (H1 t xt)).
@@ -148,10 +140,15 @@ Qed.
 
 Definition SSC (H : hprop) : Prop :=
   forall h, H h ->
-       (forall k, k << h -> H k).
+       (forall k, k ⊆ h -> H k).
 
 Definition lifting (h : prop) : hprop :=
-  fun π => π << h.
+  fun π => π ⊆ h.
+
+
+Definition class_lift (H : prop -> Prop) : hprop -> Prop :=
+  fun (h : hprop) => exists π, H π /\ h = lifting π.
+
 
 (*  every SSC Hyperproperty is the union of
     the lifting of its elements
@@ -204,6 +201,48 @@ Proof.
     + unfold lifting in *. now apply (subset_trans k h π).
 Qed.
 
+Definition twoSC (H : hprop) : Prop :=
+  exists t1 t2, forall b, ~ (H b) <->  (b t1 /\ b t2).
+
+(* 2SC Hyperproperties *)
+
+(* CA : according to this definition
+         H ∈ k-SC iff 
+         ∃ t1 .. tk, H = lifting (true \ t1) ∪ .. ∪ lifting (true \ tk)
+
+   notice that
+
+   (1) H ∈ 2-SC -> H ∈ k-SC ∀ k >= 2   (just take t3 = .. = tk = t2)
+   
+   (2) H ∈ 2-SC -> H ∈ SC 
+       by a previous characterization of SC hyperproperties.
+
+   ------------------------------------------------------------------------------
+
+   for k -> ∞ 
+
+    H ∈ lim_{k -> ∞ } k -SC iff
+    H = ∪_{t : trace} lifting (true \ t) = prop \ {t | t : trace}
+
+   Consequences : 
+   ---------------
+
+   (i)   such a limit is not the class SSC (and it contains only one hyperproperty)
+
+   (ii)  H ∈ 2-SC does not imply H ∈ lim_{k -> ∞ } k -SC   
+
+         e.g. lifting (true \ t) for a fixed t is in 2-SC (as ∃ t, t ..)
+              
+               but it is different from 
+               prop \ {t | t : trace} (the only inhabitant of lim_{k -> ∞ } k -SC)
+
+
+ CA: anycase nothing changes in the diagram, 
+     see theorem  R2SCHP_R2HSP 
+     
+ *)
+
+
 (** *HyperSafety *)
 
 Definition HSafe (H : hprop) : Prop :=
@@ -216,21 +255,28 @@ Proof.
   intros π. unfold Safety, HSafe.
   - intros h T h0. assert (K : (forall b, ~ T b) \/ (exists b, T b /\ ~ π b)).
     { assert (foo : (forall b, ~ T b) \/ ~(forall b,  ~T b)) by now apply classic.
-      unfold lifting, "<<" in h0. rewrite not_forall_ex_not in h0.
+      unfold lifting, "⊆" in h0. rewrite not_forall_ex_not in h0.
       destruct h0 as [b h0]. rewrite not_imp in h0. right. now exists b.
     }
     destruct K as [K | [b [K1 K2]]].
-    + exfalso. apply h0. unfold lifting, "<<". intros t ff.
+    + exfalso. apply h0. unfold lifting, "⊆". intros t ff.
       exfalso. apply (K t ff).
     + destruct (h b K2) as [m [h1 h2]].
       exists (fun m' => False \/  m' = m). split.
       ++ repeat constructor.
-      ++ split. unfold spref, "<<". intros x [hx | hx]; inversion hx.
+      ++ split. unfold spref, "⊆". intros x [hx | hx]; inversion hx.
          now  exists b.
-         intros T' h' ff. unfold spref, "<<" in h'.
+         intros T' h' ff. unfold spref, "⊆" in h'.
          destruct (h' m) as [t [ht hmt]]. now right.
-         unfold lifting, "<<" in ff. now apply ((h2 t hmt) (ff t ht)).
+         unfold lifting, "⊆" in ff. now apply ((h2 t hmt) (ff t ht)).
 Qed.
+
+(* 2-Hypersafety *)
+Definition H2Safe (H : hprop) : Prop :=
+  forall (b : prop), ~ (H b) ->
+                (exists (m1 m2 : finpref),
+                    spref (fun m => m = m1 \/ m = m2) b /\
+                    forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
 
 
 (** *HyperLiveness *)
@@ -238,7 +284,36 @@ Definition HLiv (H : hprop) : Prop :=
   forall M, Observations M ->
        (exists T, spref M T /\ H T).
 
-(*******************************************************)
+
+Definition Embedding (M : finpref -> Prop) : prop :=
+  fun t => exists m es, M m /\ t = embedding es m.
+
+Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (tstream (constant_stream an_event)).
+Proof.
+  intros M hf. inversion hf. destruct H as [es [h1 h2]].
+  unfold embedding in h2. destruct x; inversion h2.  
+Qed.
+
+
+(*********************************************************)
+(** *Relational (Hyper)Properties                        *)
+(*********************************************************)
 
 Definition rel_prop := trace -> trace -> Prop.
 Definition rel_hprop:= prop  -> prop -> Prop.
+
+Definition safety2 (r : rel_prop) :=
+  forall (t1 t2 : trace),  ~ (r t1 t2) ->
+    exists (m1 m2 : finpref),
+      prefix m1 t1 /\ prefix m2 t2 /\
+      (forall (t1' t2' : trace), prefix m1 t1' -> prefix m2 t2' -> ~(r t1' t2')).
+
+
+Definition ssc2 (r : rel_hprop) :=
+  forall b1 b2 b1' b2', r b1 b2 -> subset b1' b1 -> subset b2' b2 -> r b1' b2'.
+
+
+Definition xafety2 r := forall (t1 t2 : trace),
+  ~ (r t1 t2) ->
+  exists (m1 m2 : xpref), xprefix m1 t1 /\ xprefix m2 t2 /\
+    (forall (t1' t2' : trace), xprefix m1 t1' -> xprefix m2 t2' -> ~(r t1' t2')).
