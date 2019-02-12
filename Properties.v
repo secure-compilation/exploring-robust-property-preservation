@@ -123,6 +123,9 @@ Proof.
    specialize (H1 t Ht). now exists t.
 Qed.
 
+Definition spref_x (X : xpref -> Prop) (T : prop) : Prop :=
+  forall x, X x -> (exists t, T t /\ xprefix x t). 
+
 
 (** *SubsetClosed Hyperproperties *)
 

@@ -309,6 +309,13 @@ Proof.
     now apply (h2 (H0 Cs tt1 tt2 h0 h1)).
 Qed.
 
+(** *Robust Preservation of arbitrary Relational XSafety Properties*)
+
+Definition RrXP : Prop :=
+  forall R : (par src -> (xpref -> Prop)) -> Prop,
+     (forall Cs f, (forall P, spref_x (f P) (sem src (Cs [P]))) -> R f) ->
+     (forall Ct f, (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) -> R f).
+
 
 (** *Robust Preservation of 2-Relational  HyperProperties *)
 

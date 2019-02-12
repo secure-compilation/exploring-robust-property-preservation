@@ -6,7 +6,7 @@ Require Import TraceModel.
 Require Import Robustdef.
 Require Import Properties. 
 Require Import Topology.
-Require Import XPrefix. 
+Require Import XPrefix.
 
 (** This file proves the alternative, property-free criteria
     for the robust preservation of classes of properties *) 
@@ -652,6 +652,32 @@ Proof.
              apply xprefix_xembed_prefix in XX2. split.
   - exists t1'. tauto.
   - exists t2'. tauto.
+Qed.
+
+
+(** *Arbitrary Relational XSafety Properties *)
+
+Definition RrXC : Prop :=
+  forall Ct (f : par src -> (xpref -> Prop)),
+    (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) ->
+    exists Cs,  (forall P, spref_x (f P) (sem src (Cs [P]))).
+
+Theorem RrXC_RrXP : RrXC <-> RrXP.
+Proof.
+  unfold RrXP, RrXC. split.
+  - intros h R h0 Ct f h1. specialize (h Ct f h1).
+    destruct h as [Cs h]. now apply (h0 Cs f h). 
+  - intros h Ct f h0. apply NNPP. intros ff.
+    rewrite not_ex_forall_not in ff.
+    specialize (h (fun g => exists Cs, forall P, spref_x (g P) (sem src (Cs [P])))).
+    simpl in *.
+    assert(hh :  (forall (Cs : ctx src) (f : par src -> (xpref -> Prop)),
+       (forall P : par src, spref_x (f P) (sem src (Cs [P]))) ->
+       exists Cs0 : ctx src,
+         forall P : par src, spref_x (f P) (sem src (Cs0 [P])))).
+    { intros Cs f0 hhh. now exists Cs. }
+    destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
+    specialize (ff Cs). now auto.
 Qed.
 
 
