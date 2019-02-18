@@ -110,7 +110,7 @@ Qed.
 
 
 
-(** *Liveness Properties *)
+(** *Dense Properties *)
 
 Definition RDC : Prop :=
   forall P C' t, inf t ->
@@ -133,15 +133,18 @@ Proof.
     + exists some_ctx_src. intros H. exfalso. apply (k H).
 Qed.
 
-Theorem RDC_RDP : RDC <-> (forall P π, Liveness π -> RP P π).
+Theorem RDC_RDP : RDC <-> RDP.
 Proof.
   rewrite RDC'. split.
   - intros rlc P π Hl. rewrite contra_RP. intros [C' [t [H0 H1]]].
-    assert(Hi : inf t) by (rewrite (not_in_liv_inf π) in Hl; now apply ( Hl t H1)).
+    assert(Hi : inf t).
+    { unfold inf. intros Hf. apply H1. now apply Hl. } 
     destruct (rlc P C' t Hi H0) as [C K0]. clear rlc.
     now exists C,t.
   - intros rlp P C' t Hi H0.
-    specialize (rlp P (fun b => b <> t) (inf_excluded_is_liv t Hi)).
+    assert (HD : Dense (fun b => b <> t)).
+    { rewrite <- all_fin_in_all_liv. exact (inf_excluded_is_liv t Hi). }  
+    specialize (rlp P (fun b => b <> t) HD).
     rewrite contra_RP in rlp. destruct rlp as [C [t' [K0 K1]]].
     now exists C', t. apply NNPP in K1. subst t'.
     now exists C.

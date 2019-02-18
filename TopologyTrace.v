@@ -62,21 +62,24 @@ Proof.
     now exists x.
 Qed.
 
+Lemma Dense_dense : forall π, Dense π <-> (dense trace_topology) π.
+Proof. intros π. now rewrite <- all_fin_in_all_liv, liveness_dense. Qed. 
 
-Theorem safety_livenes_only_true :
-  forall π, (Safety π /\ Liveness π) <-> (forall t, π t).
+Theorem safety_dense_only_true :
+  forall π, (Safety π /\ Dense π) <-> (forall t, π t).
 Proof.
-  intros π. rewrite safety_closed, liveness_dense.
+  intros π. rewrite safety_closed, Dense_dense.
   now apply only_full_closed_and_dense.
 Qed.
 
-Theorem decomposition_safety_liveness :
-  forall π, exists S L, (Safety S /\ Liveness L /\
+
+Theorem decomposition_safety_dense :
+  forall π, exists S L, (Safety S /\ Dense L /\
                (forall t, π t <-> S t /\ L t)).
 Proof.
   intros π.
   destruct  (decomposition_theorem trace_topology π) as [S [L H]].
-  rewrite <- safety_closed, <- liveness_dense in H.
+  rewrite <- safety_closed, <- Dense_dense in H.
   now exists S, L.
 Qed.
 
@@ -90,7 +93,7 @@ Theorem X_dense_class
                              (forall t, S t))
         (trivial_meet : forall π, X π -> Safety π ->
                              (forall t, π t)) :
-        forall π, Liveness π <-> X π.
+        forall π, Dense π <-> X π.
 Proof.
   intros π. split.
   + intros HL. destruct (dec π) as [S [x [Hs [Hx Hmeet]]]].
@@ -103,13 +106,13 @@ Proof.
          specialize Hmeet with t.
          apply prop_ext. now firstorder. } 
        now rewrite kk.
-    ++ assert (HD : dense trace_topology π) by now rewrite (liveness_dense π) in HL.
+    ++ assert (HD : dense trace_topology π) by now rewrite (Dense_dense π) in HL.
        destruct (HD (fun t => ~ S t)) as [t' [St' pit']]. 
        { now apply safety_closed. }
        { now exists t. }
        destruct (Hmeet t') as [contra foo].
        destruct (contra pit') as [contra' foo']. contradiction.
-  + intros HX. rewrite liveness_dense.
+  + intros HX. rewrite Dense_dense.
     apply (dense_closure_true).
     intros t C HC H. apply (dec_triv π C π); auto. 
     firstorder.

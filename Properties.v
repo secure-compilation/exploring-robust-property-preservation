@@ -23,6 +23,11 @@ Definition Safety (π : prop) : Prop :=
        (exists m, prefix m t /\
             (forall t', prefix m t' -> ~ π t')).
 
+
+Definition Dense (π : prop) : Prop :=
+  forall t, fin t -> π t. 
+
+
 Definition Liveness (π : prop) : Prop :=
   forall m : finpref, exists t : trace,
       (prefix m t /\ π t).
@@ -49,13 +54,12 @@ Proof.
     intros. rewrite H. now exists m.
 Qed.
 
-(* some notes about liveness *)
+(* some notes about dense *)
 
 (* In this model a property is Liveness iff it includes all finite traces *)
 (* - intuition: can always turn finpref into finite trace by adding fstop *)
 Lemma all_fin_in_all_liv :
-  forall π, Liveness π <->
-   (forall t, fin t -> π t).
+  forall π, Liveness π <-> Dense π.
 Proof.
   unfold Liveness. intros π. split.
   - intros Hl [] Hfin; try contradiction.  

@@ -79,7 +79,7 @@ Definition RSP := forall P π, Safety π -> RP P π.
 
 (** *Robust Preservation of Liveness Properties *)
 
-Definition RDP := forall P π, Liveness π -> RP P π. 
+Definition RDP := forall P π, Dense π -> RP P π. 
 
 
 (*********************************************************)

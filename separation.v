@@ -130,7 +130,7 @@ Definition ϕ := Build_language ϕ_plug
 
 
 (**********************************************************)
-(* RSP =/=> RPP                                           *)
+(* RSP =/=> RTP                                           *)
 (**********************************************************)
 
 Definition c : par ϕ -> par L :=
@@ -187,9 +187,9 @@ Definition my_pi :=
     | _ => True
     end. 
 
-Lemma my_pi_liveness : Liveness my_pi.
+Lemma my_pi_dense : Dense my_pi.
 Proof.
-  apply all_fin_in_all_liv. intros t Hfin. destruct t; now inversion Hfin. 
+  intros t Hfin. destruct t; now inversion Hfin. 
 Qed.
 
 Lemma another_omega_not_in_my_pi : ~ my_pi (tstream another_omega).
@@ -206,9 +206,9 @@ Qed.
 
 Axiom some_ctx_L : ctx L.
 
-Theorem separation_RSP_RLP :
+Theorem separation_RSP_RDP :
   (forall P π, Safety π -> c_RPP P π) /\
-  ~  (forall P π, Liveness π -> c_RPP P π).
+  ~  (forall P π, Dense π -> c_RPP P π).
 Proof.
   split.
   + now apply C_robustly_safety.
@@ -218,22 +218,22 @@ Proof.
     assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug P C) t -> my_pi t)).
     { intros C t H0. simpl in H0. unfold ϕ_sem, ϕ_plug in H0.
       destruct H0 as [m [e [hm H0]]]. now rewrite hm. }
-    specialize (ff my_pi_liveness hh).  specialize (ff some_ctx_L (tstream another_omega)).
+    specialize (ff my_pi_dense hh).  specialize (ff some_ctx_L (tstream another_omega)).
     assert (sem L (some_ctx_L [P]) (tstream another_omega)) by now apply (H some_ctx_L).
     specialize (ff H0). now apply another_omega_not_in_my_pi.
 Qed.
 
-Theorem separation_RSP_RPP : (forall P π, Safety π -> c_RPP P π) /\ ~  (forall P π, c_RPP P π).
+Theorem separation_RSP_RTP : (forall P π, Safety π -> c_RPP P π) /\ ~  (forall P π, c_RPP P π).
 Proof.
   split.
   + now apply C_robustly_safety.
   + intros ff. destruct another_omega_produced as [P H].
-    destruct separation_RSP_RLP as [K1 K2].
+    destruct separation_RSP_RDP as [K1 K2].
     now apply K2.
 Qed.
 
 (**********************************************************)
-(* RLP =/=> RPP                                           *)
+(* RDP =/=> RTP                                           *)
 (**********************************************************)
 
 Hypothesis only_an_omega_produced : exists P, forall C,
@@ -248,14 +248,14 @@ Definition c2 : par L -> par ϕ :=
 Definition c2_RPP (P : par L) (π : prop) : Prop :=
   rsat P π -> rsat (c2 P) π.
 
-Lemma c2_robustly_liveness: forall P π, Liveness π -> c2_RPP P π.
+Lemma c2_robustly_dense: forall P π, Dense π -> c2_RPP P π.
 Proof.
   intros P π hl. unfold c2_RPP, rsat, sat.
   intros h0 [n C] t hsem.
   simpl in hsem.
   unfold ϕ_sem, ϕ_plug in hsem.
   destruct hsem as [l [es [hembed [hpsem hlen]]]].
-  subst. apply all_fin_in_all_liv; try now auto.
+  subst. now apply hl.  
 Qed.
 
 
@@ -267,12 +267,12 @@ Definition my_pi2 : prop :=
     end. 
 
 
-Theorem separation_RLP_RPP :
-  (forall P π, Liveness π -> c2_RPP P π) /\
+Theorem separation_RDP_RTP :
+  (forall P π, Dense π -> c2_RPP P π) /\
   ~  (forall P π, c2_RPP P π).
 Proof.
   split.
-  + now apply c2_robustly_liveness.
+  + now apply c2_robustly_dense.
   + intros ff. destruct only_an_omega_produced as [P h].
     specialize (ff P my_pi2).
     unfold c2_RPP, rsat, sat in ff. 
@@ -290,12 +290,12 @@ Qed.
 
 Require Import TopologyTrace.
 
-Lemma RLP_plus_RSP_RPP :
-  (forall P π, Liveness π -> c2_RPP P π) ->
+Lemma RDP_plus_RSP_RTP :
+  (forall P π, Dense π -> c2_RPP P π) ->
   (forall P π, Safety π -> c2_RPP P π) ->
   (forall P π, c2_RPP P π).
 Proof.
-  intros h1 h2 P π. destruct (decomposition_safety_liveness π) as
+  intros h1 h2 P π. destruct (decomposition_safety_dense π) as
       [s [l [hs [hl h]]]]. unfold c2_RPP, rsat, sat in *.
   intros hh C t hsem. rewrite (h t).
   assert (hhs : forall C t, sem L (C [P]) t -> s t) by now firstorder.
@@ -306,13 +306,13 @@ Proof.
 Qed.
 
 Corollary separation_RLP_RSP :
-   (forall P π, Liveness π -> c2_RPP P π) /\
+   (forall P π, Dense π -> c2_RPP P π) /\
    ~  (forall P π, Safety π ->  c2_RPP P π).
 Proof.
   split.
-  + now apply c2_robustly_liveness.
+  + now apply c2_robustly_dense.
   + intros ff.
     assert (forall P π, c2_RPP P π).
-    { apply RLP_plus_RSP_RPP. now apply c2_robustly_liveness. auto. }
-    destruct separation_RLP_RPP as [K1 K2]. now auto.
+    { apply RDP_plus_RSP_RTP. now apply c2_robustly_dense. auto. }
+    destruct separation_RDP_RTP as [K1 K2]. now auto.
 Qed.
