@@ -93,7 +93,7 @@ Theorem X_dense_class
                              (forall t, S t))
         (trivial_meet : forall π, X π -> Safety π ->
                              (forall t, π t)) :
-        forall π, Dense π <-> X π.
+        forall π, (dense trace_topology π) <-> X π.
 Proof.
   intros π. split.
   + intros HL. destruct (dec π) as [S [x [Hs [Hx Hmeet]]]].
@@ -106,14 +106,28 @@ Proof.
          specialize Hmeet with t.
          apply prop_ext. now firstorder. } 
        now rewrite kk.
-    ++ assert (HD : dense trace_topology π) by now rewrite (Dense_dense π) in HL.
-       destruct (HD (fun t => ~ S t)) as [t' [St' pit']]. 
+    ++ destruct (HL (fun t => ~ S t)) as [t' [St' pit']]. 
        { now apply safety_closed. }
        { now exists t. }
        destruct (Hmeet t') as [contra foo].
        destruct (contra pit') as [contra' foo']. contradiction.
-  + intros HX. rewrite Dense_dense.
+  + intros HX. 
     apply (dense_closure_true).
     intros t C HC H. apply (dec_triv π C π); auto. 
     firstorder.
-Qed. 
+Qed.
+
+
+Theorem X_Dense_class
+        (X : hprop)
+        (dec : forall π, exists S x, Safety S /\ X x /\
+                           (forall t, π t <-> (S t /\ x t)))
+        (dec_triv: forall x S x', X x -> Safety S -> X x' ->
+                             (forall t, x t <-> (S t /\ x t)) ->
+                             (forall t, S t))
+        (trivial_meet : forall π, X π -> Safety π ->
+                             (forall t, π t)) :
+  forall π, Dense π <-> X π.
+Proof. intros π. rewrite <- (X_dense_class X); try now auto; try now rewrite Dense_dense;
+                   auto.
+Qed.        
