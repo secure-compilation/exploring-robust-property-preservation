@@ -426,9 +426,9 @@ Section source_determinism.
 
   Hypothesis src_det : forall P t1 t2, sem src P t1 -> sem src P t2 -> t1 = t2.
 
-  Theorem R2rTC_RTEP : R2rTC -> RTEP.
+  Theorem R2rTP_RTEP : R2rTP -> RTEP.
   Proof.
-    unfold R2rTC. rewrite RTEP'. intros H P1 P2 [Ct [t' H']].
+    rewrite <- R2rTC_R2rTP. unfold R2rTC. rewrite RTEP'. intros H P1 P2 [Ct [t' H']].
     rewrite not_iff in H'. destruct H' as [[H1' nH2'] | [nH1' H2']].
     - destruct (non_empty_sem tgt (Ct [P2 ↓])) as [t2 H2'].
       destruct (H _ _ _ _ _ H1' H2') as [Cs [H1 H2]].
