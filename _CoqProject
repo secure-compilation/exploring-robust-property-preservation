@@ -14,9 +14,9 @@ Criteria.v
 R2rTP_RTEP.v
 R2rXP_RTEP.v
 R2rSP_RTEP.v
-separation.v
+Separation.v
 TechnicalLemmas.v
-reflection.v
-nd_ctxs.v
+FullReflection.v
+InternalNondet.v
 Alternative2FR.v
 SemanticsSafetyLike.v
