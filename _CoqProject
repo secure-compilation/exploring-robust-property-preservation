@@ -11,13 +11,12 @@ Topology.v
 TopologyTrace.v
 Robustdef.v
 Criteria.v
-r2RSC_teq.v
-r2XSP_RTEP.v
+R2rTP_RTEP.v
+R2rXP_RTEP.v
+R2rSP_RTEP.v
 separation.v
-tep_teq.v
 TechnicalLemmas.v
 reflection.v
 nd_ctxs.v
 Alternative2FR.v
-SemanticsSafetyLike.v 
-
+SemanticsSafetyLike.v
