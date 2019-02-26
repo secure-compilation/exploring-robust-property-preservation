@@ -450,7 +450,7 @@ Definition RrTC :=
     (forall P, sem tgt (Ct [P↓]) (f P)) ->
     exists Cs, (forall P, sem src (Cs [P]) (f P)).
 
-Lemma RrTC_RrTP : RrTC <-> RrTP.
+Lemma RrTC_RrTP : RrTC <-> RrTP'.
 Proof.
   split.
   - intros HRrTC R. rewrite contra.
@@ -550,9 +550,9 @@ Definition RrSC : Prop :=
     (forall P, spref (f P) (sem tgt (Ct [P↓]))) ->
     exists Cs,  (forall P, spref (f P) (sem src (Cs [P]))).
 
-Theorem RrSC_RrSP : RrSC <-> RrSP.
+Theorem RrSC_RrSP' : RrSC <-> RrSP'.
 Proof.
-  unfold RrSP, RrSC. split.
+  unfold RrSP', RrSC. split.
   - intros h R h0 Ct f h1. specialize (h Ct f h1).
     destruct h as [Cs h]. now apply (h0 Cs f h).
   - intros h Ct f h0. apply NNPP. intros ff.
@@ -665,9 +665,9 @@ Definition RrXC : Prop :=
     (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) ->
     exists Cs,  (forall P, spref_x (f P) (sem src (Cs [P]))).
 
-Theorem RrXC_RrXP : RrXC <-> RrXP.
+Theorem RrXC_RrXP' : RrXC <-> RrXP'.
 Proof.
-  unfold RrXP, RrXC. split.
+  unfold RrXP', RrXC. split.
   - intros h R h0 Ct f h1. specialize (h Ct f h1).
     destruct h as [Cs h]. now apply (h0 Cs f h). 
   - intros h Ct f h0. apply NNPP. intros ff.
@@ -725,9 +725,9 @@ Qed.
 Definition RrHC : Prop :=
   forall Ct, exists Cs,  (forall P, sem src (Cs [P]) = sem tgt (Ct [P ↓])).
 
-Theorem RrHC_RrHP : RrHC <-> RrHP.
+Theorem RrHC_RrHP' : RrHC <-> RrHP'.
 Proof.
-  unfold RrHP, RrHC. split.
+  unfold RrHP', RrHC. split.
   - intros h R hcs Ct. destruct (h Ct) as [Cs h0]; clear h.
     specialize (hcs Cs).
     assert (hh :  (fun P : par src => sem src (Cs [P])) =

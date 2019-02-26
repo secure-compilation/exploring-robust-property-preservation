@@ -123,9 +123,9 @@ Proof.
 Qed.
 
 
-Theorem alternative_RrSP : RrSP <-> RrSP_a.
+Theorem alternative_RrSP' : RrSP' <-> RrSP_a.
 Proof.
-  rewrite RrSP_a_contra, <- RrSC_RrSP. 
+  rewrite RrSP_a_contra, <- RrSC_RrSP'. 
   split; intro Hr.
   + intros I ρ δ [Ct Hct].
     specialize (Hr Ct  (fun P m => psem (Ct [P↓]) m) ). 
@@ -314,9 +314,9 @@ Proof.
     exists Cs. now rewrite not_ex_forall_not.
 Qed. 
 
-Theorem alternative_RrHP : RrHP <-> RrHP_a.
+Theorem alternative_RrHP' : RrHP' <-> RrHP_a.
 Proof.
-  rewrite <- RrHC_RrHP, RrHP_a_contra. 
+  rewrite <- RrHC_RrHP', RrHP_a_contra. 
   split; intro Hr.
   + intros I ρ δ [Ct Ht].
     destruct (Hr Ct) as [Cs Hs].

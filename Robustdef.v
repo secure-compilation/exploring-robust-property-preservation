@@ -233,7 +233,7 @@ Qed.
 (** *Robust Preservation of arbitrary-Relational Properties *)
 
 
-Definition RrTP : Prop :=
+Definition RrTP' : Prop :=
   forall R : (par src  ->  trace) -> Prop,
     (forall Cs f,  (forall P, sem src (Cs [P]) (f P)) -> R f) ->
     (forall Ct f,  (forall P, sem tgt (Ct [P↓]) (f P)) -> R f). 
@@ -274,7 +274,7 @@ Qed.
 
 (** *Robust Preservation of arbitrary Relational Safety Properties*)
 
-Definition RrSP : Prop :=
+Definition RrSP' : Prop :=
   forall R : (par src -> (finpref -> Prop)) -> Prop,
      (forall Cs f, (forall P, spref (f P) (sem src (Cs [P]))) -> R f) ->
      (forall Ct f, (forall P, spref (f P) (sem tgt (Ct [P↓]))) -> R f).
@@ -311,7 +311,7 @@ Qed.
 
 (** *Robust Preservation of arbitrary Relational XSafety Properties*)
 
-Definition RrXP : Prop :=
+Definition RrXP' : Prop :=
   forall R : (par src -> (xpref -> Prop)) -> Prop,
      (forall Cs f, (forall P, spref_x (f P) (sem src (Cs [P]))) -> R f) ->
      (forall Ct f, (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) -> R f).
@@ -325,7 +325,7 @@ Definition R2rHP : Prop :=
 
 (** *Robust Preservation of arbitrary Relational HyperProperties*)
 
-Definition RrHP : Prop :=
+Definition RrHP' : Prop :=
   forall R : (par src  ->  prop) -> Prop,
     (forall Cs, R (fun P  => sem src (Cs [ P] ) )) ->
     (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )).
