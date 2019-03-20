@@ -2,22 +2,7 @@
 -R . RHP
 
 ClassicalExtras.v
-Events.v
-TraceModel.v
-Properties.v
-CommonST.v
-XPrefix.v
-Topology.v
-TopologyTrace.v
-Robustdef.v
-Criteria.v
-r2RSC_teq.v
-r2XSP_RTEP.v
-separation.v
-tep_teq.v
-TechnicalLemmas.v
-reflection.v
-nd_ctxs.v
-Alternative2FR.v
-SemanticsSafetyLike.v 
 
+DiffEvents.v
+DiffTraceModel.v
+SigmaTau.v
