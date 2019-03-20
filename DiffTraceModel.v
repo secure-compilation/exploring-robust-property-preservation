@@ -86,5 +86,3 @@ Definition prefix {k : level} (m : @finpref k) (t : @trace k) : Prop :=
   | _, _ => False
   end.
 
-
-Definition prop {k : level} := @trace k -> Prop. 

@@ -6,66 +6,50 @@ Unset Printing Implicit Defensive.
 
 Require Import DiffEvents.
 Require Import DiffTraceModel.
+Require Import DiffProperties.
+Require Import DiffCommonST.
 Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import List.
 
-Record language {k : level} :=
-  {
-    par  : Set;  (* partial programs *)
-    prg  : Set;  (* whole programs *)
-    ctx  : Set;  (* context *)
-    plug : par -> ctx -> prg;
-    sem  : prg -> @prop k;
-    non_empty_sem : forall W, exists t, sem W t
-  }.
-
-
-Axiom src : @language source.
-Axiom tgt : @language target.
-Axiom compile_par : (par src) -> (par tgt).
-Axiom compile_ctx : (ctx src) -> (ctx tgt).
-Axiom compile_prg : (prg src) -> (ctx tgt).
-
-(*TODO: fix notation *)
-Notation "C [ P ]" := (plug P C) (at level 50).
-
-Notation "P ↓" := (compile_par P) (at level 50).
-
-Definition sat {k : level}
-               {K : language}
-               (P : prg K)
-               (π : @prop k) : Prop :=
-  forall t, sem P t -> π t.
-
-Definition rsat {k : level}
-                {K : language}
-                (P : par K)
-                (π : @prop k) : Prop :=
-  forall C, sat (plug P C) π.
-
-Lemma neg_rsat {k : level} {K : @language k} :
-  forall (P : @par k K) (π : @prop k),
-    (~ rsat P π <->
-           (exists C t, sem (plug P C) t /\ ~ π t)).
-Proof.
-Admitted. (* TODO: port this proof in ssreflect style *)
-
+Definition σRP (σ : @prop target -> @prop source)
+           (P : par src) (π : @prop target) :=
+   rsat P (σ π) -> rsat (P↓) π.
 
 Definition σRTP (σ : @prop target -> @prop source) :=
-  forall (P : par src) (π : @prop target),
-  rsat P (σ π) -> rsat (P↓) π.
+  forall (P : par src) (π : @prop target), σRP (σ) P π. 
+
+Definition τRP (τ : @prop source -> @prop target)
+               (P : par src) (π : @prop source) :=
+  rsat P  π -> rsat (P↓) (τ π).
 
 Definition τRTP (τ : @prop source -> @prop target) :=
-  forall (P : par src) (π : @prop source),
-    rsat P  π -> rsat (P↓) (τ π).
+  forall (P : par src) (π : @prop source), τRP (τ) P π. 
+
+Lemma contra_τRP (τ : @prop source -> @prop target)
+                 (P : par src) (π : @prop source) :
+  τRP τ P π <-> ((exists Ct t, sem (plug (P↓) Ct) t /\ ~ (τ π) t) ->
+               (exists Cs s, sem (plug P Cs) s /\ ~ π s)).
+Proof.
+ unfold τRP. by rewrite [_ -> _] contra !neg_rsat. 
+Qed.
 
 Lemma contra_τRTP (τ : @prop source -> @prop target) :
   τRTP τ <-> ( forall (P : par src) (π : @prop source),
                (exists Ct t, sem (plug (P↓) Ct) t /\ ~ (τ π) t) ->
                (exists Cs s, sem (plug P Cs) s /\ ~ π s)).
-Admitted. 
+Proof.
+ unfold τRTP. split => H P π; move: (H P π); by rewrite -contra_τRP.   
+Qed. 
 
+Lemma contra_σRP (σ : @prop target -> @prop source)
+                  (P : par src) (π : @prop target) :
+  σRP σ P π <-> ((exists Ct t, sem (plug (P↓) Ct) t /\ ~ π t) ->
+               (exists Cs s, sem (plug P Cs) s /\ ~ (σ π) s)).
+Proof.   
+  unfold σRP. by rewrite [_ -> _] contra !neg_rsat.
+Qed.
+  
 Variable rel : @trace source -> @trace target -> Prop. 
 
 Definition tilde_RTC := forall P Ct (t : @trace target),
@@ -90,9 +74,6 @@ Proof.
    { exists Ct, t. split; auto. unfold τ'. move => [s [Hc Hcc]] //=. }
    move  => Cs [s [Hsems H]]. exists Cs, s. split; auto; by apply: NNPP.                                  
 Qed.
-
-
-Notation "π1 ⊆ π2" := (forall t, π1 t -> π2 t) (at level 50).
 
 Lemma rsat_upper_closed {k : level} {K : @language k}:
   forall (P : par K) (π1 π2 : @prop k), rsat P π1 -> π1 ⊆ π2 -> rsat P π2.  
@@ -140,11 +121,90 @@ Proof.
   exists t. split; auto. now exists s.
 Qed.
 
+Definition total_rel (r : @trace source -> @trace target -> Prop) :=
+  forall s, exists t, rel s t. 
 
 Lemma Galois_implies_total_rel :
-  Galois_cp σ' τ' -> (forall s, exists t, rel s t).
+  Galois_cp σ' τ' -> (total_rel rel).
 Proof.
   move => [G1 G2] s.
   have Hs: (σ' (τ' (fun s' => s' = s))) s by apply: G1.   
   destruct Hs as [t Hs]. now exists t.
-Qed. 
+Qed.
+
+(******************************************************************************)
+(** *Safety *)
+(******************************************************************************)
+
+Definition tilde_RSC :=
+  forall P Ct (t : @trace target) (m : @finpref target),
+   prefix m t -> sem (plug (P ↓) Ct) t ->
+   (exists Cs t' s, rel s t' /\ prefix m t' /\ sem (plug P Cs) s).
+
+Notation "f ∘ g" := (fun t => f (g t)) (at level 50).
+
+Theorem tilde_RSC_σRSP :
+  (total_rel rel) ->
+  (forall πt, @Safety target πt -> (τ' (σ' πt) ⊆ πt)) ->
+  ( tilde_RSC <->
+  (forall P (π : @prop target), Safety π -> σRP σ' P π)). 
+Proof.
+  move => Htotal_rel G2_forSafety. 
+  split. 
+  - move => Htilde P π HSafety. rewrite contra_σRP.
+    move => [Ct [t [Hsemt Hnot_t]]].  
+    destruct (HSafety t Hnot_t) as [m [Hpref_m_t m_witness]]. 
+    destruct (Htilde P Ct t m) as [Cs [t' [s [Hrel_s_t' [Hpref_m_t' Hsem_s]]]]]; auto. 
+    exists Cs, s. split; auto => Hσs. 
+    have Ht0 : π t'.
+    { apply: G2_forSafety; auto. now exists s. }    
+    by apply: (m_witness t').
+  - move => H_RSP P Ct t m Hpref_m_t Hsemt.
+    have HSafetyπ : @Safety target (fun t' => ~ prefix m t').
+    { move => t'. rewrite -dne => prefix_m_t'.
+      now exists m. }
+    move : (H_RSP P (fun t' => ~ prefix m t') HSafetyπ).
+    rewrite contra_σRP => Himp. destruct Himp as [Cs [s [Hsem_s Hσ]]].
+    now exists Ct, t.
+    unfold σ' in Hσ.
+    have Ht_s : exists t', rel s t' /\ prefix m t'.
+    { destruct (Htotal_rel s) as [t' Hrel_s_t']. 
+      exists t'. split; auto. apply: NNPP => Hf. apply: Hσ.
+      now exists t'. } 
+    destruct Ht_s as [t' [Hpref' Hrel']].  
+    exists Cs, t', s. split; auto.
+Qed.
+
+
+Theorem tilde_RSC_τRSP :
+  (total_rel rel) ->
+  (forall πt, @Safety target πt -> ((@Cl target ∘ τ') ((@Cl source ∘ σ') (πt)) ⊆ πt)) ->
+  tilde_RSC <->
+  (forall P (π : @prop source), Safety π -> τRP (Cl ∘ τ') P π).
+Proof.
+  move => Htotal_rel G2_with_Cl.
+  split.
+  - move => Htilde P π HSafetyπ. rewrite contra_τRP. move => [Ct [t [Hsemt H_not_π_t]]]. 
+    have HSafety_Cl : Safety (Cl (τ' π)) by apply: Cl_Safety.
+    destruct (HSafety_Cl t) as [m [Hpref_m_t m_witness]]; auto.
+    destruct (Htilde P Ct t m) as [Cs [t' [s [Hrel_s_t' [Hpref_m_t' Hsem_s]]]]]; auto.  
+    exists Cs, s. split; auto => π_s. 
+    have Hτ_t' : Cl (τ' π) t'.
+    { apply: Cl_bigger. now exists s. }
+      by apply: (m_witness t').
+  - move => Hτ P Ct t m Hpref_m_t Hsem_t.
+    have HSafety_π : Safety (fun t' => ~ prefix m t').
+    { move => t'. rewrite -dne => Hpref. now exists m. }  
+    specialize (G2_with_Cl (fun t' => ~ prefix m t') HSafety_π).
+    have HSafety_Cl : Safety ((Cl ∘ σ') ((fun t' => ~ prefix m t'))) by apply: Cl_Safety. 
+    move: (Hτ P ((Cl ∘ σ') ((fun t' => ~ prefix m t'))) HSafety_Cl).
+    rewrite contra_τRP => Himp. destruct Himp as [Cs [s [Hsem_s HCl]]].
+    { exists Ct, t. split; auto. by move/G2_with_Cl => H. } 
+    destruct (Htotal_rel s) as [t' Hrel_s_t'].
+    have Ht' : prefix m t'.
+    { have : ~ (σ' (not ∘ prefix m)) s. by move/Cl_bigger => H.
+      unfold σ'. rewrite not_ex_forall_not. move => H.
+      move: (H t'). rewrite de_morgan1 -dne. firstorder. }
+    now exists Cs, t', s.
+Qed.
+    
