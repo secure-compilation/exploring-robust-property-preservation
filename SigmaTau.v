@@ -141,7 +141,7 @@ Definition tilde_RSC :=
    prefix m t -> sem (plug (P ↓) Ct) t ->
    (exists Cs t' s, rel s t' /\ prefix m t' /\ sem (plug P Cs) s).
 
-Notation "f ∘ g" := (fun t => f (g t)) (at level 50).
+Notation "f ∘ g" := (fun t => f (g t)) (at level 100).
 
 Theorem tilde_RSC_σRSP :
   (total_rel rel) ->
@@ -207,4 +207,44 @@ Proof.
       move: (H t'). rewrite de_morgan1 -dne. firstorder. }
     now exists Cs, t', s.
 Qed.
-    
+
+(******************************************************************************)
+(** *Subset-Closed *)
+(******************************************************************************)
+
+Definition tilde_RSCHC :=
+  forall P Ct, exists Cs,
+      (forall t, sem (plug (P↓) Ct) t -> (exists s, rel s t /\ sem (plug P Cs) s)).
+
+Definition σh (σ : @prop target -> @prop source) (H : @hprop target) : @hprop source :=
+  fun (b : @prop source) => exists bt, (H bt) /\ b = σ bt.  
+
+Definition σRhP (σ : @hprop target -> @hprop source)
+                (P : par src) (H : @hprop target) :=
+  rhsat P (σ H) -> rhsat (P↓) H.
+
+Definition τh (τ : @prop source -> @prop target) (H : @hprop source) : @hprop target :=
+  fun (b : @prop target) => exists bs, (H bs) /\ b = τ bs.
+
+Definition τRhP (τ : @hprop source -> @hprop target) 
+                (P : par src) (H : @hprop source) :=
+  rhsat P H -> rhsat (P↓) (τ H).
+ 
+Check (τh τ').
+Check sCl.
+Check (sCl ∘ (τh τ')). 
+
+Theorem tilde_RSCHC_τRSCHP :
+  (total_rel rel) ->
+  (Galois_snd σ' τ') ->
+  tilde_RSCHC <-> (forall P (H: @hprop source), SSC H ->  τRhP (sCl ∘ (τh τ')) P H). 
+Proof.
+  move => Hrel G2. split. 
+  - move => Htilde P H H_ssc. unfold τRhP.
+    rewrite contra !neg_rhsat. move => [Ct Hsem].
+    move: (Htilde P Ct) => [Cs HH]. exists Cs => Hfalse.
+    apply: Hsem. 
+    exists (τ' (beh (plug P Cs))). split.
+    + by exists (beh (plug P Cs)). 
+    + move => t Ht. destruct (HH t Ht) as [s [Hs1 Hs2]]. now exists s.
+  - Admitted. (* TODO *)
