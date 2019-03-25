@@ -178,6 +178,12 @@ Definition tilde_RSC :=
    prefix m t -> sem (plug (P ↓) Ct) t ->
    (exists Cs t' s, rel s t' /\ prefix m t' /\ sem (plug P Cs) s).
 
+Lemma tilde_RTC_tilde_RSC : tilde_RTC -> tilde_RSC.
+Proof.
+  move => H_tilde P Ct t m m_leq_t H_t. 
+  move: (H_tilde P Ct t H_t). firstorder. 
+Qed. 
+  
 Notation "f ∘ g" := (fun t => f (g t)) (at level 100).
 
 Theorem tilde_RSC_σRSP :
@@ -257,6 +263,11 @@ Definition tilde_RSCHC :=
   forall P Ct, exists Cs,
       (forall t, sem (plug (P↓) Ct) t -> (exists s, rel s t /\ sem (plug P Cs) s)).
 
+Lemma tilde_RSCHC_tilde_RTC : tilde_RSCHC -> tilde_RTC.
+Proof.
+  move => Htilde P Ct t H_t. move: (Htilde P Ct). firstorder.
+Qed. 
+
 Definition lift {l1 l2 : level} (f : @prop l1 -> @prop l2) (H : @hprop l1) : @hprop l2 :=
   fun (b1 : @prop l2) => exists b2, (H b2) /\ b1 = f b2. 
 
@@ -325,8 +336,8 @@ Theorem tilde_RSCHC_τRSCHP :
   tilde_RSCHC <-> (forall P (H: @hprop source), SSC H ->  τRhP (sCl ∘ (lift τ')) P H). 
 Proof.
   move => Hrel G2. split. 
-  - move => Htilde P H H_ssc. unfold τRhP.
-    rewrite contra !neg_rhsat. move => [Ct Hsem].
+  - move => Htilde P H H_ssc. rewrite /τRhP contra !neg_rhsat.
+    move => [Ct Hsem].
     move: (Htilde P Ct) => [Cs HH]. exists Cs => Hfalse.
     apply: Hsem. 
     exists (τ' (beh (plug P Cs))). split.
@@ -353,4 +364,44 @@ Proof.
   move/Galois_equiv: H_adj => [mono_tau [mono_sigma [G1 G2]]].
   have h_rel : total_rel rel by apply: Galois_implies_total_rel. 
   by rewrite tilde_RSCHC_τRSCHP. 
-Qed.     
+Qed.
+
+(******************************************************************************)
+(** *HyperSafety *)
+(******************************************************************************)
+
+Definition tilde_RHSC := forall P Ct M,  M <<< (beh (plug (P↓) Ct)) ->
+                          (exists Cs, forall m, M m -> exists t s, prefix m t /\ 
+                                                       rel s t /\
+                                                       beh (plug P Cs) s).
+
+Lemma tilde_RSCHC_tilde_RHSC : tilde_RSCHC -> tilde_RHSC.
+Proof.
+  move => H_tilde P Ct M H_M.
+  destruct (H_tilde P Ct) as [Cs H_Cs].
+  exists Cs => m M_m.
+  destruct (H_M m M_m) as [t [H_t m_pref_t]].  
+  destruct (H_Cs t H_t) as [s [rel_s_t H_s]]. now exists t, s.
+Qed. 
+
+(* TODO: prove HSafety ⊆ SCH and get these from above *)
+Lemma Galois_fst_HSafe  (σ : @prop target -> @prop source)
+                        (τ : @prop source -> @prop target) :
+  Adjunction_law σ τ ->
+  (forall H : @hprop target, HSafe H -> (hsCl ∘ (lift τ)) ((hsCl ∘ (lift σ)) H) ⊆ H). 
+Proof. Admitted. 
+
+Lemma Galois_snd_HSafe  (σ : @prop target -> @prop source)
+                        (τ : @prop source -> @prop target) :
+  Adjunction_law σ τ ->
+  (forall H : @hprop source, HSafe H -> H ⊆ (hsCl ∘ (lift σ)) ((hsCl ∘ (lift τ)) H)).
+Proof. Admitted.
+
+Theorem tilde_RHSC_τRHSP :
+  (total_rel rel) ->
+  (Galois_snd σ' τ') ->
+  tilde_RHSC <-> (forall P (H: @hprop source), HSafe H ->  τRhP (hsCl ∘ (lift τ')) P H).
+Proof. Admitted.  
+
+
+  
