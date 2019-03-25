@@ -106,13 +106,33 @@ Definition Adjunction_law  (σ : @prop target -> @prop source)
 Definition monotone {l1 l2 : level} (f : @prop l1 -> @prop l2) : Prop :=
   forall π1 π2: @prop l1, (π1 ⊆ π2) -> (f π1 ⊆ f π2). 
 
+Lemma prop_subset_trans {l : level} (π1 π2 π3: @prop l) :
+  π1 ⊆ π2 -> π2 ⊆ π3 -> π1 ⊆ π3.
+Proof. by firstorder. Qed. 
+
 Lemma Galois_equiv  (σ : @prop target -> @prop source)
                     (τ : @prop source -> @prop target) : 
 
   Adjunction_law σ τ <-> ( monotone σ /\ monotone τ /\ Galois_cp σ τ). 
-Admitted.   
-
-  
+Proof.
+  split.
+  - move => H_adj. split.
+    + move => π1 π2 H_sub. rewrite -(H_adj (σ π1) π2). 
+      have H_π1 : τ (σ π1) ⊆ π1 by rewrite H_adj. 
+      by apply: (prop_subset_trans H_π1).      
+    + split.
+      ++ move => π1 π2 H_sub.  rewrite (H_adj π1 (τ π2)).
+         have H_π2 : π2 ⊆  (σ (τ π2)) by rewrite -H_adj.
+         by apply: (prop_subset_trans H_sub H_π2).
+      ++ split; move => π; [by rewrite -H_adj | by rewrite H_adj].         
+  - move => [sigma_mon [tau_mon [G1 G2]]] πs πt.  
+    split => H.
+    + apply: (prop_subset_trans (G1 πs)).
+      by apply: (sigma_mon (τ πs) πt H).
+    + apply: (prop_subset_trans (tau_mon πs (σ πt) H)).
+      by apply G2.
+Qed.         
+         
 Theorem σ_τ_equiv (σ : @prop target -> @prop source)
                   (τ : @prop source -> @prop target) :
   (Galois_cp σ τ) -> (σRTP σ) <-> (τRTP τ).
