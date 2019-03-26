@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect. 
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -370,14 +370,16 @@ Qed.
 (** *HyperSafety *)
 (******************************************************************************)
 
-Definition tilde_RHSC := forall P Ct M,  M <<< (beh (plug (P↓) Ct)) ->
-                          (exists Cs, forall m, M m -> exists t s, prefix m t /\ 
-                                                       rel s t /\
-                                                       beh (plug P Cs) s).
+Definition tilde_RHSC := forall P Ct (M : finpref -> Prop),
+                            Observations M ->
+                            M <<< (beh (plug (P↓) Ct)) ->
+                            (exists Cs, forall m, M m -> exists t s, prefix m t /\ 
+                                                            rel s t /\
+                                                    beh (plug P Cs) s).
 
 Lemma tilde_RSCHC_tilde_RHSC : tilde_RSCHC -> tilde_RHSC.
 Proof.
-  move => H_tilde P Ct M H_M.
+  move => H_tilde P Ct M Obs_M H_M.
   destruct (H_tilde P Ct) as [Cs H_Cs].
   exists Cs => m M_m.
   destruct (H_M m M_m) as [t [H_t m_pref_t]].  
@@ -399,9 +401,36 @@ Proof. Admitted.
 
 Theorem tilde_RHSC_τRHSP :
   (total_rel rel) ->
-  (Galois_snd σ' τ') ->
+  (Adjunction_law σ' τ') ->
   tilde_RHSC <-> (forall P (H: @hprop source), HSafe H ->  τRhP (hsCl ∘ (lift τ')) P H).
-Proof. Admitted.  
-
-
-  
+Proof.
+  move => H_rel H_adj. 
+  split.
+  - move/Galois_snd_HSafe: H_adj => H_adj H_tilde P H H_HSafe.
+    rewrite /τRhP contra !neg_rhsat.
+    move => [Ct not_beh].
+    have hsCl_τH : HSafe (hsCl (lift τ' H)) by apply: hsCl_HSafe. 
+    destruct (hsCl_τH (beh (plug (P↓) Ct)) not_beh) as [M [Obs_M [M_leq_beh M_bad]]]. 
+    destruct (H_tilde P Ct M) as [Cs H_tilde_Cs]; auto.
+    exists Cs => beh_source.
+    have τH_τbeh_src : (lift τ' H) (τ' (beh (plug P Cs))) by exists (beh (plug P Cs)).
+    have M_le_τbeh_src : M <<< τ'(beh (plug P Cs)).
+    { move => m. move: (H_tilde_Cs m). firstorder. }
+    apply: (M_bad (τ' (beh (plug P Cs)))); auto. by apply: hsCl_bigger.
+  - move => τ_pres P Ct M  Obs_M M_leq_beh_tgt.
+    have σ_safe : HSafe ((hsCl ∘ (lift σ')) (fun b => ~ (M <<< b))) by apply: hsCl_HSafe. 
+    move: (τ_pres P ( (hsCl ∘ (lift σ')) (fun b => ~ (M <<< b))) σ_safe).
+    move/contra => HH. move: HH. rewrite !neg_rhsat => τ_pres_P.
+    destruct τ_pres_P as [Cs src_beh].
+    { exists Ct => H_false.
+      move/Galois_fst_HSafe: H_adj => H_adj.
+      have H_t_HSafe : HSafe (fun b => ~ M <<< b).
+        { exists M. repeat (split; auto). by apply: NNPP. }   
+          specialize (H_adj (fun b => ~ M <<< b) H_t_HSafe).
+          move/dne : M_leq_beh_tgt => M_leq_beh_tgt. apply: M_leq_beh_tgt.
+            by apply: H_adj.
+    } 
+    admit.
+Admitted.
+             
+    
