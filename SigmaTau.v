@@ -391,8 +391,8 @@ Lemma Galois_fst_HSafe  (σ : @prop target -> @prop source)
                         (τ : @prop source -> @prop target) :
   Adjunction_law σ τ ->
   (forall H : @hprop target, HSafe H -> (hsCl ∘ (lift τ)) ((hsCl ∘ (lift σ)) H) ⊆ H). 
-Proof. Admitted. 
-
+Proof. Admitted.  
+                                                 
 Lemma Galois_snd_HSafe  (σ : @prop target -> @prop source)
                         (τ : @prop source -> @prop target) :
   Adjunction_law σ τ ->
@@ -429,8 +429,16 @@ Proof.
           specialize (H_adj (fun b => ~ M <<< b) H_t_HSafe).
           move/dne : M_leq_beh_tgt => M_leq_beh_tgt. apply: M_leq_beh_tgt.
             by apply: H_adj.
-    } 
-    admit.
-Admitted.
+    }
+    have M_leq_τ_beh_src: M <<< (τ' (beh (plug P Cs))).
+    { have src_subset : ~ sCl (lift σ' (fun b : prop => ~ M <<< b)) (beh (plug P Cs)).
+      { move => Hfoo. by apply: (src_beh (hsCl_sCl Hfoo)). } 
+      have  Hτ : ~ (sCl (fun b : prop => ~ M <<< b)) (τ' (beh (plug P Cs))).   
+      { move => [bt [M_leq_bt H_bt]]. apply: src_subset.
+        exists (σ' bt). split; [by exists bt | by rewrite -H_adj]. }
+      apply: NNPP. move => Hf. apply: Hτ. by exists (τ' (beh (plug P Cs))). } 
+    exists Cs => m M_m. destruct (M_leq_τ_beh_src m M_m) as [t [τt prefix_m_t]].
+    move: τt. rewrite /τ'. move => [s [H_t rel_s_t]]. by exists t, s.    
+Qed. 
              
     
