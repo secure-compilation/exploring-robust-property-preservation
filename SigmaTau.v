@@ -385,25 +385,69 @@ Proof.
   destruct (H_M m M_m) as [t [H_t m_pref_t]].  
   destruct (H_Cs t H_t) as [s [rel_s_t H_s]]. now exists t, s.
 Qed. 
-
-(* TODO: prove HSafety ⊆ SCH and get these from above *)
-Lemma Galois_fst_HSafe  (σ : @prop target -> @prop source)
-                        (τ : @prop source -> @prop target) :
-  Adjunction_law σ τ ->
-  (forall H : @hprop target, HSafe H -> (hsCl ∘ (lift τ)) ((hsCl ∘ (lift σ)) H) ⊆ H). 
-Proof. Admitted.  
-                                                 
+                                                  
 Lemma Galois_snd_HSafe  (σ : @prop target -> @prop source)
                         (τ : @prop source -> @prop target) :
   Adjunction_law σ τ ->
   (forall H : @hprop source, HSafe H -> H ⊆ (hsCl ∘ (lift σ)) ((hsCl ∘ (lift τ)) H)).
-Proof. Admitted.
+Proof.
+  move => H_adj H H_HSafe bs H_bs.
+  have HSafe_σ : HSafe ((hsCl ∘ lift σ) ((hsCl ∘ lift τ) H)) by apply: hsCl_HSafe. 
+  rewrite -(sCl_id_on_HSafe HSafe_σ).
+  exists (σ (τ bs)). split.
+  + apply: hsCl_bigger. exists (τ bs). split; auto.
+    have HSafe_τ : HSafe (hsCl (lift τ H)) by apply: hsCl_HSafe.
+    rewrite -(sCl_id_on_HSafe HSafe_τ).
+    exists (τ bs). split; auto. 
+    apply hsCl_bigger. by exists bs. 
+  + move/Galois_equiv: H_adj. move => [mono_sigma [mono_tau [G1 G2]]].
+    by apply: G1.
+Qed.
 
+
+(* 
+ CA: I do not think it is possible to prove
+     Galois_fst_HSafe : 
+      Adjunction_law σ τ ->
+      (forall H : @hprop target, HSafe H -> (hsCl ∘ (lift τ)) ((hsCl ∘ (lift σ)) H) ⊆ H).
+
+     Indeed hsCl is stronger than sCl meaning that 
+
+     1) forall H, sCl H ⊆ hsCl H. // trivial by hypersafety being subset closed
+     2) exists H, sCl H ≠ hsCl H as the following example shows 
+
+        let t be an infinite e.g. t = 42^ω. 
+
+        b := True \ { t }. 
+
+        H := { b }. 
+
+        sCl H = 2^b. 
+
+        Claim: sCl H is not Hypersafety. 
+
+        Proof. { t } ∉ (sCl H) but for every M <<< { t }, M is a *finite* collection
+               
+               of prefixes of t. Take the longest of them, say m, {m;tstop} ∈ (sCl H).
+        Qed.  
+
+   
+  Consequences: we need a strong assumption to prove tilde_RHSC_τRHSP and tilde_RHSC_σRHSP
+
+                that says that one of the laws of the Galois connection holds 
+               
+                between hypersafety hprops.
+ 
+                (Notice that for SSC we only need such lwas to hold in the set of all props)
+*)
+
+                              
 Theorem tilde_RHSC_τRHSP :
-  (Adjunction_law σ' τ') ->
+  (Adjunction_law σ' τ') -> 
+  (forall H: @hprop target, HSafe H -> (hsCl ∘ (lift τ')) ((hsCl ∘ (lift σ')) H) ⊆ H) ->
   tilde_RHSC <-> (forall P (H: @hprop source), HSafe H ->  τRhP (hsCl ∘ (lift τ')) P H).
 Proof.
-  move => H_adj. 
+  move => H_adj Galois_fst_HSafe. 
   split.
   - move/Galois_snd_HSafe: H_adj => H_adj H_tilde P H H_HSafe.
     rewrite /τRhP contra !neg_rhsat.
@@ -422,12 +466,11 @@ Proof.
     move/contra => HH. move: HH. rewrite !neg_rhsat => τ_pres_P.
     destruct τ_pres_P as [Cs src_beh].
     { exists Ct => H_false.
-      move/Galois_fst_HSafe: H_adj => H_adj.
       have H_t_HSafe : HSafe (fun b => ~ M <<< b).
         { exists M. repeat (split; auto). by apply: NNPP. }   
-          specialize (H_adj (fun b => ~ M <<< b) H_t_HSafe).
+          specialize (Galois_fst_HSafe (fun b => ~ M <<< b) H_t_HSafe).
           move/dne : M_leq_beh_tgt => M_leq_beh_tgt. apply: M_leq_beh_tgt.
-            by apply: H_adj.
+            by apply: Galois_fst_HSafe.
     }
     have M_leq_τ_beh_src: M <<< (τ' (beh (plug P Cs))).
     { have src_subset : ~ sCl (lift σ' (fun b : prop => ~ M <<< b)) (beh (plug P Cs)).
@@ -442,9 +485,10 @@ Qed.
 
 Theorem tilde_RHSC_σRHSP :
   (Adjunction_law σ' τ') ->
+   (forall H: @hprop target, HSafe H -> (hsCl ∘ (lift τ')) ((hsCl ∘ (lift σ')) H) ⊆ H) -> 
   tilde_RHSC <-> (forall P (H: @hprop target), HSafe H ->  σRhP (hsCl ∘ (lift σ')) P H).
 Proof.
-  move => H_adj.
+  move => H_adj Galois_fst_HSafe.
   split.
   - move => H_tilde P Ht Ht_HSafe. rewrite /σRhP contra !neg_rhsat.
     move => [Ct not_Ht_beh_tgt].
@@ -454,10 +498,26 @@ Proof.
     have τ_σ_beh_src: (hsCl (lift τ' (hsCl (lift σ' Ht)))) (τ' (beh (plug P Cs))).
     { apply: hsCl_bigger. by exists (beh (plug P Cs)). }
     have Ht_τ_beh_src: Ht (τ' (beh (plug  P Cs))).
-    {  move/Galois_fst_HSafe: H_adj => H_use. 
-         by apply: H_use. }
+    { by apply: Galois_fst_HSafe. }
     have M_let_τ_beh_src: M <<< τ' (beh (plug P Cs)).
     { move => m M_m. move: (H_src m M_m). firstorder. }
       by apply: (bad_M (τ' (beh (plug P Cs)))).
-  - admit.
-Admitted.     
+  - move => H_σ P Ct M Obs_M M_leq_beh_tgt.
+    have Ht_HSafe: HSafe (fun bt => ~ M <<< bt).
+    { exists M. repeat split; auto. by apply: NNPP. } 
+    move: (H_σ P _ Ht_HSafe). clear H_σ. rewrite /σRhP => H_σ. 
+    move/contra: H_σ. rewrite !neg_rhsat => H_σ.
+    destruct H_σ as [Cs H_σ]. by exists Ct. 
+    exists Cs.
+    have H_σ1 : ~ (lift σ' (fun bt : prop => ~ M <<< bt)) (beh (plug P Cs))
+      by move => HH; apply: H_σ; apply: hsCl_bigger. 
+    have M_leq_τ_beh_src: M <<< (τ' (beh (plug P Cs))).
+    { apply: NNPP => Hτ. apply: H_σ.
+      have HSafe_foo : HSafe (hsCl (lift σ' (fun bt : prop => ~ M <<< bt))) by apply: hsCl_HSafe.
+      rewrite -(sCl_id_on_HSafe HSafe_foo). exists (σ' (τ' (beh (plug P Cs)))).
+      split.
+      + apply: hsCl_bigger. by exists (τ' (beh (plug P Cs))).
+      + move/Galois_equiv: H_adj. move => [mono_sigma [mono_tau [G1 G2]]].
+        apply: G1. }
+    firstorder.
+Qed.     
