@@ -169,6 +169,14 @@ Proof.
   destruct Hs as [t Hs]. now exists t.
 Qed.
 
+Corollary tilde_RTC_σRTP : total_rel rel ->
+                           Galois_snd σ' τ' ->
+                           σRTP (σ') <-> tilde_RTC.
+Proof. move => H_rel G2.
+       have: Galois_cp σ' τ'. { split; auto. by apply: Galois_fst_holds. }
+       exact all_equivalent.
+Qed.        
+
 (******************************************************************************)
 (** *Safety *)
 (******************************************************************************)
