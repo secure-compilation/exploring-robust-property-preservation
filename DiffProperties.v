@@ -63,6 +63,9 @@ Axiom hsCl_HSafe : forall {k: level} (H: @hprop k), HSafe H.
 Lemma HSafe_SCH {k: level} : forall (H: @hprop k), HSafe H -> SSC H.
 Admitted. 
 
+Lemma sCl_id_on_HSafe {k: level} : forall (H: @hprop k), HSafe H -> sCl H = H.
+Admitted. 
+
 (* CA: it will be proved once hsCl will no longer be an axiom, 
    (informal) Proof. 
     hsCl H is Hypersafety and hence subset-closed, so that is contains

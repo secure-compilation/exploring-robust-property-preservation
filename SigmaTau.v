@@ -400,11 +400,10 @@ Lemma Galois_snd_HSafe  (σ : @prop target -> @prop source)
 Proof. Admitted.
 
 Theorem tilde_RHSC_τRHSP :
-  (total_rel rel) ->
   (Adjunction_law σ' τ') ->
   tilde_RHSC <-> (forall P (H: @hprop source), HSafe H ->  τRhP (hsCl ∘ (lift τ')) P H).
 Proof.
-  move => H_rel H_adj. 
+  move => H_adj. 
   split.
   - move/Galois_snd_HSafe: H_adj => H_adj H_tilde P H H_HSafe.
     rewrite /τRhP contra !neg_rhsat.
@@ -440,5 +439,25 @@ Proof.
     exists Cs => m M_m. destruct (M_leq_τ_beh_src m M_m) as [t [τt prefix_m_t]].
     move: τt. rewrite /τ'. move => [s [H_t rel_s_t]]. by exists t, s.    
 Qed. 
-             
-    
+
+Theorem tilde_RHSC_σRHSP :
+  (Adjunction_law σ' τ') ->
+  tilde_RHSC <-> (forall P (H: @hprop target), HSafe H ->  σRhP (hsCl ∘ (lift σ')) P H).
+Proof.
+  move => H_adj.
+  split.
+  - move => H_tilde P Ht Ht_HSafe. rewrite /σRhP contra !neg_rhsat.
+    move => [Ct not_Ht_beh_tgt].
+    destruct (Ht_HSafe _ not_Ht_beh_tgt) as [M [Obs_M [M_leq_beh_tgt bad_M]]]. 
+    destruct (H_tilde P Ct M Obs_M) as [Cs H_src]; auto.
+    exists Cs => σ_src.
+    have τ_σ_beh_src: (hsCl (lift τ' (hsCl (lift σ' Ht)))) (τ' (beh (plug P Cs))).
+    { apply: hsCl_bigger. by exists (beh (plug P Cs)). }
+    have Ht_τ_beh_src: Ht (τ' (beh (plug  P Cs))).
+    {  move/Galois_fst_HSafe: H_adj => H_use. 
+         by apply: H_use. }
+    have M_let_τ_beh_src: M <<< τ' (beh (plug P Cs)).
+    { move => m M_m. move: (H_src m M_m). firstorder. }
+      by apply: (bad_M (τ' (beh (plug P Cs)))).
+  - admit.
+Admitted.     
