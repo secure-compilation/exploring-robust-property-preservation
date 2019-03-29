@@ -177,6 +177,17 @@ Proof. move => H_rel G2.
        exact all_equivalent.
 Qed.        
 
+Lemma τ'_preserves_joins (H: @hprop source): forall t: @trace target,
+
+      (τ' (fun s => exists b, H b /\ b s)) t <-> (fun x => exists b, H b /\ (τ' b) x) t.     
+Proof. by firstorder. Qed.
+
+Lemma τ'_meets (H: @hprop source): forall t: @trace target,
+
+    (τ' (fun s => forall b, H b -> b s)) t -> (fun x => forall b, H b -> (τ' b) x) t.
+Proof. by firstorder. Qed. (* TODO: check if the equivalence holds *)
+  
+
 (******************************************************************************)
 (** *Safety *)
 (******************************************************************************)
