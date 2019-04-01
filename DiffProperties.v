@@ -33,6 +33,12 @@ Axiom Cl: forall {k: level}, @prop k -> @prop k.
 Axiom Cl_bigger: forall {k: level} (π: @prop k), π ⊆ (Cl π). 
 Axiom Cl_Safety: forall {k: level} π, Safety (@Cl k π).
 
+Lemma Cl_id_on_Safe {k: level} : forall (π: @prop k), Safety π -> Cl π = π.
+Admitted.
+
+Lemma Cl_smallest {k: level} (π :@prop k) : forall S, @Safety k S -> π ⊆ S -> Cl π ⊆ S.
+Admitted. 
+
 Definition hprop {k : level} := @prop k -> Prop.
 
 Definition SSC {k: level} (H: @hprop k)  : Prop :=

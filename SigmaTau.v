@@ -102,7 +102,6 @@ Definition Adjunction_law  (σ : @prop target -> @prop source)
   forall (π__s :@prop source) (π__t : @prop target),
           (τ π__s) ⊆ π__t <-> π__s ⊆ (σ π__t).
 
-
 Definition monotone {l1 l2 : level} (f : @prop l1 -> @prop l2) : Prop :=
   forall π1 π2: @prop l1, (π1 ⊆ π2) -> (f π1 ⊆ f π2). 
 
@@ -186,8 +185,38 @@ Lemma τ'_meets (H: @hprop source): forall t: @trace target,
 
     (τ' (fun s => forall b, H b -> b s)) t -> (fun x => forall b, H b -> (τ' b) x) t.
 Proof. by firstorder. Qed. (* TODO: check if the equivalence holds *)
-  
 
+
+(* σ' is not necessarely the upper adjoint of τ', 
+   we now define γ' and later show it is the upper adjoint
+ *)
+
+Definition γ' : @prop target -> @prop source :=
+  fun π__t => (fun t__s: @trace source => forall t__T : @trace target, rel t__s t__T -> π__t t__T).  
+
+Lemma γ'_upper_adjoint_τ' : Adjunction_law γ' τ'.
+Proof.
+  move => π__S π__T. split => H.
+  - move => t__S π_t__S t__T H_rel.
+    have τ'_t__T : (τ' π__S) t__T by exists t__S. 
+    exact (H t__T τ'_t__T).   
+  - move => t__T [t__S [π_t__S H_rel]].
+    move: (H t__S π_t__S). firstorder.
+Qed.     
+
+Lemma τRTP_γRTP : τRTP τ' <-> σRTP γ'.
+Proof. 
+  rewrite (@σ_τ_equiv γ' τ'). reflexivity.  
+  have: Adjunction_law γ' τ' by apply: γ'_upper_adjoint_τ'. 
+  now rewrite Galois_equiv.
+Qed. 
+
+(*CA: using the proper upper adjoint we don't need any hypothesis to show 
+      this equivalence  
+ *)
+Theorem tilde_RTC_γRTP : tilde_RTC <-> σRTP γ'.
+Proof. by rewrite -τRTP_γRTP tilde_RTC_τRTP. Qed.  
+  
 (******************************************************************************)
 (** *Safety *)
 (******************************************************************************)
@@ -237,14 +266,48 @@ Proof.
     exists Cs, t', s. split; auto.
 Qed.
 
+(*CA: using the proper upper adjoint we don't need any hypothesis to show 
+      this equivalence  
+ *)
+Theorem tilde_RSC_γRSP :
+  ( tilde_RSC <->
+  (forall P (π : @prop target), Safety π -> σRP γ' P π)).
+Proof.
+  have H_adj: Adjunction_law γ' τ' by apply γ'_upper_adjoint_τ'. 
+  have G2 : Galois_snd γ' τ' by firstorder.
+  split.
+  - move => Htilde P π HSafety. rewrite contra_σRP.
+    move => [Ct [t [Hsemt Hnot_t]]].  
+    destruct (HSafety t Hnot_t) as [m [Hpref_m_t m_witness]]. 
+    destruct (Htilde P Ct t m) as [Cs [t' [s [Hrel_s_t' [Hpref_m_t' Hsem_s]]]]]; auto. 
+    exists Cs, s. split; auto => Hσs. 
+    have Ht0 : π t'.
+    { apply: G2; auto. now exists s. }    
+    by apply: (m_witness t').
+  - move => H_RSP P Ct t m Hpref_m_t Hsemt.
+    have HSafetyπ : @Safety target (fun t' => ~ prefix m t').
+    { move => t'. rewrite -dne => prefix_m_t'.
+      now exists m. } 
+    move : (H_RSP P (fun t' => ~ prefix m t') HSafetyπ).
+    rewrite contra_σRP => Himp. destruct Himp as [Cs [s [Hsem_s Hσ]]].
+    now exists Ct, t. 
+    have : ~ (fun s':@trace source => s' = s) ⊆ (γ' (not ∘ prefix m)) by firstorder.
+    rewrite -H_adj not_forall_ex_not. move => [t' Ht'].
+    move/not_imp: Ht' => [Ht' HHt'].
+    exists Cs, t', s. repeat (split; auto).
+    destruct Ht' as [s' [Heq Hs']]. by subst.   
+      by apply: NNPP.
+Qed.       
+ 
+      
 
 Theorem tilde_RSC_τRSP :
-  (total_rel rel) ->
-  (forall πt, @Safety target πt -> ((@Cl target ∘ τ') ((@Cl source ∘ σ') (πt)) ⊆ πt)) ->
+  (forall πt, @Safety target πt -> (@Cl target ∘ τ') ((@Cl source ∘ γ') (πt)) ⊆ πt) ->
   tilde_RSC <->
   (forall P (π : @prop source), Safety π -> τRP (Cl ∘ τ') P π).
 Proof.
-  move => Htotal_rel G2_with_Cl.
+  have H_adj : Adjunction_law γ' τ' by apply: γ'_upper_adjoint_τ'. 
+  move => G2_with_Cl.
   split.
   - move => Htilde P π HSafetyπ. rewrite contra_τRP. move => [Ct [t [Hsemt H_not_π_t]]]. 
     have HSafety_Cl : Safety (Cl (τ' π)) by apply: Cl_Safety.
@@ -258,18 +321,60 @@ Proof.
     have HSafety_π : Safety (fun t' => ~ prefix m t').
     { move => t'. rewrite -dne => Hpref. now exists m. }  
     specialize (G2_with_Cl (fun t' => ~ prefix m t') HSafety_π).
-    have HSafety_Cl : Safety ((Cl ∘ σ') ((fun t' => ~ prefix m t'))) by apply: Cl_Safety. 
-    move: (Hτ P ((Cl ∘ σ') ((fun t' => ~ prefix m t'))) HSafety_Cl).
+    have HSafety_Cl : Safety ((Cl ∘ γ') ((fun t' => ~ prefix m t'))) by apply: Cl_Safety. 
+    move: (Hτ P ((Cl ∘ γ') ((fun t' => ~ prefix m t'))) HSafety_Cl).
     rewrite contra_τRP => Himp. destruct Himp as [Cs [s [Hsem_s HCl]]].
-    { exists Ct, t. split; auto. by move/G2_with_Cl => H. } 
-    destruct (Htotal_rel s) as [t' Hrel_s_t'].
-    have Ht' : prefix m t'.
-    { have : ~ (σ' (not ∘ prefix m)) s. by move/Cl_bigger => H.
-      unfold σ'. rewrite not_ex_forall_not. move => H.
-      move: (H t'). rewrite de_morgan1 -dne. firstorder. }
-    now exists Cs, t', s.
+    { exists Ct, t. split; auto. by move/G2_with_Cl => H. }
+    have γ'_not_s: ~ (γ' (not ∘ prefix m)) s.
+    { move => Hf. apply: HCl. by apply: Cl_bigger. }
+     have : ~ (fun s':@trace source => s' = s) ⊆ (γ' (not ∘ prefix m)) by firstorder.
+    rewrite -H_adj not_forall_ex_not. move => [t' Ht'].
+    move/not_imp: Ht' => [Ht' HHt'].
+     exists Cs, t', s. repeat (split; auto).
+    destruct Ht' as [s' [Heq Hs']]. by subst.   
+      by apply: NNPP.
 Qed.
 
+
+(* CA: we try to impose conditions on rel to get the equivalence tilde_RSC_τRSP *)
+Definition src_obs_rel (R: @trace source -> @trace target -> Prop) : Prop :=
+  forall t__S t__T, R t__S t__T ->  (exists m__S,  prefix m__S t__S /\
+                                 forall t__S', prefix m__S t__S' -> rel t__S' t__T). 
+
+Lemma γ'_maps_Safety_to_Safety :
+  src_obs_rel rel ->
+  forall π__T, @Safety target π__T -> @Safety source (γ' π__T). 
+Proof.
+  move => Hrel π__T Safety__T t__S not_t__S.
+  move/not_forall_ex_not : not_t__S. move => [t__T H].
+  move/not_imp : H. move => [s_rel_t not_t__T].
+  destruct (Hrel t__S t__T s_rel_t) as [m__S [pref_s  H_obs]]. 
+  exists m__S. split; auto.
+Qed.
+
+Lemma G2_Safety :
+  src_obs_rel rel ->
+  (forall πt, @Safety target πt -> (@Cl target ∘ τ') ((@Cl source ∘ γ') (πt)) ⊆ πt).
+Proof.
+  move => H_rel. move/γ'_maps_Safety_to_Safety : H_rel.
+  move => H_Safety π__T Safety__T. specialize (H_Safety π__T Safety__T). 
+  rewrite (Cl_id_on_Safe H_Safety). apply: Cl_smallest; auto. 
+  have G2 : Galois_snd γ' τ'.
+  { have H_adj : Adjunction_law γ' τ' by apply: γ'_upper_adjoint_τ'.
+    firstorder. }     
+    by apply: G2.
+Qed.
+
+Theorem tilde_RSC_τRSP_hp_on_tilde :
+  src_obs_rel rel ->
+   tilde_RSC <->
+   (forall P (π : @prop source), Safety π -> τRP (Cl ∘ τ') P π).
+Proof.
+  move => H_src. rewrite tilde_RSC_τRSP.
+  reflexivity.
+  by apply: G2_Safety.
+Qed. 
+  
 (******************************************************************************)
 (** *Subset-Closed *)
 (******************************************************************************)
