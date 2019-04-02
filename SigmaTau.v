@@ -378,7 +378,40 @@ Proof.
   reflexivity.
   by apply: G2_Safety.
 Qed. 
-  
+
+(*CA: Without the hp src_obs_rel tilde_RSC is equivalent to 
+      the (Cl ∘ τ') robust preservation of *arbitrary* source properties 
+  *)
+Theorem tilde_RSC_τRTP :
+  tilde_RSC <->
+  (forall P (π : @prop source), τRP (Cl ∘ τ') P π).
+Proof.
+  have H_adj : Adjunction_law γ' τ' by apply: γ'_upper_adjoint_τ'. 
+  split.
+  - move => Htilde P π. rewrite contra_τRP. move => [Ct [t [Hsemt H_not_π_t]]]. 
+    have HSafety_Cl : Safety (Cl (τ' π)) by apply: Cl_Safety.
+    destruct (HSafety_Cl t) as [m [Hpref_m_t m_witness]]; auto.
+    destruct (Htilde P Ct t m) as [Cs [t' [s [Hrel_s_t' [Hpref_m_t' Hsem_s]]]]]; auto.  
+    exists Cs, s. split; auto => π_s. 
+    have Hτ_t' : Cl (τ' π) t'.
+    { apply: Cl_bigger. now exists s. }
+      by apply: (m_witness t').
+  - move => Hτ P Ct t m Hpref_m_t Hsem_t.
+    have HSafety_π : Safety (fun t' => ~ prefix m t').
+    { move => t'. rewrite -dne => Hpref. now exists m. }  
+    move: (Hτ P (γ' ((fun t' => ~ prefix m t')))).
+    rewrite contra_τRP => Himp. destruct Himp as [Cs [s [Hsem_s HCl]]].
+    { exists Ct, t. split; auto. move => Hf.
+      have adj_cons: Cl (τ' (γ' (not ∘ prefix m))) ⊆ (not ∘ prefix m). 
+      { apply: Cl_smallest. assumption.
+        move/Galois_equiv : H_adj; firstorder. } 
+      by apply: (adj_cons t). } 
+    move/not_forall_ex_not: HCl. move => [t' HH].
+    move/not_imp: HH => [rel_s_t' nn_prefix]. 
+    exists Cs, t', s. repeat (split; auto).
+      by apply: NNPP.
+Qed.       
+    
 (******************************************************************************)
 (** *Subset-Closed *)
 (******************************************************************************)
