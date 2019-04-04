@@ -220,7 +220,33 @@ Qed.
  *)
 Theorem tilde_RTC_γRTP : tilde_RTC <-> σRTP γ'.
 Proof. by rewrite -τRTP_γRTP tilde_RTC_τRTP. Qed.  
-  
+
+
+Section σ'_upper_adjoint.
+(*CA: when γ' = σ'? *)
+
+Require Import FunctionalExtensionality.
+
+Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
+
+Lemma sufficient_condition_γ'_eq_σ' :                                    
+  (forall t__S, exists! t__T, rel t__S t__T) -> (forall π__T, (γ' π__T) = (σ' π__T)).
+Proof.
+  move => H π__T. apply: functional_extensionality => t__S. 
+  rewrite /γ' /σ'.
+  apply: prop_extensionality. split.
+  - by firstorder.
+  - move => [t__T [πt_tT rel_ts_tt]] t__T' H'.
+    destruct (H t__S) as [t Ht].
+    have: t = t__T by apply Ht.
+    have: t = t__T' by apply Ht. by move => foo1 foo2; subst.
+Qed.            
+
+(*CA: all theorems in which γ' is used holds for σ' by just assuming 
+      rel is a total function : @trace source -> @trace target *)
+
+End σ'_upper_adjoint.   
+
 (******************************************************************************)
 (** *Safety *)
 (******************************************************************************)
