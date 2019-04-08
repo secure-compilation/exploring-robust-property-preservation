@@ -230,9 +230,10 @@ Require Import FunctionalExtensionality.
 Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
 
 Lemma sufficient_condition_γ'_eq_σ' :                                    
-  (forall t__S, exists! t__T, rel t__S t__T) -> (forall π__T, (γ' π__T) = (σ' π__T)).
+  (forall t__S, exists! t__T, rel t__S t__T) -> γ' = σ'. 
 Proof.
-  move => H π__T. apply: functional_extensionality => t__S. 
+  move => H. apply: functional_extensionality => π__t.
+  apply: functional_extensionality => t__S. 
   rewrite /γ' /σ'.
   apply: prop_extensionality. split.
   - by firstorder.
@@ -240,7 +241,34 @@ Proof.
     destruct (H t__S) as [t Ht].
     have: t = t__T by apply Ht.
     have: t = t__T' by apply Ht. by move => foo1 foo2; subst.
-Qed.            
+Qed.
+
+Lemma necessary_condition_γ'_eq_σ' :
+  γ' = σ' ->  (forall t__S, exists! t__T, rel t__S t__T).
+Proof.
+  move => H_eq t__S.
+  have [G1 G2]: Galois_cp σ' τ'.
+  { rewrite -H_eq.
+    have: Adjunction_law γ' τ' by apply: γ'_upper_adjoint_τ'.
+    rewrite Galois_equiv. by firstorder. } 
+  have: exists t__T, rel t__S t__T by apply: Galois_implies_total_rel.   
+  move => [t__T rel_s_t].
+  exists t__T. split; auto. move => t__T' rel_s_t'.
+  have H: τ' (σ' (eq t__T)) t__T'.
+  { exists t__S. split;auto. by exists t__T. }
+  by apply: (G2 (eq t__T) t__T' H).
+Qed. 
+
+(*CA: we show γ' = σ', we should also show that τ' uniquely defines its upper adjoint
+      but this is a well known fact
+   *)
+
+Theorem σ'_τ'_adjoint_iff :
+  γ' = σ' <->  (forall t__S, exists! t__T, rel t__S t__T).
+Proof.
+  split. apply: necessary_condition_γ'_eq_σ'.
+  apply: sufficient_condition_γ'_eq_σ'.
+Qed.   
 
 (*CA: all theorems in which γ' is used holds for σ' by just assuming 
       rel is a total function : @trace source -> @trace target *)
