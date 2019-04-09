@@ -397,7 +397,12 @@ Qed.
 (* CA: we try to impose conditions on rel to get the equivalence tilde_RSC_τRSP *)
 Definition src_obs_rel (R: @trace source -> @trace target -> Prop) : Prop :=
   forall t__S t__T, R t__S t__T ->  (exists m__S,  prefix m__S t__S /\
-                                 forall t__S', prefix m__S t__S' -> rel t__S' t__T). 
+                                    forall t__S', prefix m__S t__S' -> R t__S' t__T).
+
+Definition src_safe_rel (R: @trace source -> @trace target -> Prop) : Prop :=
+  forall t__S t__T, ~ R t__S t__T -> (exists m__S, prefix m__S t__S /\
+                                   forall t__S', prefix m__S t__S' -> ~ R t__S' t__T).
+  
 
 Lemma γ'_maps_Safety_to_Safety :
   src_obs_rel rel ->
@@ -409,6 +414,7 @@ Proof.
   destruct (Hrel t__S t__T s_rel_t) as [m__S [pref_s  H_obs]]. 
   exists m__S. split; auto.
 Qed.
+
 
 Lemma G2_Safety :
   src_obs_rel rel ->
@@ -717,23 +723,23 @@ Qed.
 
 Theorem tilde_RHSC_σRHSP :
   (Adjunction_law σ' τ') ->
-   (forall H: @hprop target, HSafe H -> (hsCl ∘ (lift τ')) ((hsCl ∘ (lift σ')) H) ⊆ H) -> 
-  tilde_RHSC <-> (forall P (H: @hprop target), HSafe H ->  σRhP (hsCl ∘ (lift σ')) P H).
+  tilde_RHSC <-> (forall P (H: @hprop target), HSafe H ->  σRhP (sCl ∘ (lift σ')) P H).
 Proof.
-  move => H_adj Galois_fst_HSafe.
+  move => H_adj.
   split.
   - move => H_tilde P Ht Ht_HSafe. rewrite /σRhP contra !neg_rhsat.
-    move => [Ct not_Ht_beh_tgt].
+    move => [Ct not_Ht_beh_tgt]. 
     destruct (Ht_HSafe _ not_Ht_beh_tgt) as [M [Obs_M [M_leq_beh_tgt bad_M]]]. 
     destruct (H_tilde P Ct M Obs_M) as [Cs H_src]; auto.
     exists Cs => σ_src.
-    have τ_σ_beh_src: (hsCl (lift τ' (hsCl (lift σ' Ht)))) (τ' (beh (plug P Cs))).
-    { apply: hsCl_bigger. by exists (beh (plug P Cs)). }
-    have Ht_τ_beh_src: Ht (τ' (beh (plug  P Cs))).
-    { by apply: Galois_fst_HSafe. }
     have M_let_τ_beh_src: M <<< τ' (beh (plug P Cs)).
     { move => m M_m. move: (H_src m M_m). firstorder. }
-      by apply: (bad_M (τ' (beh (plug P Cs)))).
+    apply: (bad_M (τ' (beh (plug P Cs)))).
+    assumption. apply HSafe_SCH in Ht_HSafe.
+    destruct σ_src as [bs [H_bs beh_bs]].
+    destruct H_bs as [bt [H_bt σ_bt]]. subst. 
+    apply: (Ht_HSafe bt); auto.
+    by rewrite H_adj.     
   - move => H_σ P Ct M Obs_M M_leq_beh_tgt.
     have Ht_HSafe: HSafe (fun bt => ~ M <<< bt).
     { exists M. repeat split; auto. by apply: NNPP. } 
@@ -741,14 +747,14 @@ Proof.
     move/contra: H_σ. rewrite !neg_rhsat => H_σ.
     destruct H_σ as [Cs H_σ]. by exists Ct. 
     exists Cs.
-    have H_σ1 : ~ (lift σ' (fun bt : prop => ~ M <<< bt)) (beh (plug P Cs))
-      by move => HH; apply: H_σ; apply: hsCl_bigger. 
+    have H_σ1 : ~ (lift σ' (fun bt : prop => ~ M <<< bt)) (beh (plug P Cs)).
+    { move => HH; apply: H_σ. now exists (beh (plug P Cs)). }  
     have M_leq_τ_beh_src: M <<< (τ' (beh (plug P Cs))).
     { apply: NNPP => Hτ. apply: H_σ.
       have HSafe_foo : HSafe (hsCl (lift σ' (fun bt : prop => ~ M <<< bt))) by apply: hsCl_HSafe.
-      rewrite -(sCl_id_on_HSafe HSafe_foo). exists (σ' (τ' (beh (plug P Cs)))).
+      exists (σ' (τ' (beh (plug P Cs)))).
       split.
-      + apply: hsCl_bigger. by exists (τ' (beh (plug P Cs))).
+      + by exists (τ' (beh (plug P Cs))).
       + move/Galois_equiv: H_adj. move => [mono_sigma [mono_tau [G1 G2]]].
         apply: G1. }
     firstorder.
@@ -772,7 +778,7 @@ Admitted.
 
 
 (*CA: if we want to remove further assumptions 
-      we have to look at all subset-closed hprop in the target! *)
+      we have to look at all subset-closed hprop in the source! *)
 Theorem tilde_RHSC_τRSSCHP:
    tilde_RHSC <-> (forall P (H: @hprop source), SSC H ->  τRhP (hsCl ∘ (lift τ')) P H).
 Proof.
