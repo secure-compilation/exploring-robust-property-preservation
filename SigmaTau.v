@@ -772,10 +772,12 @@ Proof.
 Qed. 
 
 (*CA:  by G2 we know ((lift τ') ((sCl ∘ (lift γ')) H)) ⊆ H and 
-       by H ∈ HSafe we know that H ⊃ Cl _ *)
+       by H ∈ HSafe we know that H ⊃ Cl _ *) 
 Lemma G2_HSafety (H: @hprop target) : HSafe H ->  ((hsCl ∘(lift τ')) ((sCl ∘ (lift γ')) H)) ⊆ H.
-Admitted. 
-
+Proof.
+  move => HSafe_H. apply: hsCl_smallest; auto.
+  by apply: G2_HSafety_aux. 
+Qed. 
 
 (*CA: if we want to remove further assumptions 
       we have to look at all subset-closed hprop in the source! *)
@@ -798,7 +800,8 @@ Proof.
     have not_H_beh_tgt : ~ (hsCl ∘ (lift τ')) ((sCl ∘ (lift γ')) (fun b => ~ M <<< b))
                            (beh (plug (P↓) Ct)).
     { move => Hf. apply G2_HSafety in Hf. contradiction. 
-        by apply: hsCl_HSafe. }
+      move => b nb.
+      exists M. repeat (split; auto). by apply: NNPP. }
     move/contra : (τRHSP P (sCl (lift γ' (fun b : prop => ~ M <<< b))) SSC_H).
     rewrite !neg_rhsat => Hp.
     destruct Hp as [Cs H_src]; eauto.
