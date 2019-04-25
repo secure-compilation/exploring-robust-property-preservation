@@ -8,7 +8,7 @@ Require Import Properties.
 Require Import Criteria.
 
 (** Equivalent formulations for the robust preservation
-    of classes 2-relational (hyper)properties
+    of 2-relational (hyper)properties classes
     in terms of pair of (hyper)properties of the corresponding class 
  *)
 
