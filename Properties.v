@@ -208,12 +208,28 @@ Proof.
     + unfold lifting in *. now apply (subset_trans k h π).
 Qed.
 
+(* definition by "Verifying Bounded Subset-Closed Hyperproperties" 
+   - Mastroeni, Pasqua *)
 Definition twoSC (H : hprop) : Prop :=
-  exists t1 t2, forall b, ~ (H b) <->  (b t1 /\ b t2).
+  forall b, ~ (H b) <-> (exists t1 t2, (b t1 /\ b t2 /\ ~ H (fun t => t = t1 \/ t = t2))).
+
+Lemma twoSC_SSC (H: hprop) : twoSC H -> SSC H.
+Proof.
+  intros twosc b H_b b' b'_leq_b.
+  apply NNPP. intros not_H_b'.
+  rewrite (twosc b') in not_H_b'. destruct not_H_b' as [t1 [t2 [b_t1 [b_t2 H_t1_t2]]]].
+  rewrite dne in H_b. apply H_b.
+  rewrite (twosc _). exists t1, t2. split; auto.
+Qed. 
 
 (* 2SC Hyperproperties *)
 
-(* CA : according to this definition
+(* CA : according to the old definition 
+
+         H ∈ twoSC iff ∃ t1 t2. ∀ b. ~ (H b) <->  (b t1 /\ b t2).
+
+         hence
+
          H ∈ k-SC iff 
          ∃ t1 .. tk, H = lifting (true \ t1) ∪ .. ∪ lifting (true \ tk)
 
@@ -285,7 +301,24 @@ Definition H2Safe (H : hprop) : Prop :=
                     spref (fun m => m = m1 \/ m = m2) b /\
                     forall b', spref (fun m => m = m1 \/ m = m2) b' -> ~(H b')).
 
-
+Lemma twoSC_H2Safe (H : hprop) : H2Safe H -> twoSC H.
+Proof.
+  intros hsafe_H b. split.
+  + intros not_H_b. destruct (hsafe_H b not_H_b) as [m1 [m2 [spref_b wit]]].
+    destruct (spref_b m1) as [t1 [b_t1 m1_t1]]; auto.     
+    destruct (spref_b m2) as [t2 [b_t2 m2_t2]]; auto. 
+    exists t1, t2. repeat (split; auto). apply wit.
+    intros m [M1 | M2]; subst; [exists t1 | exists t2]; auto. 
+  + intros [t1 [t2 [b_t1 [b_t2 not_H]]]].
+    destruct (hsafe_H _ not_H) as [m1 [m2 [spref_b wit]]].
+    apply wit.
+    intros m [M1 | M2]; subst.
+    ++ destruct (spref_b m1) as [t [b_t pref_t]]; auto.
+       destruct b_t; subst; [now exists t1 | now exists t2].
+    ++ destruct (spref_b m2) as [t [b_t pref_t]]; auto.
+       destruct b_t; subst; [now exists t1 | now exists t2].
+Qed.    
+    
 (** *HyperLiveness *)
 Definition HLiv (H : hprop) : Prop :=
   forall M, Observations M ->

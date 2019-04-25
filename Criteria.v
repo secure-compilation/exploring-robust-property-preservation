@@ -259,17 +259,25 @@ Theorem R2SCHC_R2SCHP : R2SCHC <-> R2SCHP.
 Proof.
   split.
     - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
-    specialize (ssc P C'). unfold twoSC in HH. destruct HH as [t1 [t2 HH]].
-    specialize (ssc t1 t2). destruct ssc as [C h0].
-    split; firstorder.
-    exists C. firstorder.
-  - unfold R2SCHC. intros h0 P C' t1 t2 [H1 H2].
+      specialize (ssc P C'). rewrite (HH (beh (C' [P ↓]))) in H0.
+      destruct H0 as [t1 [t2 [b_t1 [b_t2 H_t1_t2]]]]. 
+      destruct (ssc t1 t2) as [Cs [bs_t1 bs_t2]]. auto.
+      exists Cs. rewrite (HH _). exists t1, t2. split; auto. 
+  - unfold R2SCHC. intros h0 P C' t1 t2 [H1 H2]. 
     specialize (h0 P).
-    assert (s : twoSC (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/ (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
-    { unfold twoSC. intros. exists t1, t2. intros b. split.
-      intros. apply de_morgan2 in H. destruct H as [H1' H2'].
-      apply dne in H1'. apply dne in H2'. split; auto.
-      intros H. apply de_morgan2. split; rewrite <- dne; destruct H; intros; try assumption.
+    assert (s : twoSC (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/
+                              (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
+    { unfold twoSC. intros. split.
+      + intros h.
+        exists t1, t2. rewrite de_morgan2 in h. destruct h as [h1 h2].
+        rewrite <- dne in h1, h2. 
+        repeat (split; auto). 
+        intros [k | k]; apply k; [ now left | now right ]. 
+      +  intros [t3 [t4 [b_t3 [b_t4 K]]]].
+         rewrite de_morgan2. rewrite <- dne. rewrite <- dne.
+         rewrite de_morgan2 in K. destruct K as [k1 k2]. rewrite <- dne in k1,k2.
+         specialize (k1 H1). specialize (k2 H2).
+         destruct k1, k2; now subst.     
     }
     specialize (h0 (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/ (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
     specialize (h0 s).
@@ -335,12 +343,11 @@ Proof.
 Qed.
 
 Lemma R2SCHC_R2HSC : R2SCHC -> R2HSC.
-Proof. 
-  intros rsc P Ct m1 m2 H. unfold spref in *.
-  destruct (H m1) as [t1 [Ht1 Hpref1]]; auto.   
-  destruct (H m2) as [t2 [Ht2 Hpref2]]; auto.
-  specialize (rsc P Ct t1 t2). destruct rsc as [Cs [K1 K2]]; auto.
-  exists Cs. intros x [H1 | H2]; subst; [now exists t1 | now exists t2].
+Proof.
+  rewrite R2SCHC_R2SCHP. rewrite R2HSC_R2HSP.
+  intros twosc P S two_safetyS.
+  apply twoSC_H2Safe in two_safetyS.
+  now apply (twosc P S).
 Qed.
 
 
