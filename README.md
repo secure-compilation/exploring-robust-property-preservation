@@ -1,4 +1,4 @@
-# Exploring Robust Property Preservation for Secure Compilation #
+# Journey Beyond Full Abstraction: Exploring Robust Property Preservation for Secure Compilation #
 
 This repository contains the Coq development of the paper:
 - Carmine Abate, Roberto Blanco, Deepak Garg, Catalin Hritcu, Marco Patrignani, and Jérémy Thibault.
