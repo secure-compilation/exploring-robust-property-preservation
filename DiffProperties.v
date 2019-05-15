@@ -138,4 +138,6 @@ Qed.
 
 Lemma hsCl_smallest {k : level} (H: @hprop k):
   forall H', HSafe H' -> H ⊆ H' -> (hsCl H) ⊆ H'.
-Proof. by firstorder. Qed. 
+Proof. by firstorder. Qed.
+
+

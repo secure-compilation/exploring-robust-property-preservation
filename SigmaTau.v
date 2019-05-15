@@ -848,4 +848,59 @@ Proof.
     + by exists (τ' (beh (plug P Cs))).
     +  move/Galois_equiv : H_adj.
        move => [mono_gamma [mono_tau [G1 G2]]]. by apply: G1. 
-Qed.       
+Qed.
+
+(* closure operators for properties *)
+
+Definition idempotent {l: level} (f: @prop l -> @prop l) :=
+  forall π: @prop l, f (f π) = f π.
+
+Definition extensive {l: level} (f: @prop l -> @prop l) :=
+  forall π: @prop l, π ⊆ (f π).
+
+(** *upper closure operator  \cite{giacobazzi2018abstract} (pag 7) *)
+Record Uco {l: level} :=
+  {
+    uco: @prop l -> @prop l;
+    mono: monotone uco;
+    idmp: idempotent uco;
+    ext : extensive uco
+  }.
+
+
+Lemma uco_adjuncts_rp
+  {γ: @prop target -> @prop source}
+  {τ: @prop source -> @prop target}
+  (f: forall {l : level}, @Uco l) :
+  Adjunction_law γ τ ->
+  ( (forall P (π__T : @prop target),  σRP γ P ((uco f) π__T)) <->                    
+    (τRTP (τ ∘ (uco f)))).
+Admitted.
+(* CA: formally incorrect (and false) statement
+       what is missing is that 
+       (@uco source) and (@uco target) should be formally the same,
+
+       e.g. Cl or hCl or hsCl... 
+*)
+  
+
+  
+Lemma Cl_mono {l : level}: @monotone l l Cl. 
+Proof.
+  move => π1 π2 sub t cl2_t.
+  apply: cl2_t.
+  apply: Cl_Safety. apply: prop_subset_trans. exact: sub. exact: Cl_bigger.
+Qed.   
+  
+Lemma Cl_idmp {l: level}: @idempotent l Cl. 
+Proof. move => π. apply: Cl_id_on_Safe. apply: Cl_Safety. Qed.
+
+Definition safety_uco {l: level} := @Build_Uco l (@Cl l)
+                                                  Cl_mono
+                                                  Cl_idmp
+                                                  Cl_bigger.
+
+
+
+                                                  
+                  
