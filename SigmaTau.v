@@ -234,7 +234,7 @@ Lemma sufficient_condition_γ'_eq_σ' :
 Proof.
   move => H. apply: functional_extensionality => π__t.
   apply: functional_extensionality => t__S. 
-  rewrite /γ' /σ'.
+  rewrite /γ' /σ'. 
   apply: prop_extensionality. split.
   - by firstorder.
   - move => [t__T [πt_tT rel_ts_tt]] t__T' H'.
@@ -886,7 +886,7 @@ Record Uco {l: level} :=
 
  *)
 
-Lemma uco_adjuncts_rp
+Lemma uco_adjuncts_rp'
   {γ: @prop target -> @prop source}
   {τ: @prop source -> @prop target}
   (f: @Uco target) :
@@ -908,8 +908,38 @@ Proof.
       apply: mono. by apply: G2.
       by rewrite (idmp f). }
     exact: H. 
-Qed.  
-  
+Qed.
+
+
+Definition h_true {l: level}: @hprop l  := fun b => True. 
+
+Lemma aux (γ: @prop target -> @prop source)
+          (f: @Uco target) :
+              (forall P (π__T : @prop target),  σRP γ P ((uco f) π__T)) <->
+              (forall P (π__T : @prop target),  ((lift (uco f)) h_true) π__T -> σRP γ P π__T).
+Proof.
+  split => H_rp P π.
+  + move => [b [hb Cb]] rsat_src. subst.
+    by move: (H_rp P b rsat_src).  
+  + move => rsat_src.
+    have H: (lift (uco f) h_true) (uco f π) by now exists π. 
+    by move: (H_rp P (uco f π) H rsat_src). 
+Qed.   
+
+
+Theorem uco_adjuncts_rp
+  {γ: @prop target -> @prop source}
+  {τ: @prop source -> @prop target}
+  (f: @Uco target) :
+  Adjunction_law γ τ ->
+  ( (forall P (π__T : @prop target),  ((lift (uco f)) h_true) π__T -> σRP γ P π__T)) <->                    
+  (τRTP ((uco f) ∘ τ)).
+Proof.
+  move => H_adj. rewrite -uco_adjuncts_rp'.
+    by rewrite -aux. assumption.
+Qed.
+
+
 Lemma Cl_mono {l : level}: @monotone l l Cl. 
 Proof.
   move => π1 π2 sub t cl2_t.
@@ -926,11 +956,21 @@ Definition safety_uco {l: level} := @Build_Uco l (@Cl l)
                                                   Cl_bigger.
 
 
+Lemma Safety_Cl_prop {l: level} :
+  @Safety l = (lift (uco (@safety_uco l))) h_true.  
+Proof. Admitted. 
+  
+
 Theorem  safety_uco_rp
   {γ: @prop target -> @prop source}
   {τ: @prop source -> @prop target}:
   Adjunction_law γ τ ->
-  ( (forall P (π__T : @prop target),  σRP γ P ((uco safety_uco) π__T)) <->                    
+  ( (forall P (π__T : @prop target), Safety π__T  -> σRP γ P π__T) <->                    
     (τRTP ((uco safety_uco) ∘ τ))).
-Proof. by apply: uco_adjuncts_rp. Qed.
+Proof.
+  move => H_adj. 
+  rewrite -uco_adjuncts_rp. rewrite -Safety_Cl_prop.
+  reflexivity.
+  assumption.  
+Qed.
                   
