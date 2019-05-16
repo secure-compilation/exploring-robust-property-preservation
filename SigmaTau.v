@@ -868,22 +868,47 @@ Record Uco {l: level} :=
   }.
 
 
+(* Every time we can express a Class Ξ via an upper closed operator ξ
+   we have that γRΞP is equivalent to (ξ ∘ τ)RTP. 
+   
+   for instance we can express the class of Safety properties using 
+   the uco Cl. 
+ 
+   tilde_RSC_τRTP and tilde_RSC_γRSP are an immediate consequence of the 
+   following theorem. 
+
+   CA: this should lead to a similar result for Liveness that can be 
+       expressed with the following uco 
+
+       lCl π = π ∪ { t | t terminating } 
+
+   CA: similar facts hold for hypersafety. 
+
+ *)
+
 Lemma uco_adjuncts_rp
   {γ: @prop target -> @prop source}
   {τ: @prop source -> @prop target}
-  (f: forall {l : level}, @Uco l) :
+  (f: @Uco target) :
   Adjunction_law γ τ ->
   ( (forall P (π__T : @prop target),  σRP γ P ((uco f) π__T)) <->                    
-    (τRTP (τ ∘ (uco f)))).
-Admitted.
-(* CA: formally incorrect (and false) statement
-       what is missing is that 
-       (@uco source) and (@uco target) should be formally the same,
-
-       e.g. Cl or hCl or hsCl... 
-*)
-  
-
+    (τRTP ((uco f) ∘ τ))).
+Proof. 
+  rewrite Galois_equiv. move => [mono_γ [mono_τ [G1 G2]]].
+  split => H_rp P π rsat_src.  
+  + have H: rsat P (γ ((uco f) (τ π))).
+    { apply: rsat_upper_closed. exact: rsat_src.
+      apply: (@prop_subset_trans source π (γ (τ π))). by apply: G1. 
+      apply: mono_γ. exact: (ext f). }  
+    move: (H_rp P (((uco f) (τ π)))). firstorder. 
+  + have H: rsat (P ↓) ((uco f) π).
+    { move: (H_rp P _ rsat_src) => H.
+      apply: rsat_upper_closed. exact: H.
+      apply: (@prop_subset_trans target _ ((uco f) (uco f π)) _).
+      apply: mono. by apply: G2.
+      by rewrite (idmp f). }
+    exact: H. 
+Qed.  
   
 Lemma Cl_mono {l : level}: @monotone l l Cl. 
 Proof.
@@ -901,6 +926,11 @@ Definition safety_uco {l: level} := @Build_Uco l (@Cl l)
                                                   Cl_bigger.
 
 
-
-                                                  
+Theorem  safety_uco_rp
+  {γ: @prop target -> @prop source}
+  {τ: @prop source -> @prop target}:
+  Adjunction_law γ τ ->
+  ( (forall P (π__T : @prop target),  σRP γ P ((uco safety_uco) π__T)) <->                    
+    (τRTP ((uco safety_uco) ∘ τ))).
+Proof. by apply: uco_adjuncts_rp. Qed.
                   
