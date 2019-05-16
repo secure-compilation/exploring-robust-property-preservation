@@ -12,6 +12,10 @@ Require Import ClassicalExtras.
 Require Import Setoid.
 Require Import List.
 
+
+Require Import FunctionalExtensionality.
+Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
+
 Definition σRP (σ : @prop target -> @prop source)
            (P : par src) (π : @prop target) :=
    rsat P (σ π) -> rsat (P↓) π.
@@ -224,10 +228,6 @@ Proof. by rewrite -τRTP_γRTP tilde_RTC_τRTP. Qed.
 
 Section σ'_upper_adjoint.
 (*CA: when γ' = σ'? *)
-
-Require Import FunctionalExtensionality.
-
-Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
 
 Lemma sufficient_condition_γ'_eq_σ' :                                    
   (forall t__S, exists! t__T, rel t__S t__T) -> γ' = σ'. 
@@ -958,9 +958,15 @@ Definition safety_uco {l: level} := @Build_Uco l (@Cl l)
 
 Lemma Safety_Cl_prop {l: level} :
   @Safety l = (lift (uco (@safety_uco l))) h_true.  
-Proof. Admitted. 
-  
-
+Proof.
+  apply: functional_extensionality => π.  
+  apply: prop_extensionality. split => H. 
+  + exists π. split; rewrite //=.
+    by rewrite Cl_id_on_Safe. 
+  + move: H. rewrite //=. move => [b [H Heq]]. subst.     
+    apply: Cl_Safety. 
+Qed. 
+    
 Theorem  safety_uco_rp
   {γ: @prop target -> @prop source}
   {τ: @prop source -> @prop target}:
@@ -973,4 +979,24 @@ Proof.
   reflexivity.
   assumption.  
 Qed.
-                  
+
+Theorem tilde_safety_rp:
+  (forall P (π : @prop target), Safety π -> σRP γ' P π) <->
+  (forall P (π : @prop source), τRP (Cl ∘ τ') P π).
+Proof.
+  apply: safety_uco_rp.
+  exact: γ'_upper_adjoint_τ'.
+Qed. 
+
+Section liveness_as_uco.
+
+  Definition lCl {l: level} : @prop l -> @prop l :=
+    fun π => (fun t => (exists l e, t = tstop l e) \/ π t). 
+
+  (*TODO: + add Dense/Liveness definition to DiffProperties.v
+          + show that ∀ π. lCl π ∈ Liveness 
+          + show that lCl is an uco
+          + deduce γRLP <-> (lCl ∘ τ)RTP
+   *)
+
+End liveness_as_uco.
