@@ -58,7 +58,13 @@ Variant trace {k : level} : Set :=
 | tstop (l : list (event k)) (e : (endstate k)) : trace
 | tsilent (l : list (event k)) : trace
 | tstream (s : @stream (event k)) : trace.
+ 
 
+Definition finite {k: level} (t: @trace k): Prop :=
+  exists l e, t = tstop l e.
+
+Definition infinite {k: level} (t: @trace k): Prop := ~ finite t. 
+  
 
 (** A finite prefix is a list of events, that can be continued (ftbd)
     or not (fstop). *)

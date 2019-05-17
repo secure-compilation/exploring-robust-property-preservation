@@ -990,13 +990,99 @@ Qed.
 
 Section liveness_as_uco.
 
-  Definition lCl {l: level} : @prop l -> @prop l :=
-    fun π => (fun t => (exists l e, t = tstop l e) \/ π t). 
+  (* This section shows (using a the characterization Dense = dCl (prop)) 
 
-  (*TODO: + add Dense/Liveness definition to DiffProperties.v
-          + show that ∀ π. lCl π ∈ Liveness 
-          + show that lCl is an uco
-          + deduce γRLP <-> (lCl ∘ τ)RTP
-   *)
+     γ'RDP <-> (dCl ∘ τ)RTP <-> tilde_RDC
 
+  *)
+
+  Lemma dCl_mono {l: level}: monotone (@dCl l).
+  Proof.
+    move => π1 π2 sub t1. rewrite /dCl.
+    move => [K1 | K2]; [by left | right; by apply: sub].   
+  Qed.
+
+  Lemma dCl_idmp {l: level}: idempotent (@dCl l).
+  Proof.
+    rewrite /dCl => π.
+    apply: functional_extensionality => t.
+    apply: prop_extensionality.
+    firstorder. 
+  Qed.
+
+  Lemma dCl_ext {l: level}: extensive (@dCl l).
+  Proof.  
+    rewrite /dCl => π t π_t. by right.
+  Qed.
+
+  Lemma dCl_id_on_Dense {l: level} (π: @prop l):
+    Dense π -> dCl π = π.
+  Proof.
+    rewrite /Dense /dCl => H_dense.
+    apply: functional_extensionality => t. 
+    apply: prop_extensionality. 
+    split; auto. move => [k | k]; [by apply: H_dense | by []]. 
+  Qed. 
+  
+  Definition dense_uco {l:level} :=  @Build_Uco l (@dCl l)
+                                                  dCl_mono
+                                                  dCl_idmp
+                                                  dCl_ext.
+
+  Lemma Dense_Cl_prop {l: level} :
+  @Dense l = (lift (uco (@dense_uco l))) h_true. 
+  Proof.
+    apply: functional_extensionality => π.
+    apply: prop_extensionality.
+    split; rewrite /h_true //= => H.
+    + exists π. split; auto. by rewrite dCl_id_on_Dense.
+    + destruct H as [b [Heq H]]. subst.
+        by apply: Dense_dCl.
+  Qed.
+
+  Theorem  dense_uco_rp
+  {γ: @prop target -> @prop source}
+  {τ: @prop source -> @prop target}:
+  Adjunction_law γ τ ->
+  ( (forall P (π__T : @prop target), Dense π__T  -> σRP γ P π__T) <->                    
+    (τRTP ((uco dense_uco) ∘ τ))).
+  Proof.
+    move => H_adj. 
+    rewrite -uco_adjuncts_rp. rewrite -Dense_Cl_prop.
+    reflexivity.
+    assumption.  
+  Qed.
+
+  Definition tilde_RDC : Prop :=
+    forall P Ct t__T, infinite t__T -> (sem (plug (P↓) Ct) t__T) ->
+               exists Cs t__S, rel t__S t__T /\ (sem (plug P Cs) t__S). 
+               
+
+  Theorem tilde_RDC_dClτRTP : tilde_RDC <->  (τRTP ((uco dense_uco) ∘ τ')).
+  Proof.
+  rewrite contra_τRTP. split.    
+  - move => Htilde P π [Ct [t [Hsemt Hτ]]].
+    have fin_or_inf : finite t \/ infinite t.
+    { rewrite /infinite. by apply: classic. } 
+    destruct fin_or_inf as [fin_t | inf_t].
+    + exfalso. apply: Hτ. rewrite //= /dCl. by left.
+    + destruct (Htilde P Ct t inf_t Hsemt) as [Cs [s [Hrel_s_t Hsems]]].   
+      exists Cs, s. split; auto. move => s_in_π. apply: Hτ.
+      rewrite /= /dCl. right. by exists s.
+  - move => Hτ P Ct t inf_t Hsemt. specialize (Hτ P (fun s => ~ rel s t)).
+   case: Hτ.
+   { exists Ct, t. split; auto.  rewrite /= /dCl de_morgan2.
+     split; auto. move => [s [Hc Hcc]] //=. }
+   move  => Cs [s [Hsems H]]. exists Cs, s. split; auto; by apply: NNPP. 
+  Qed.
+
+  Theorem tilde_dense_rp:
+  (forall P (π : @prop target), Dense π -> σRP γ' P π) <->
+  (forall P (π : @prop source), τRP (dCl ∘ τ') P π).
+  Proof.
+    apply: dense_uco_rp.
+    exact: γ'_upper_adjoint_τ'.
+  Qed. 
+
+   
 End liveness_as_uco.

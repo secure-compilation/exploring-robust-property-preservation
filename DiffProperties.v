@@ -141,3 +141,11 @@ Lemma hsCl_smallest {k : level} (H: @hprop k):
 Proof. by firstorder. Qed.
 
 
+Definition Dense {k: level} (π: @prop k): Prop :=
+  forall t, finite t -> π t.
+
+Definition dCl {l: level} : @prop l -> @prop l :=
+  fun π => (fun t => finite t \/ π t).
+
+Lemma Dense_dCl {l: level} (π: @prop l): Dense (dCl π).
+Proof. firstorder. Qed.
