@@ -3,6 +3,7 @@
 
 ClassicalExtras.v
 Stream.v
+Galois.v
 
 TraceModel.v
 Properties.v
