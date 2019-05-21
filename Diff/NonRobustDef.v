@@ -18,8 +18,8 @@ Require Import ChainModel.
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
 Module Preservation (TSource TTarget : Trace)
-                    (Source Target : Language)
-                    (Compiler : CompilationChain Source Target).
+                         (Source Target : Language)
+                         (Compiler : CompilationChain Source Target).
   
   Definition trace__S := TSource.trace.
   Definition trace__T := TTarget.trace.

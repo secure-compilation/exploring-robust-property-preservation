@@ -50,15 +50,11 @@ Module Type Criteria  (TSource TTarget : Trace)
 
   Definition rel := R.rel. 
   
-  Definition σ' : prop__T -> prop__S := R.σ'.
-  Definition τ' : prop__S -> prop__T := R.τ'.
-
   
-  
-  Module PropertyFull := (Preservation  TSource TTarget
+  Module PropertyFull <: (Preservation  TSource TTarget
                                         Source Target
                                         Compiler).
-
+      
    
   Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, sem__S W s.  
 
