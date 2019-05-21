@@ -1,6 +1,7 @@
 Require Import TraceModel.
 Require Import Properties.
 Require Import ClassicalExtras.
+Require Import MyNotation. 
 
 Module Type Language (T : Trace).
   Import T.

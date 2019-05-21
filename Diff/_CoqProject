@@ -1,6 +1,7 @@
 -arg "-w -parsing"
 -R . DiffTraces
 
+MyNotation.v
 ClassicalExtras.v
 Stream.v
 Galois.v

@@ -6,6 +6,7 @@ Unset Printing Implicit Defensive.
 
 Require Import FunctionalExtensionality.
 Require Import ClassicalExtras.
+Require Import MyNotation.
 
 Require Import TraceModel.
 
@@ -13,10 +14,8 @@ Module Properties (T : Trace).
   Import T.
   
   Definition prop := trace -> Prop.
-  Definition fprop := finpref -> Prop. 
-
-  Notation "π1 ⊆ π2" := (forall t, π1 t -> π2 t) (at level 50).
-
+  Definition fprop := finpref -> Prop.
+  
   Notation "M <<< b" := (forall m, M m -> exists t, b t /\ prefix m t) (at level 50).  
 
   Definition Safety (π : prop) : Prop :=

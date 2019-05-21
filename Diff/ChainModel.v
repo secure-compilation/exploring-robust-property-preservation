@@ -1,5 +1,6 @@
 Require Import TraceModel.
 Require Import LanguageModel.
+Require Import MyNotation.
 
 Module Type RelTrace (TSource TTarget : Trace).
   
