@@ -10,3 +10,5 @@ TraceModel.v
 Properties.v
 LanguageModel.v
 ChainModel.v
+NonRobustDef.v
+NonRobustCriteria.v

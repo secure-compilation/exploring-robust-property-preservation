@@ -3,36 +3,53 @@ Require Import Properties.
 Require Import ClassicalExtras.
 Require Import MyNotation. 
 
-Module Type Language (T : Trace).
-  Import T.
+Module Type Language.
 
   Parameter prg : Set. (* Whole programs *)
-  Parameter sem : prg -> trace -> Prop.
-
   Parameter par : Set. (* Partial programs *)
   Parameter ctx : Set. (* Contexts *)
   Parameter plug : par -> ctx -> prg. (* Linking operation *)
-  
-
-  Parameter non_empty_sem : forall W, exists t, sem W t.
 
 End Language.
 
-Module Sat (T : Trace) (L : Language T).
+Module Sat (T : Trace) (L : Language).
+
   Module P := Properties T.
 
   Import T L P.
+  
+  Parameter sem : prg -> trace -> Prop.
 
+  Parameter non_empty_sem : forall W, exists t, sem W t.
+  
   Definition beh (P : prg) : prop :=
     fun b => sem P b.
 
   Definition sat (P : prg) (π : prop) : Prop :=
     forall t, sem P t -> π t.
+
+  Lemma sat_upper_closed  (P : L.prg ) (π1 π2 : P.prop) :
+                          sat P π1 -> π1 ⊆ π2 -> sat P π2.  
+  Proof.  
+    intros Hsat1 Hsuper t Hsem.
+    apply Hsuper.
+    now apply (Hsat1 t).  
+  Qed. 
+
+  
   Definition hsat (P : prg) (H : hprop) : Prop :=
     H (beh P).
 
   Definition rsat (P : par) (π : prop) : Prop :=
     forall C, sat (plug P C) π.
+  
+  Lemma rsat_upper_closed  (P : L.par ) (π1 π2 : P.prop) :
+                            rsat P π1 -> π1 ⊆ π2 -> rsat P π2.  
+  Proof.  
+    intros Hsat1 Hsuper C t Hsem.
+    apply Hsuper.
+    now apply (Hsat1 C t).  
+  Qed. 
 
   Definition rhsat (P : par) (H : hprop) : Prop :=
     forall C, hsat (plug P C) H.
@@ -60,4 +77,5 @@ Module Sat (T : Trace) (L : Language T).
     split; unfold rhsat; intro H0;
       [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
   Qed.
+  
 End Sat.
