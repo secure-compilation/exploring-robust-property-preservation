@@ -1,5 +1,3 @@
-(* Require Import ClassicalExtras. *)
-(* Require Import Setoid. *)
 Require Import List.
 
 CoInductive stream {A : Type} :=

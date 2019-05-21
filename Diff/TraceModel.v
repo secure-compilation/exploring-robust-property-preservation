@@ -9,16 +9,25 @@ Require Import Setoid.
 Require Import List.
 Require Import Stream.
 
+Record Events (event : Set) := {
 
-Module Type Trace.
-  Parameter event : Set.  
-  Parameter an_event another_event : event.
-  Parameter different_events : an_event <> another_event.
-  Parameter eq_event_dec : forall (e1 e2 : event), {e1 = e2} + {e1 <> e2}. 
+                  an_event : event;
+                  another_event : event;
+                  different_events : an_event <> another_event;
+                  eq_event_dec : forall (e1 e2 : event), {e1 = e2} + {e1 <> e2} 
 
-  Parameter endstate : Set.
-  Parameter an_endstate : endstate.
+                }. 
 
+Record EndState (endstate : Set) := { an_endstate : endstate }. 
+
+Section Trace.
+
+  Variable event : Set.
+  Variable endstate : Set.
+
+  Variable events : Events event. 
+  Variable endstates : EndState endstate.
+  
   (** A trace represents either a stopped execution, a silently diverging
     execution or an infinite execution. *)
   Variant trace : Set :=
@@ -60,3 +69,5 @@ Module Type Trace.
     end.
 
 End Trace.
+
+

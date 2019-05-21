@@ -1,34 +1,43 @@
+Set Implicit Arguments.
+
 Require Import TraceModel.
 Require Import Properties.
 Require Import ClassicalExtras.
 Require Import MyNotation. 
 
-Module Type Language.
-
-  Parameter prg : Set. (* Whole programs *)
-  Parameter par : Set. (* Partial programs *)
-  Parameter ctx : Set. (* Contexts *)
-  Parameter plug : par -> ctx -> prg. (* Linking operation *)
-
-End Language.
-
-Module Sat (T : Trace) (L : Language).
-
-  Module P := Properties T.
-
-  Import T L P.
+Record Language := {
   
-  Parameter sem : prg -> trace -> Prop.
+   prg : Set; (* Whole programs *)
+   par : Set; (* Partial programs *)
+   ctx : Set; (* Contexts *)
+   plug : par -> ctx -> prg (* Linking operation *)
 
-  Parameter non_empty_sem : forall W, exists t, sem W t.
+   }.
+
+
+Section Sat.
+
+  Variable Σ States : Set.
+  Variable E : Events Σ.
+  Variable S : EndState States.
+
+  Variable L : Language.
+
+  Local Definition trace := trace Σ States.
+  Local Definition finpref := finpref Σ States.
+  Local Definition prop := prop Σ States.
+  Local Definition hprop := hprop Σ States. 
+
+  Variable sem : prg L -> trace -> Prop.
+  Variable non_empty_sem : forall W, exists t, sem W t.  
   
-  Definition beh (P : prg) : prop :=
+  Definition beh (P : prg L) : prop :=
     fun b => sem P b.
 
-  Definition sat (P : prg) (π : prop) : Prop :=
+  Definition sat (P : prg L) (π : prop) : Prop :=
     forall t, sem P t -> π t.
 
-  Lemma sat_upper_closed  (P : L.prg ) (π1 π2 : P.prop) :
+  Lemma sat_upper_closed  (P : prg L ) (π1 π2 : prop) :
                           sat P π1 -> π1 ⊆ π2 -> sat P π2.  
   Proof.  
     intros Hsat1 Hsuper t Hsem.
@@ -37,13 +46,13 @@ Module Sat (T : Trace) (L : Language).
   Qed. 
 
   
-  Definition hsat (P : prg) (H : hprop) : Prop :=
+  Definition hsat (P : prg L) (H : hprop) : Prop :=
     H (beh P).
 
-  Definition rsat (P : par) (π : prop) : Prop :=
-    forall C, sat (plug P C) π.
+  Definition rsat (P : par L) (π : prop) : Prop :=
+    forall C, sat (plug L P C) π.
   
-  Lemma rsat_upper_closed  (P : L.par ) (π1 π2 : P.prop) :
+  Lemma rsat_upper_closed  (P : par L ) (π1 π2 : prop) :
                             rsat P π1 -> π1 ⊆ π2 -> rsat P π2.  
   Proof.  
     intros Hsat1 Hsuper C t Hsem.
@@ -51,14 +60,14 @@ Module Sat (T : Trace) (L : Language).
     now apply (Hsat1 C t).  
   Qed. 
 
-  Definition rhsat (P : par) (H : hprop) : Prop :=
-    forall C, hsat (plug P C) H.
+  Definition rhsat (P : par L) (H : hprop) : Prop :=
+    forall C, hsat (plug L P C) H.
 
   (* Considering moving these two lemmas to a separate module *)
   Lemma neg_rsat :
-    forall (P : par) (π : prop),
+    forall (P : par L) (π : prop),
       (~ rsat P π <->
-       (exists C t, sem (plug P C) t /\ ~ π t)).
+       (exists C t, sem (plug L P C) t /\ ~ π t)).
   Proof.
     intros P π.
     split; unfold rsat; intros H.
@@ -71,7 +80,7 @@ Module Sat (T : Trace) (L : Language).
   Qed.
   
   Lemma neg_rhsat :
-    forall P H,  (~ rhsat P H <-> ( exists (C : ctx), ~ H (beh ( plug P C )))).
+    forall P H,  (~ rhsat P H <-> ( exists (C : ctx L), ~ H (beh ( plug L P C )))).
   Proof.
     intros P H.
     split; unfold rhsat; intro H0;
@@ -79,3 +88,5 @@ Module Sat (T : Trace) (L : Language).
   Qed.
   
 End Sat.
+
+

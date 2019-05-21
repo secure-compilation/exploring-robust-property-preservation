@@ -10,8 +10,14 @@ Require Import MyNotation.
 
 Require Import TraceModel.
 
-Module Properties (T : Trace).
-  Import T.
+Section Properties.
+
+  Variable Σ States : Set.
+  Variable E : Events Σ.
+  Variable S : EndState States.
+
+  Local Definition trace := trace Σ States.
+  Local Definition finpref := finpref Σ States. 
   
   Definition prop := trace -> Prop.
   Definition fprop := finpref -> Prop.

@@ -1,7 +1,6 @@
 From mathcomp Require Import all_ssreflect. 
 
 Set Implicit Arguments.
-Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Require Import ClassicalExtras.
@@ -18,50 +17,80 @@ Require Import NonRobustDef.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
-Module Type Criteria  (TSource TTarget : Trace)
-                      (R : RelTrace TSource TTarget)
-                      (Source Target : Language)
-                      (Compiler : CompilationChain Source Target).
+Section Criteria.
 
-  Definition trace__S := TSource.trace.
-  Definition trace__T := TTarget.trace.
-
-  Module SProp := Properties TSource.
-  Module TProp := Properties TTarget. 
+  Variable Source Target: Language.
+  Variable compilation_chain : CompilationChain Source Target.
   
-  Definition prop__S := SProp.prop.
-  Definition prop__T := TProp.prop.
+  Variable Σ__S Σ__T States__S States__T : Set.
+  Variable E__S : Events Σ__S.
+  Variable E__T : Events Σ__T.
+  Variable S__S : EndState States__S.
+  Variable S__T : EndState States__T.
 
-  Definition prg__S := Source.prg.
-  Definition prg__T := Target.prg.
+  Local Definition trace__S := trace Σ__S States__S. 
+  Local Definition trace__T := trace Σ__T States__T.  
+  Local Definition prop__S := prop Σ__S States__S.
+  Local Definition prop__T := prop Σ__T States__T.
 
-  Module Sat__S := Sat TSource Source.  
-  Module Sat__T := Sat TTarget Target.
+  Variable sem__S : prg Source -> trace__S -> Prop.
+  Variable non_empty_sem__S : forall W, exists s, sem__S W s.   
 
-  Definition sat__S := Sat__S.sat.
-  Definition sat__T := Sat__T.sat.
-
-  Definition sem__S := Sat__S.sem.
-  Definition sem__T := Sat__T.sem.                       
+  Variable sem__T : prg Target -> trace__T -> Prop.
+  Variable non_empty_sem__T : forall W, exists t, sem__T W t.   
   
-  Definition cmp := Compiler.compile_whole.
+  Local Definition prg__S := prg Source.
+  Local Definition prg__T := prg Target.
 
-  Notation "W ↓" := (cmp W) (at level 50).
+  Local Definition sat__S := sat Source sem__S.
+  Local Definition sat__T := sat Target sem__T.
+  
+  Local Definition cmp := compile_whole Source Target compilation_chain.
 
-  Definition rel := R.rel. 
+  Local Notation "W ↓" := (cmp W) (at level 50).  
+
+  Variable rel : trace__S -> trace__T -> Prop.  
+ 
+  Definition adjunction :=  induced_connection rel. 
   
+  Definition τ' : prop__S -> prop__T := α adjunction.
+  Definition σ' : prop__T -> prop__S := γ adjunction.
+
+  Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
   
-  Module PropertyFull <: (Preservation  TSource TTarget
-                                        Source Target
-                                        Compiler).
-      
-   
   Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, sem__S W s.  
 
-  (* CA's TODO: + force parameters σ and τ in Propertyfull to be 
-                   σ' and τ' above.
-                + Show rel_TC <-> σTP <-> τTP.  
-  *)
+  Check τTP. 
+  
+  Local Definition τTP := τTP compilation_chain
+                              sem__S sem__T
+                              τ'.
 
+  Local Definition σTP := σTP compilation_chain
+                              sem__S sem__T
+                              σ'.
+
+
+  Lemma σTP_τTP : σTP <-> τTP.
+  Proof. apply: Adj_σTP_iff_τTP. by apply: rel_adjunction_law. Qed. 
+                                        
+    
+  Theorem tilde_TC_τTP : rel_TC <-> τTP. 
+  Proof. (* TODO: + understand why "rewrite contra_τTP" does not work without arguments 
+                  + modify the proof for the robust case
+          *)    
+(*   rewrite contra_τTP. split.     *)
+(*     - move => Htilde P π [Ct [t [Hsemt Hτ]]]. *)
+(*       destruct (Htilde P Ct t Hsemt) as [Cs [s [Hrel_s_t Hsems]]].    *)
+(*       exists Cs, s. split; auto. move => s_in_π. apply: Hτ. by exists s. *)
+(*  - move => Hτ P Ct t Hsemt. specialize (Hτ P (fun s => ~ rel s t)). *)
+(*    case: Hτ. *)
+(*    { exists Ct, t. split; auto. unfold τ'. move => [s [Hc Hcc]] //=. } *)
+(*    move  => Cs [s [Hsems H]]. exists Cs, s. split; auto; by apply: NNPP.                                   *)
+  (* Qed. *) Admitted.
+
+  Theorem tilde_TC_σTP : rel_TC <-> σTP.  
+  Proof. by rewrite σTP_τTP tilde_TC_τTP. Qed. 
+  
   
 End Criteria. 
