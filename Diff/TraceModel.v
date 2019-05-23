@@ -68,6 +68,14 @@ Section Trace.
     | _, _ => False
     end.
 
+  Definition prefix_finpref (m m' : finpref) : Prop :=
+    match m, m' with
+    | fstop l e, fstop l' e' => l = l' /\ e = e'
+    | ftbd l, ftbd l' => l = l'
+    | fstop _ _, ftbd l => False
+    | ftbd l, fstop l' _ => list_list_prefix l l'
+    end.
+
 End Trace.
 
 

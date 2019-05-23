@@ -29,6 +29,25 @@ Section Properties.
          (exists m, prefix m t /\
                (forall t', prefix m t' -> ~ π t')).
 
+  (* Alternate characterization of safety *)
+  Definition Safety' (π : prop) : Prop:=
+    exists π': fprop,
+    forall t:trace, ~(π t) <-> (exists m, prefix m t /\ π' m).
+
+  Lemma safety_safety' : forall π, Safety π <-> Safety' π.
+  Proof.
+    unfold Safety, Safety'. intro π. split; intro H.
+    - exists (fun m => forall t, prefix m t -> ~π t).
+      intros t. split; intro H'.
+      + specialize (H t H'). destruct H as [m [H1 H2]].
+        exists m. split. assumption. intros t' H. apply H2. assumption.
+      + destruct H' as [m [H1 H2]]. apply H2. assumption.
+    - intros t H0. destruct H as [π' H].
+      apply H in H0. destruct H0 as [m [H1 H2]].
+      exists m. split; try now auto.
+      intros. rewrite H. now exists m.
+  Qed.
+
   Inductive Observations : (finpref -> Prop) -> Prop :=
     empty :  Observations (fun m : finpref => False)
   | finite_union : forall M m, Observations M -> Observations (fun x => M x \/ x = m).
