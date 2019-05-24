@@ -118,61 +118,164 @@ Qed.
 (* The goal is now to prove that τ and/or σ preserve Safety. 
    I need to define σ and τ for fprop, in order to use them
    to transform the set of bad prefixes *)
+Check Set.
 
-Definition traceT_to_traceS_safety (t__t : traceT) : traceS :=
+Definition trace_TS (t__t : traceT) : traceS :=
   match t__t with
   | tstop l (inl e) => tstop l e
-  | tstop l (inr _) => tstop l (an_endstate is_endstateS)
+  | tstop l (inr _) => tsilent _ l
   | tsilent l => tsilent _ l
   | tstream s => tstream _ s
   end.
-Hint Unfold traceT_to_traceS_safety.
 
-Lemma traceT_to_traceS_safety_rel : forall (t__t : traceT),
-    rel (traceT_to_traceS_safety t__t) t__t.
+Lemma trace_TS_rel : forall (t__t : traceT),
+    rel (trace_TS t__t) t__t.
 Proof.
-  intros t__t.
-  destruct t__t as [l [e | []] | l | s]; try now repeat constructor.
-  - right.
-    exists l. split. reflexivity.
+  destruct t__t as [l [e | []] | l | s];
+    try now left; constructor.
+  - right. 
+    exists l.
+    split.
+    reflexivity.
     admit. (* trivial property of prefixTS *)
 Admitted.
 
-Definition finprefT_to_finprefS (m__t : finprefT) : finprefS :=
-  match m__t with
-  | fstop l (inl e) => fstop l e
-  | fstop l (inr _) => ftbd _ l
+Definition finpref_ST (m__s : finprefS) : finprefT :=
+  match m__s with
+  | fstop l e => fstop l (inl e)
   | ftbd l => ftbd _ l
   end.
 
-(* Lemma prefix_T_to_S_safety : forall (m__t : finprefT) (t__t : traceT), *)
-(*    prefix (finprefT_to_finprefT_safety m__t) (traceT_to_traceS_safety t__t) -> *)
-(*    prefix m__t t__t. *)
-(* Proof. *)
-(*   intros m__t t__t Hpref. *)
-(*   destruct m__t as [l [e | []] | l]; *)
-(*     destruct t__t as [l' [e' | []] | l' | s']; *)
-(*     try now auto. *)
-(*   - destruct Hpref; split; now subst. *)
-(*   - simpl in Hpref. *)
 
-Definition traceS_to_traceT (t__s : traceS) : traceT :=
+Theorem τ_preserves_safety : forall (π : propS),
+    Safety π -> Safety (τ π).
+Proof.
+  unfold Safety, τ, GC_traceT_traceS, induced_connection, low_rel; simpl.
+  intros π Hsafety t__t Ht.
+  rewrite not_ex_forall_not in Ht;
+    setoid_rewrite de_morgan1 in Ht;
+    setoid_rewrite or_comm in Ht;
+    setoid_rewrite <- imp_equiv in Ht.
+  specialize (Hsafety (trace_TS t__t) (Ht (trace_TS t__t) (trace_TS_rel t__t))).
+  destruct Hsafety as [m [Hpref H]].
+  exists (finpref_ST m).
+  split.
+  - destruct m as [l e | l];
+      destruct t__t as [l' [e' | []] | l' | s'];
+      try now auto.
+    now inversion Hpref; subst.
+  - intros t__t' Hpref'.
+    rewrite not_ex_forall_not;
+      setoid_rewrite de_morgan1;
+      setoid_rewrite or_comm;
+      setoid_rewrite <- imp_equiv.
+    intros t__s Hrel.
+    apply H.
+    destruct m as [l e | l].
+    + destruct t__t' as [l' [e' | []] | l' | s'];
+        try now auto.
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct t__s as [l'' e'' | l'' | s''];
+             try now auto.
+           inversion Hrel; subst.
+           now inversion Hpref' as [H0 H1]; inversion H0; subst.
+        -- destruct Hrel as [m [H1 H2]].
+           now inversion H1.
+      * destruct Hpref' as [H1 H2]; now inversion H1.
+    + destruct t__t' as [l' [e' | []] | l' | s'];
+        try now auto.
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct t__s as [l'' e'' | l'' | s''];
+             try now auto.
+           inversion Hrel; subst.
+           now assumption.
+        -- destruct Hrel as [m [H1 H2]].
+           now inversion H1.
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct t__s as [l'' e'' | l'' | s''];
+             try now auto.
+        -- destruct Hrel as [m [H1 H2]]; try now auto.
+           inversion H1; subst.
+           simpl in Hpref'.
+           admit. (* trivial property of prefixTS *)
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct t__s as [l'' e'' | l'' | s''];
+             try now auto.
+           inversion Hrel; subst.
+           assumption.
+        -- destruct Hrel as [m [H1 H2]];
+             try now auto.
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct t__s as [l'' e'' | l'' | s''];
+             try now auto.
+           inversion Hrel; subst.
+           assumption.
+        -- destruct Hrel as [m [H1 H2]];
+             try now auto.
+Admitted.
+
+Definition finpref_TS (m__t : finprefT) : finprefS :=
+  match m__t with
+  | fstop l (inl e) => fstop l e
+  | fstop l (inr e) => ftbd _ l
+  | ftbd l => ftbd _ l
+  end.
+
+Definition trace_ST (t__s : traceS) : traceT :=
   match t__s with
   | tstop l e => tstop l (inl e)
   | tsilent l => tsilent _ l
   | tstream s => tstream _ s
   end.
-Hint Unfold traceS_to_traceT.
 
-Lemma traceS_to_traceT_rel : forall (t__s : traceS),
-    rel t__s (traceS_to_traceT t__s).
+Lemma σ_preserves_safety : forall (π : propT),
+    Safety π -> Safety (σ π).
 Proof.
-  intros t__s.
-  destruct t__s; now repeat constructor.
-Qed.
-
-Definition finprefS_to_finprefT (m__s : finprefS) : finprefT :=
-  match m__s with
-  | fstop l e => fstop l (inl e)
-  | ftbd l => ftbd _ l
-  end.
+  unfold Safety, σ, GC_traceT_traceS, induced_connection, up_rel; simpl.
+  intros π Hsafety t__s Ht.
+  rewrite not_forall_ex_not in Ht;
+    setoid_rewrite not_imp in Ht.
+  destruct Ht as [t__t [Hrel Hnπ]].
+  destruct (Hsafety t__t Hnπ) as [m__t [Hm1 Hm2]].
+  exists (finpref_TS m__t).
+  split.
+  - destruct Hrel as [Hrel | Hrel].
+    + inversion Hrel; subst.
+      * destruct m__t as [l' [e' | []] | l'];
+          try now inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst.
+        now assumption.
+      * destruct m__t as [l' [e' | []] | l'];
+          try now auto.
+      * destruct m__t as [l' [e' | []] | l'];
+          try now auto.
+    + destruct Hrel as [m [H1 H2]]; subst.
+      destruct m__t as [l' [e' | []] | l'];
+        try now auto.
+      * now inversion Hm1 as [Hm1' ?]; inversion Hm1'.
+      * inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst.
+        destruct t__s as [l'' e'' | l'' | s''].
+        -- admit. (* trivial from H2 *)
+        -- simpl. admit. (* trivial from H2 *)
+        -- simpl. admit. (* trivial from H2 *)
+      * destruct t__s as [l'' e'' | l'' | s''].
+        -- simpl. admit. (* trivial from Hm1 and H2 *)
+        -- simpl. admit. (* trivial from Hm1 and H2 *)
+        -- simpl. admit. (* trivial from Hm1 and H2 *)
+  - intros t__s' Hpref'.
+    rewrite not_forall_ex_not;
+      setoid_rewrite not_imp.
+    exists (trace_ST t__s').
+    split.
+    + destruct t__s' as [l e | l | s].
+      * left. now constructor.
+      * left. now constructor.
+      * left. now constructor.
+    + apply Hm2.
+      destruct m__t as [l [e | []] | l].
+      * destruct t__s' as [l' e' | l' | s'];
+          try now auto.
+        now destruct Hpref'; subst.
+      * admit. (* NOT trivial *)
+      * destruct t__s' as [l' e' | l' | s'];
+          try now auto.
+Admitted.
