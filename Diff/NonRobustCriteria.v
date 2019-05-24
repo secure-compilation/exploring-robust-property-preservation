@@ -18,7 +18,7 @@ Require Import NonRobustDef.
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
 Section Criteria.
-
+  
   Variable Source Target: Language.
   Variable compilation_chain : CompilationChain Source Target.
   
@@ -28,11 +28,11 @@ Section Criteria.
   Variable S__S : EndState States__S.
   Variable S__T : EndState States__T.
 
-  Local Definition trace__S := trace Σ__S States__S. 
-  Local Definition trace__T := trace Σ__T States__T.  
+  Local Definition trace__S := trace Σ__S States__S.
+  Local Definition trace__T := trace Σ__T States__T.
   Local Definition prop__S := prop Σ__S States__S.
   Local Definition prop__T := prop Σ__T States__T.
-
+  
   Variable sem__S : prg Source -> trace__S -> Prop.
   Variable non_empty_sem__S : forall W, exists s, sem__S W s.   
 
@@ -47,7 +47,7 @@ Section Criteria.
   
   Local Definition cmp := compile_whole Source Target compilation_chain.
 
-  Local Notation "W ↓" := (cmp W) (at level 50).  
+  Local Notation "W ↓" := (cmp W) (at level 50).
 
   Variable rel : trace__S -> trace__T -> Prop.  
  
@@ -62,21 +62,24 @@ Section Criteria.
 
   Check τTP. 
   
-  Local Definition τTP := τTP compilation_chain
-                              sem__S sem__T
-                              τ'.
+  Definition τTP := τTP compilation_chain
+                        sem__S sem__T
+                        τ'.
 
+  
   Local Definition σTP := σTP compilation_chain
                               sem__S sem__T
                               σ'.
 
 
   Lemma σTP_τTP : σTP <-> τTP.
-  Proof. apply: Adj_σTP_iff_τTP. by apply: rel_adjunction_law. Qed. 
-                                        
-    
-  Theorem tilde_TC_τTP : rel_TC <-> τTP. 
-  Proof. (* TODO: + understand why "rewrite contra_τTP" does not work without arguments 
+  Proof. apply: Adj_σTP_iff_τTP. by apply: rel_adjunction_law. Qed.   
+
+
+  
+  Theorem tilde_TC_τTP : rel_TC <-> τTP.
+  Proof. 
+  (* TODO: + understand why "rewrite contra_τTP" does not work without arguments 
                   + modify the proof for the robust case
           *)    
 (*   rewrite contra_τTP. split.     *)

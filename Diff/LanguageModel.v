@@ -63,6 +63,16 @@ Section Sat.
   Definition rhsat (P : par L) (H : hprop) : Prop :=
     forall C, hsat (plug L P C) H.
 
+  Lemma neg_sat :
+    forall (W : prg L) (π : prop),
+      ~ sat W π <-> exists t, sem W t /\ ~ π t.
+  Proof.
+    intros W π. unfold sat.
+    rewrite not_forall_ex_not.
+    split; intros [t H]; exists t; [now rewrite not_imp in H
+                               | now rewrite not_imp].                            
+  Qed. 
+
   (* Considering moving these two lemmas to a separate module *)
   Lemma neg_rsat :
     forall (P : par L) (π : prop),
