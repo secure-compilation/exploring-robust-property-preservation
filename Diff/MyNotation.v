@@ -17,4 +17,5 @@ Lemma subset_ref {X : Set} (π : X -> Prop) :
   π ⊆ π.
 Proof. by move => t. Qed.
 
-Notation "f ∘ g" := (fun x => f ( g x )) (at level 50). 
+Notation "f ∘ g" := (fun x => f ( g x )) (at level 50).
+

@@ -16,47 +16,41 @@ Require Import ChainModel.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
-Section Preservation.
+Notation "W ↓" := (compile_whole _ _ _ W) (at level 50). 
+
+
+Section Preservation. 
+
 
   Variable Source Target: Language.
   Variable compilation_chain : CompilationChain Source Target.
+
+  (*CA: we don't need a particular structure of traces to define preservation 
+        e.g. traces = values or our defn of traces both make sense
+   *)
+  Variable trace__S trace__T : Set.
   
-  Variable Σ__S Σ__T States__S States__T : Set.
-  Variable E__S : Events Σ__S.
-  Variable E__T : Events Σ__T.
-  Variable S__S : EndState States__S.
-  Variable S__T : EndState States__T.
-
-  Local Definition trace__S := trace Σ__S States__S. 
-  Local Definition trace__T := trace Σ__T States__T.  
-  Local Definition prop__S := prop Σ__S States__S.
-  Local Definition prop__T := prop Σ__T States__T.
-
-  Variable sem__S : prg Source -> trace__S -> Prop.
-  Variable non_empty_sem__S : forall W, exists s, sem__S W s.   
-
-  Variable sem__T : prg Target -> trace__T -> Prop.
-  Variable non_empty_sem__T : forall W, exists t, sem__T W t.   
+  Local Definition prop__S := prop trace__S.
+  Local Definition prop__T := prop trace__T.
   
+  Variable Source_Semantics : Semantics Source trace__S.
+  Variable Target_Semantics : Semantics Target trace__T. 
+
+  Local Definition sem__S := sem Source_Semantics.
+  Local Definition sem__T := sem Target_Semantics.   
   Local Definition prg__S := prg Source.
   Local Definition prg__T := prg Target.
-
-  Local Definition sat__S := sat Source sem__S.
-  Local Definition sat__T := sat Target sem__T.
+  Local Definition sat__S := sat Source_Semantics. 
+  Local Definition sat__T := sat Target_Semantics. 
   
   Local Definition cmp := compile_whole Source Target compilation_chain.
 
-  Notation "W ↓" := (cmp W) (at level 50).  
-
-  (* parameters *)
+  Local Notation "W ↓" := (cmp W) (at level 50).
   
-  Variable σ : prop__T -> prop__S.
-  Variable τ : prop__S -> prop__T.
-
-  (* definitions *)
+  Variable σ : prop__T -> prop__S. 
+  Variable τ : prop__S -> prop__T. 
   
-
-  Definition σP (W : prg__S) (π__T : prop__T) :=
+  Definition σP (W : prg__S) (π__T : (trace__T -> Prop)) :=
     sat__S W (σ π__T) -> sat__T (W ↓) π__T.
 
   Definition σTP := forall W π__T, σP W π__T.

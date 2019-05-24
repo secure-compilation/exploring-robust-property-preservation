@@ -18,33 +18,28 @@ Require Import NonRobustDef.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
-Section Criteria.
+Section TracePropertiesCriterion.
   
   Variable Source Target: Language.
   Variable compilation_chain : CompilationChain Source Target.
-  
-  Variable Σ__S Σ__T States__S States__T : Set.
-  Variable E__S : Events Σ__S.
-  Variable E__T : Events Σ__T.
-  Variable S__S : EndState States__S.
-  Variable S__T : EndState States__T.
 
-  Local Definition trace__S := trace Σ__S States__S.
-  Local Definition trace__T := trace Σ__T States__T.
-  Local Definition prop__S := prop Σ__S States__S.
-  Local Definition prop__T := prop Σ__T States__T.
+  (*CA: we don't need a particular structure of traces to define preservation 
+        e.g. traces = values or our defn of traces both make sense
+   *)
+  Variable trace__S trace__T : Set.
   
-  Variable sem__S : prg Source -> trace__S -> Prop.
-  Variable non_empty_sem__S : forall W, exists s, sem__S W s.   
+  Local Definition prop__S := prop trace__S.
+  Local Definition prop__T := prop trace__T.
+  
+  Variable Source_Semantics : Semantics Source trace__S.
+  Variable Target_Semantics : Semantics Target trace__T. 
 
-  Variable sem__T : prg Target -> trace__T -> Prop.
-  Variable non_empty_sem__T : forall W, exists t, sem__T W t.   
-  
+  Local Definition sem__S := sem Source_Semantics.
+  Local Definition sem__T := sem Target_Semantics.   
   Local Definition prg__S := prg Source.
   Local Definition prg__T := prg Target.
-
-  Local Definition sat__S := sat Source sem__S.
-  Local Definition sat__T := sat Target sem__T.
+  Local Definition sat__S := sat Source_Semantics. 
+  Local Definition sat__T := sat Target_Semantics. 
   
   Local Definition cmp := compile_whole Source Target compilation_chain.
 
@@ -52,24 +47,24 @@ Section Criteria.
 
   Variable rel : trace__S -> trace__T -> Prop.  
  
-  Definition adjunction :=  induced_connection rel. 
+  Local Definition adjunction :=  induced_connection rel. 
   
-  Definition τ' : prop__S -> prop__T := α adjunction.
-  Definition σ' : prop__T -> prop__S := γ adjunction.
+  Local Definition τ' : prop__S -> prop__T := α adjunction.
+  Local Definition σ' : prop__T -> prop__S := γ adjunction.
 
-  Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
+  Local Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
   
   Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, rel s t /\ sem__S W s.  
 
   Check τTP. 
   
   Local Definition τTP := τTP compilation_chain
-                        sem__S sem__T
-                        τ'.
+                          Source_Semantics Target_Semantics
+                          τ'.
 
   
   Local Definition σTP := σTP compilation_chain
-                              sem__S sem__T
+                              Source_Semantics Target_Semantics
                               σ'.
 
 
@@ -78,6 +73,7 @@ Section Criteria.
 
   
   Theorem tilde_TC_τTP : rel_TC <-> τTP.
+
   Proof.
     setoid_rewrite contra_τTP. split.
     - move => Htilde W π [t [Hsemt Hτ]].
@@ -93,4 +89,5 @@ Section Criteria.
   Proof. by rewrite σTP_τTP tilde_TC_τTP. Qed. 
   
   
-End Criteria. 
+End TracePropertiesCriterion.
+

@@ -15,88 +15,109 @@ Record Language := {
    }.
 
 
-Section Sat.
+(* CA: semantics of a language can be defined over an arbitrary set *)
 
-  Variable Σ States : Set.
-  Variable E : Events Σ.
-  Variable S : EndState States.
+Record Semantics (L : Language) (trace_set : Set) := {
+                                                  
+  sem : prg L -> trace_set -> Prop;
+  non_empty_sem : forall W, exists t, sem W t
 
-  Variable L : Language.
+  }. 
 
-  Local Definition trace := trace Σ States.
-  Local Definition finpref := finpref Σ States.
-  Local Definition prop := prop Σ States.
-  Local Definition hprop := hprop Σ States. 
 
-  Variable sem : prg L -> trace -> Prop.
-  Variable non_empty_sem : forall W, exists t, sem W t.  
+Definition beh {L : Language}
+               {trace_set : Set} 
+               (S : Semantics L trace_set)  
+               (W : prg L) : prop trace_set :=
+  fun t => sem S W t.
+
+Definition sat {L : Language}
+               {trace_set : Set} 
+               (S : Semantics L trace_set)
+               (W : prg L) (π : prop trace_set) : Prop :=
+  forall t, sem S W t -> π t.
+
+Lemma sat_upper_closed  {L : Language}
+                        {trace_set : Set} 
+                        (S : Semantics L trace_set)
+                        (W : prg L ) (π1 π2 : prop trace_set) :
+  sat S W π1 -> π1 ⊆ π2 -> sat S W π2.  
+Proof.  
+  intros Hsat1 Hsuper t Hsem.
+  apply Hsuper.
+  now apply (Hsat1 t).  
+Qed. 
+
+
+Definition hsat{L : Language}
+               {trace_set : Set} 
+               (S : Semantics L trace_set)
+               (W : prg L) (H : hprop trace_set) : Prop :=
+  H (beh S W).
+
+Definition rsat {L : Language}
+                {trace_set : Set} 
+                (S : Semantics L trace_set)
+                (P : par L) (π : prop trace_set) : Prop :=
+  forall C, sat S (plug L P C) π.
+
+Lemma rsat_upper_closed {L : Language}
+                        {trace_set : Set} 
+                        (S : Semantics L trace_set)
+                        (P : par L ) (π1 π2 : prop trace_set) :
+  rsat S P π1 -> π1 ⊆ π2 -> rsat S P π2.  
+Proof.  
+  intros Hsat1 Hsuper C t Hsem.
+  apply Hsuper.
+  now apply (Hsat1 C t).  
+Qed. 
+
+Definition rhsat  {L : Language}
+                  {trace_set : Set} 
+                  (S : Semantics L trace_set)
+                  (P : par L) (H : hprop trace_set) : Prop :=
+  forall C, hsat S (plug L P C) H.
+
+Lemma neg_sat  {L : Language}
+               {trace_set : Set} 
+               {S : Semantics L trace_set} :
+  forall (W : prg L) (π : prop trace_set),
+    ~ sat S W π <-> exists t, sem S W t /\ ~ π t.
+Proof.
+  intros W π. unfold sat.
+  rewrite not_forall_ex_not.
+  split; intros [t H]; exists t; [now rewrite not_imp in H
+                            | now rewrite not_imp].                            
+Qed. 
+
+(* Considering moving these two lemmas to a separate module *)
+Lemma neg_rsat {L : Language}
+               {trace_set : Set} 
+               (S : Semantics L trace_set) :
+  forall (P : par L) (π : prop trace_set),
+    (~ rsat S P π <->
+     (exists C t, sem S (plug L P C) t /\ ~ π t)).
+Proof.
+  intros P π.
+  split; unfold rsat; intros H.
+  - rewrite not_forall_ex_not in H.
+    destruct H as [C H]; exists C.
+    unfold sat in H; rewrite not_forall_ex_not in H.
+    destruct H as [t H]; exists t.
+    now rewrite not_imp in H.
+  - firstorder.
+Qed.
+
+Lemma neg_rhsat {L : Language}
+                {trace_set : Set} 
+                (S : Semantics L trace_set) :
+  forall P H,  (~ rhsat S P H <-> ( exists (C : ctx L), ~ H (beh S ( plug L P C )))).
+Proof.
+  intros P H.
+  split; unfold rhsat; intro H0;
+    [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
+Qed.
   
-  Definition beh (P : prg L) : prop :=
-    fun b => sem P b.
 
-  Definition sat (P : prg L) (π : prop) : Prop :=
-    forall t, sem P t -> π t.
-
-  Lemma sat_upper_closed  (P : prg L ) (π1 π2 : prop) :
-                          sat P π1 -> π1 ⊆ π2 -> sat P π2.  
-  Proof.  
-    intros Hsat1 Hsuper t Hsem.
-    apply Hsuper.
-    now apply (Hsat1 t).  
-  Qed. 
-
-  
-  Definition hsat (P : prg L) (H : hprop) : Prop :=
-    H (beh P).
-
-  Definition rsat (P : par L) (π : prop) : Prop :=
-    forall C, sat (plug L P C) π.
-  
-  Lemma rsat_upper_closed  (P : par L ) (π1 π2 : prop) :
-                            rsat P π1 -> π1 ⊆ π2 -> rsat P π2.  
-  Proof.  
-    intros Hsat1 Hsuper C t Hsem.
-    apply Hsuper.
-    now apply (Hsat1 C t).  
-  Qed. 
-
-  Definition rhsat (P : par L) (H : hprop) : Prop :=
-    forall C, hsat (plug L P C) H.
-
-  Lemma neg_sat :
-    forall (W : prg L) (π : prop),
-      ~ sat W π <-> exists t, sem W t /\ ~ π t.
-  Proof.
-    intros W π. unfold sat.
-    rewrite not_forall_ex_not.
-    split; intros [t H]; exists t; [now rewrite not_imp in H
-                               | now rewrite not_imp].                            
-  Qed. 
-
-  (* Considering moving these two lemmas to a separate module *)
-  Lemma neg_rsat :
-    forall (P : par L) (π : prop),
-      (~ rsat P π <->
-       (exists C t, sem (plug L P C) t /\ ~ π t)).
-  Proof.
-    intros P π.
-    split; unfold rsat; intros H.
-    - rewrite not_forall_ex_not in H.
-      destruct H as [C H]; exists C.
-      unfold sat in H; rewrite not_forall_ex_not in H.
-      destruct H as [t H]; exists t.
-      now rewrite not_imp in H.
-    - firstorder.
-  Qed.
-  
-  Lemma neg_rhsat :
-    forall P H,  (~ rhsat P H <-> ( exists (C : ctx L), ~ H (beh ( plug L P C )))).
-  Proof.
-    intros P H.
-    split; unfold rhsat; intro H0;
-      [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
-  Qed.
-  
-End Sat.
 
 
