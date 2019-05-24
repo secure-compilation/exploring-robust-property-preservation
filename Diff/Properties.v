@@ -9,6 +9,7 @@ Require Import ClassicalExtras.
 Require Import MyNotation.
 
 Require Import TraceModel.
+Require Import Galois. 
 
 Section Properties.
 
@@ -17,10 +18,15 @@ Section Properties.
   Variable S : EndState States.
 
   Local Definition trace := trace Σ States.
-  Local Definition finpref := finpref Σ States. 
+  Local Definition finpref := finpref Σ States.
+
+  Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
   
-  Definition prop := trace -> Prop.
+  Definition prop  := trace -> Prop. 
   Definition fprop := finpref -> Prop.
+  Definition hprop := prop -> Prop.
+
+  Definition h_true : hprop := fun b => True.
   
   Notation "M <<< b" := (forall m, M m -> exists t, b t /\ prefix m t) (at level 50).  
 
@@ -52,12 +58,13 @@ Section Properties.
     empty :  Observations (fun m : finpref => False)
   | finite_union : forall M m, Observations M -> Observations (fun x => M x \/ x = m).
 
+  (*****************************************************************************)
+  (** *Safety closure operator                                                 *)
+  (*****************************************************************************)
   
-  (* CA: for now this is axiomatized but we can recover it by modifying
-       results from TraceTopology.v *)
   Definition Cl (π : prop) : prop :=
     fun t => forall S, Safety S -> π ⊆ S -> S t.   
-  
+
   Lemma Cl_bigger (π: prop) : π ⊆ (Cl π). 
   Proof. firstorder. Qed. 
 
@@ -71,9 +78,7 @@ Section Properties.
     exists m. split; auto. move => t' m_leq_t' Hf.
     apply: (m_wit t'). assumption. by apply: Hf. 
   Qed.
-
-  Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B. 
-
+ 
   Lemma Cl_id_on_Safe (π: prop): Safety π -> Cl π = π.
   Proof.
     move => Safety_π. apply: functional_extensionality => t.
@@ -82,14 +87,109 @@ Section Properties.
   Qed.  
   
   Lemma Cl_smallest (π :prop) : forall S, Safety S -> π ⊆ S -> Cl π ⊆ S.
-  Proof. by firstorder. Qed. 
+  Proof. by firstorder. Qed.
 
-  Definition hprop := prop -> Prop.
+  Lemma Cl_mono : monotone Cl.
+  Proof. 
+    move => π1 π2 sub t cl2_t.
+    apply: cl2_t.
+    apply: Cl_Safety. apply: subset_trans. exact: sub. exact: Cl_bigger.
+  Qed.  
+
+  Lemma Cl_idmp : idempotent Cl. 
+  Proof. move => π. apply: Cl_id_on_Safe. apply: Cl_Safety. Qed.
+ 
+  
+  Definition safety_uco := Build_Uco Cl_mono
+                                     Cl_idmp
+                                     Cl_bigger.
+  
+
+  Lemma Safety_Cl_prop :
+    Safety = (lift (uco safety_uco)) h_true.  
+  Proof.
+    apply: functional_extensionality => π.  
+    apply: prop_extensionality. split => H. 
+    + exists π. split; rewrite //=.
+        by rewrite Cl_id_on_Safe. 
+    + move: H. rewrite //=. move => [b [H Heq]]. subst.     
+      apply: Cl_Safety. 
+  Qed. 
+  
+  
+  (*****************************************************************************)
+
+  
+  (*****************************************************************************)
+  (** *Dense closure operator *)
+  (*****************************************************************************)
+  
+  Definition Dense (π: prop): Prop :=
+    forall t, finite t -> π t.
+
+  Definition dCl : prop -> prop :=
+    fun π => (fun t => finite t \/ π t).
+
+  Lemma Dense_dCl (π: prop): Dense (dCl π).
+  Proof. firstorder. Qed.
+
+
+  Lemma dCl_mono : monotone dCl.
+  Proof.
+    move => π1 π2 sub t1. rewrite /dCl.
+    move => [K1 | K2]; [by left | right; by apply: sub].   
+  Qed.
+
+  Lemma dCl_idmp : idempotent dCl.
+  Proof.
+    rewrite /dCl => π.
+    apply: functional_extensionality => t.
+    apply: prop_extensionality.
+    firstorder. 
+  Qed.
+
+  Lemma dCl_ext : extensive dCl.
+  Proof.  
+    rewrite /dCl => π t π_t. by right.
+  Qed.
+
+  Lemma dCl_id_on_Dense  (π: prop):
+    Dense π -> dCl π = π.
+  Proof.
+    rewrite /Dense /dCl => H_dense.
+    apply: functional_extensionality => t. 
+    apply: prop_extensionality. 
+    split; auto. move => [k | k]; [by apply: H_dense | by []]. 
+  Qed. 
+  
+  Definition dense_uco := Build_Uco dCl_mono
+                                    dCl_idmp
+                                    dCl_ext.
+
+  
+  Lemma Dense_Cl_prop :
+  Dense = (lift (uco dense_uco)) h_true. 
+  Proof.
+    apply: functional_extensionality => π.
+    apply: prop_extensionality.
+    split; rewrite /h_true //= => H.
+    + exists π. split; auto. by rewrite dCl_id_on_Dense.
+    + destruct H as [b [Heq H]]. subst.
+        by apply: Dense_dCl.
+  Qed.
+ 
+  (*****************************************************************************)
+  
+ 
 
   Definition SSC  (H: hprop)  : Prop :=
     forall h, H h ->
          (forall b : prop, b ⊆ h -> H b).
 
+  (*****************************************************************************)
+  (** *SSC closure operator*)
+  (*****************************************************************************)
+  
   Definition sCl (H : hprop) : hprop :=
     fun b => exists b', H b' /\ b ⊆ b'.
 
@@ -164,14 +264,5 @@ Section Properties.
     forall H', HSafe H' -> H ⊆ H' -> (hsCl H) ⊆ H'.
   Proof. by firstorder. Qed.
 
-
-  Definition Dense (π: prop): Prop :=
-    forall t, finite t -> π t.
-
-  Definition dCl : prop -> prop :=
-    fun π => (fun t => finite t \/ π t).
-
-  Lemma Dense_dCl (π: prop): Dense (dCl π).
-  Proof. firstorder. Qed.
 
 End Properties.

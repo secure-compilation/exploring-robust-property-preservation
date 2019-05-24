@@ -27,10 +27,10 @@ Section Preservation.
   Variable S__S : EndState States__S.
   Variable S__T : EndState States__T.
 
-  Definition trace__S := trace Σ__S States__S. 
-  Definition trace__T := trace Σ__T States__T.  
-  Definition prop__S := prop Σ__S States__S.
-  Definition prop__T := prop Σ__T States__T.
+  Local Definition trace__S := trace Σ__S States__S. 
+  Local Definition trace__T := trace Σ__T States__T.  
+  Local Definition prop__S := prop Σ__S States__S.
+  Local Definition prop__T := prop Σ__T States__T.
 
   Variable sem__S : prg Source -> trace__S -> Prop.
   Variable non_empty_sem__S : forall W, exists s, sem__S W s.   
@@ -38,13 +38,13 @@ Section Preservation.
   Variable sem__T : prg Target -> trace__T -> Prop.
   Variable non_empty_sem__T : forall W, exists t, sem__T W t.   
   
-  Definition prg__S := prg Source.
-  Definition prg__T := prg Target.
+  Local Definition prg__S := prg Source.
+  Local Definition prg__T := prg Target.
 
-  Definition sat__S := sat Source sem__S.
-  Definition sat__T := sat Target sem__T.
+  Local Definition sat__S := sat Source sem__S.
+  Local Definition sat__T := sat Target sem__T.
   
-  Definition cmp := compile_whole Source Target compilation_chain.
+  Local Definition cmp := compile_whole Source Target compilation_chain.
 
   Notation "W ↓" := (cmp W) (at level 50).  
 
@@ -113,8 +113,6 @@ Section Preservation.
   Proof.
     rewrite Galois_equiv. move => [ms [mt [G1 G2]]].
       by apply: G_σTP_iff_τTP. 
-  Qed. 
-  
+  Qed.  
+
 End Preservation.                                      
-
-

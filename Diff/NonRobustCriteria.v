@@ -7,6 +7,7 @@ Require Import ClassicalExtras.
 Require Import MyNotation.
 Require Import Setoid.
 Require Import FunctionalExtensionality.
+Require Import Setoid. 
 
 Require Import Galois.
 Require Import LanguageModel.
@@ -58,11 +59,11 @@ Section Criteria.
 
   Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
   
-  Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, sem__S W s.  
+  Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, rel s t /\ sem__S W s.  
 
   Check τTP. 
   
-  Definition τTP := τTP compilation_chain
+  Local Definition τTP := τTP compilation_chain
                         sem__S sem__T
                         τ'.
 
@@ -75,22 +76,18 @@ Section Criteria.
   Lemma σTP_τTP : σTP <-> τTP.
   Proof. apply: Adj_σTP_iff_τTP. by apply: rel_adjunction_law. Qed.   
 
-
   
   Theorem tilde_TC_τTP : rel_TC <-> τTP.
-  Proof. 
-  (* TODO: + understand why "rewrite contra_τTP" does not work without arguments 
-                  + modify the proof for the robust case
-          *)    
-(*   rewrite contra_τTP. split.     *)
-(*     - move => Htilde P π [Ct [t [Hsemt Hτ]]]. *)
-(*       destruct (Htilde P Ct t Hsemt) as [Cs [s [Hrel_s_t Hsems]]].    *)
-(*       exists Cs, s. split; auto. move => s_in_π. apply: Hτ. by exists s. *)
-(*  - move => Hτ P Ct t Hsemt. specialize (Hτ P (fun s => ~ rel s t)). *)
-(*    case: Hτ. *)
-(*    { exists Ct, t. split; auto. unfold τ'. move => [s [Hc Hcc]] //=. } *)
-(*    move  => Cs [s [Hsems H]]. exists Cs, s. split; auto; by apply: NNPP.                                   *)
-  (* Qed. *) Admitted.
+  Proof.
+    setoid_rewrite contra_τTP. split.
+    - move => Htilde W π [t [Hsemt Hτ]].
+      destruct (Htilde W t Hsemt) as [s [Hrel_s_t Hsems]].    
+      exists s. split; auto. move => s_in_π. apply: Hτ. by exists s. 
+    - move => Hτ W t Hsemt. specialize (Hτ W (fun s => ~ rel s t)). 
+      case: Hτ. 
+      { exists t. split; auto. unfold τ'. move => [s [Hc Hcc]] //=. } 
+      move => s [Hsems H]. exists s. split; auto; by apply: NNPP. 
+  Qed. 
 
   Theorem tilde_TC_σTP : rel_TC <-> σTP.  
   Proof. by rewrite σTP_τTP tilde_TC_τTP. Qed. 
