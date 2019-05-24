@@ -35,12 +35,12 @@ Definition fpropS := @fprop event endstateS.
 Definition fpropT := @fprop event endstateT.
 
 Inductive syntactic_eq : traceS -> traceT -> Prop :=
-| syntactic_eq_tstop : forall l es,
-    syntactic_eq (tstop l es) (tstop l (inl es))
+| syntactic_eq_tstop : forall l e,
+    syntactic_eq (tstop l e) (tstop l ((inl e) : es endstateT))
 | syntactic_eq_tsilent : forall l,
-    syntactic_eq (tsilent _ l) (tsilent _ l)
+    syntactic_eq (tsilent l) (tsilent l)
 | syntactic_eq_tstream : forall s,
-    syntactic_eq (tstream _ s) (tstream _ s)
+    syntactic_eq (tstream s) (tstream s)
 .
 Notation "t__s '≡' t__t" := (syntactic_eq t__s t__t) (no associativity, at level 10).
 Hint Constructors syntactic_eq.
@@ -48,18 +48,18 @@ Hint Constructors syntactic_eq.
 Axiom prefixTS : finprefT -> traceS -> Prop.
 
 Definition rel : traceS -> traceT -> Prop :=
-  fun t__s t__t => t__s ≡ t__t \/ exists m, (t__t = tstop m OOM /\ prefixTS (ftbd _ m) t__s).
+  fun t__s t__t => t__s ≡ t__t \/ exists m, (t__t = tstop m OOM /\ prefixTS (ftbd m) t__s).
 Hint Unfold rel.
 
 Inductive syntactic_eq_finpref : finprefS -> finprefT -> Prop :=
-| syntactic_eq_fstop : forall l es,
-    syntactic_eq_finpref (fstop l es) (fstop l (inl es))
+| syntactic_eq_fstop : forall l e,
+    syntactic_eq_finpref (fstop l e) (fstop l ((inl e) : es endstateT))
 | syntactic_eq_ftbd : forall l,
-    syntactic_eq_finpref (ftbd _ l) (ftbd _ l)
+    syntactic_eq_finpref (ftbd l) (ftbd l)
 .
 
 Definition rel_finpref : finprefS -> finprefT -> Prop :=
-  fun m__s m__t => syntactic_eq_finpref m__s m__t \/ exists l, (m__t = fstop l OOM /\ prefix_finpref (ftbd _ l) m__s).
+  fun m__s m__t => syntactic_eq_finpref m__s m__t \/ exists l, (m__t = fstop l OOM /\ prefix_finpref (ftbd l) m__s).
 
 Definition GC_traceT_traceS : Galois_Connection traceT traceS :=
   induced_connection rel.
@@ -77,7 +77,7 @@ Proof.
   - exists (tstop l e). split.
     apply HDense. econstructor; eexists; eauto.
     left; eauto.
-  - exists (tstop l (an_es is_endstate)). split.
+  - exists (tstop l (an_es endstateS)). split.
     apply HDense. econstructor; eexists; eauto.
     right; eexists; split; eauto.
     admit. (* property of prefixTS *)
@@ -115,9 +115,9 @@ Check Set.
 Definition trace_TS (t__t : traceT) : traceS :=
   match t__t with
   | tstop l (inl e) => tstop l e
-  | tstop l (inr _) => tsilent _ l
-  | tsilent l => tsilent _ l
-  | tstream s => tstream _ s
+  | tstop l (inr _) => tsilent l
+  | tsilent l => tsilent l
+  | tstream s => tstream s
   end.
 
 Lemma trace_TS_rel : forall (t__t : traceT),
@@ -134,8 +134,8 @@ Admitted.
 
 Definition finpref_ST (m__s : finprefS) : finprefT :=
   match m__s with
-  | fstop l e => fstop l (inl e)
-  | ftbd l => ftbd _ l
+  | fstop l e => fstop l (inl e : es endstateT) : finprefT
+  | ftbd l => ftbd l
   end.
 
 
@@ -209,15 +209,15 @@ Admitted.
 Definition finpref_TS (m__t : finprefT) : finprefS :=
   match m__t with
   | fstop l (inl e) => fstop l e
-  | fstop l (inr e) => ftbd _ l
-  | ftbd l => ftbd _ l
+  | fstop l (inr e) => ftbd l
+  | ftbd l => ftbd l
   end.
 
 Definition trace_ST (t__s : traceS) : traceT :=
   match t__s with
-  | tstop l e => tstop l (inl e)
-  | tsilent l => tsilent _ l
-  | tstream s => tstream _ s
+  | tstop l e => tstop l (inl e : es endstateT)
+  | tsilent l => tsilent l
+  | tstream s => tstream  s
   end.
 
 Lemma σ_preserves_safety : forall (π : propT),
