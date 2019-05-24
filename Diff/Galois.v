@@ -16,6 +16,11 @@ Definition idempotent {X : Set} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
 Definition extensive {X : Set} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
   forall π: X -> Prop, π ⊆ (f π).
 
+
+Definition lift {X Y : Set} (f :(X -> Prop) -> (Y -> Prop))
+                            (H : (X -> Prop) -> Prop) : ((Y -> Prop) -> Prop) :=
+  fun (b1 : Y -> Prop) => exists b2, (H b2) /\ b1 = f b2. 
+
 (* Definition of the adjunction law *)
 
 Definition Adjunction_law {A C : Set}
@@ -86,5 +91,13 @@ Qed.
 
 Definition induced_connection {A C : Set} (rel : C -> A -> Prop) : Galois_Connection A C :=
   Build_Galois_Connection (induced_adj_law rel).
+ 
 
-  
+(** *upper closure operator  \cite{giacobazzi2018abstract} (pag 7) *)
+Record Uco {X: Set} :=
+  {
+    uco: (X -> Prop) -> (X -> Prop);
+    mono: monotone uco;
+    idmp: idempotent uco;
+    ext : extensive uco
+  }.

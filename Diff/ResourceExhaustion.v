@@ -9,38 +9,30 @@ Set Bullet Behavior "Strict Subproofs".
 (* This file is intentionaly NOT included in _CoqProject *)
 
 
-Axiom event : Set.
-Axiom is_event : Events event.
-Hint Resolve is_event.
+Axiom event : Events.
 
-Axiom endstate : Set.
-Axiom is_endstate : EndState endstate.
-Hint Resolve is_endstate.
+Axiom endstate : Endstates.
 
-Definition endstateS : Set := endstate.
-Lemma is_endstateS : EndState endstateS.
-Proof.
-  trivial.
-Qed.
+Definition endstateS : Endstates := endstate.
+
 
 Definition out_of_memory := unit.
-Definition endstateT : Set := endstate + out_of_memory.
-Definition OOM : endstateT := inr tt.
-Hint Unfold endstateT OOM.
-Lemma is_endstateT : EndState endstateT.
-Proof.
-  now repeat constructor.
-Qed.
+Definition endstateT : Endstates :=
+  {| es := (es endstate + out_of_memory);
+     an_es := inr tt
+  |}.
+Definition OOM : es endstateT := inr tt.
+Hint Unfold OOM.
 
-Definition traceS := trace event endstateS.
-Definition traceT := trace event endstateT.
-Definition finprefS := finpref event endstateS.
-Definition finprefT := finpref event endstateT.
+Definition traceS := @trace event endstateS.
+Definition traceT := @trace event endstateT.
+Definition finprefS := @finpref event endstateS.
+Definition finprefT := @finpref event endstateT.
 
-Definition propS := prop event endstateS.
-Definition propT := prop event endstateT.
-Definition fpropS := fprop event endstateS.
-Definition fpropT := fprop event endstateT.
+Definition propS := @prop traceS.
+Definition propT := @prop traceT.
+Definition fpropS := @fprop event endstateS.
+Definition fpropT := @fprop event endstateT.
 
 Inductive syntactic_eq : traceS -> traceT -> Prop :=
 | syntactic_eq_tstop : forall l es,
@@ -85,7 +77,7 @@ Proof.
   - exists (tstop l e). split.
     apply HDense. econstructor; eexists; eauto.
     left; eauto.
-  - exists (tstop l (an_endstate is_endstateS)). split.
+  - exists (tstop l (an_es is_endstate)). split.
     apply HDense. econstructor; eexists; eauto.
     right; eexists; split; eauto.
     admit. (* property of prefixTS *)

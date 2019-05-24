@@ -19,8 +19,8 @@ Record CompilationChain (Source Target : Language) := {
 (*   Variable Σ__S Σ__T States__S States__T : Set. *)
 (*   Variable E__S : Events Σ__S. *)
 (*   Variable E__T : Events Σ__T. *)
-(*   Variable S__S : EndState States__S. *)
-(*   Variable S__T : EndState States__T. *)
+(*   Variable S__S : Endstates States__S. *)
+(*   Variable S__T : Endstates States__T. *)
 
 (*   Local Definition trace__S := trace Σ__S States__S.  *)
 (*   Local Definition trace__T := trace Σ__T States__T.   *)

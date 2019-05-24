@@ -11,4 +11,7 @@ Properties.v
 LanguageModel.v
 ChainModel.v
 NonRobustDef.v
-NonRobustCriteria.v
+NonRobustTraceCriterion.v
+UcoPreservation.v
+NonRobustSafetyDef.v
+NonRobustSafetyCriterion.v
