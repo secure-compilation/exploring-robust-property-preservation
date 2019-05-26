@@ -5,3 +5,4 @@
 *~
 CoqMakefile.conf
 Makefile.coq
+.coqdeps.d
