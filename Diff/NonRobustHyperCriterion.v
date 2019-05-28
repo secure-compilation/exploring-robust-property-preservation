@@ -7,7 +7,7 @@ Require Import ClassicalExtras.
 Require Import MyNotation.
 Require Import Setoid.
 Require Import FunctionalExtensionality.
-Require Import Setoid. 
+ 
 
 Require Import Galois.
 Require Import LanguageModel.
@@ -66,38 +66,32 @@ Section HyperCriterion.
                               Source_Semantics Target_Semantics
                               τ'.
   
-  
   Local Definition σHP := σHP compilation_chain
-                              Source_Semantics Target_Semantics
-                              σ'.
+                          Source_Semantics Target_Semantics
+                          σ'.
+  
 
-  Definition tilde_HC :=  forall W, beh__T (W ↓) = τ' (beh__S W). 
-                                 
+  Definition tilde_HC :=  forall W t__T, beh__T (W ↓) t__T <-> (exists t__S, rel t__S t__T /\ beh__S W t__S). 
+
+  Definition tilde_HC' := forall W, beh__T (W ↓) = τ' (beh__S W).
+  
+  Lemma tilde_HC_HC' : tilde_HC' <-> tilde_HC. 
+  Proof.
+    split => Htilde W.
+    rewrite (Htilde W). by firstorder.  
+    apply functional_extensionality => t__T. apply: prop_extensionality.
+    rewrite (Htilde W). by firstorder. 
+  Qed.     
     
   Theorem tilde_HC_τHP : tilde_HC <-> τHP.
   Proof.
-    split.
-    - move => H_tilde W h__S. now exists (beh__S W). 
+    rewrite -tilde_HC_HC'. split.
+    - move => H_tilde W h__S. now exists (beh__S W).      
     - move => H_τHP W. specialize (H_τHP W (fun π__S => π__S = beh__S W)).
       have Hfoo : hsat__S W (fun π__S => π__S = beh__S W) by auto.                           
       destruct (H_τHP Hfoo) as [bs [Heq H]]. subst. exact H.  
   Qed.
 
-  Theorem tilde_HC_σHP : Insertion_snd τ' σ' ->  tilde_HC <-> σHP.
-  Proof.
-    move => H_ins. split.
-    - rewrite tilde_HC_τHP. by apply: Insetion_τHP_σHP. 
-    - setoid_rewrite contra_σHP => H_σHP W.
-      have Hfoo: ~ hsat__T (W ↓) (fun π__T =>  π__T <> (beh__T (W ↓))) by auto.  
-      specialize (H_σHP W (fun π__T =>  π__T <> (beh__T (W ↓))) Hfoo); clear Hfoo.
-      have Hfoo: ~ (lift τ') ((lift σ')  (fun π__T =>  π__T <> (beh__T (W ↓)))) (τ' (beh__S W)). 
-      { admit. }
-      have Hfoofoo: (lift τ') ((lift σ')  (fun π__T =>  π__T <> (beh__T (W ↓)))) = (fun π__T =>  π__T <> (beh__T (W ↓))).
-      { admit. }
-      move: Hfoo. rewrite Hfoofoo -dne. congruence.   
-  Admitted.     
-    
-         
-      
+  (*CA's TODO : relation between tilde_HC and σHP*)
       
 End HyperCriterion. 

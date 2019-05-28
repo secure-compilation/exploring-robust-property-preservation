@@ -75,14 +75,27 @@ Definition Insertion_snd {A C : Set}
   forall (a : A -> Prop), (α (γ a)) = a.
 
 Structure Galois_Insertion (A C : Set) := {
+            α__i : (C -> Prop) -> (A -> Prop);
+            γ__i : (A -> Prop) -> (C -> Prop);
+            mono_α : monotone α__i;
+            mono_γ : monotone γ__i;
+            G1 : Galois_fst α__i γ__i;
+            I2 : Insertion_snd α__i γ__i
+          }.
 
-          G : Galois_Connection A C;
-          insert : Insertion_snd (α G) (γ G)
 
-          }. 
+Lemma Insertion_coercion_Connection {A C : Set} :
+  Galois_Insertion A C -> Galois_Connection A C.
+Proof.
+  move => [α γ mono_alpha mono_gamma H1 H2].
+  have H_adj: Adjunction_law α γ.
+  rewrite Galois_equiv. repeat split; auto.
+  move => a. rewrite (H2 a). now apply: subset_ref.
+  exact (Build_Galois_Connection H_adj).
+Qed.
 
-Coercion G : Galois_Insertion >-> Galois_Connection.
-
+Coercion Insertion_coercion_Connection  : Galois_Insertion >-> Galois_Connection.
+                      
   (* Given ∼ ⊆ 2^C × 2^A there is a pair of maps 
      α : 2^C -> 2^A,  γ : 2^A -> 2^C, that is a Galois connection 
      between (2^C, ⊆) and (2^A, ⊆).    
