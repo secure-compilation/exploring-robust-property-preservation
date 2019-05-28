@@ -19,7 +19,7 @@ Require Import NonRobustHyperDef.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
-Section SafetyCriterion.
+Section HyperCriterion.
 
   Variable Source Target: Language.
   Variable compilation_chain : CompilationChain Source Target.
@@ -100,4 +100,4 @@ Section SafetyCriterion.
          
       
       
-End SafetyCriterion. 
+End HyperCriterion. 
