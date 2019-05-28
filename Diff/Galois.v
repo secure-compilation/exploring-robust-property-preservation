@@ -32,8 +32,8 @@ Definition Adjunction_law {A C : Set}
 (* We define Galois connection between powersets ordered by set inclusion:
      (2^X, ⊆) ⇆ (2^Y, ⊆) 
    *)
-Record Galois_Connection (A C : Set) :=
-  { α : (C -> Prop) -> (A -> Prop);
+Structure Galois_Connection (A C : Set) := {
+    α : (C -> Prop) -> (A -> Prop);
     γ : (A -> Prop) -> (C -> Prop);
     adjunction_law : Adjunction_law α γ
   }.
@@ -67,6 +67,21 @@ Proof.
     + apply: subset_trans. apply: (G1 c). by apply: mono_γ.
       apply: subset_trans. apply: mono_α. exact H. by apply: G2.
 Qed.
+
+
+Definition Insertion_snd {A C : Set} 
+           (α: (C -> Prop) -> (A -> Prop))
+           (γ: (A -> Prop) -> (C -> Prop)) :=
+  forall (a : A -> Prop), (α (γ a)) = a.
+
+Structure Galois_Insertion (A C : Set) := {
+
+          G : Galois_Connection A C;
+          insert : Insertion_snd (α G) (γ G)
+
+          }. 
+
+Coercion G : Galois_Insertion >-> Galois_Connection.
 
   (* Given ∼ ⊆ 2^C × 2^A there is a pair of maps 
      α : 2^C -> 2^A,  γ : 2^A -> 2^C, that is a Galois connection 
