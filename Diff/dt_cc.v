@@ -1,3 +1,8 @@
+Require Import LanguageModel.
+Require Import ChainModel.
+Require Import NonRobustTraceCriterion.
+
+
 Inductive HExp :=
   HNat : nat -> HExp
 | HBool : bool -> HExp
@@ -322,3 +327,73 @@ Proof.
     remember (Nat.leb n1 n2) as b.
     destruct b; constructor.
 Qed.
+
+
+
+Section Source.
+
+  Definition sprg := {e : HExp | exists τ, typing e τ }.
+  Definition spar := sprg.
+  Definition sctx := unit.
+  Definition splug (p : spar) (c : sctx) := p.
+
+  Definition source := {| prg := sprg; par := spar; ctx := sctx; plug := splug |}.
+
+  Definition traceS := HTrace.
+
+  Definition semS : sprg -> traceS -> Prop := fun p t => hsem (proj1_sig p) = t.
+  Definition semanticsS : Semantics source traceS.
+  Proof.
+    exists semS.
+    destruct W as [e [[|] Hty]].
+    - destruct (type_correct_nat _ Hty) as [n Hn].
+      now (exists (HTNat n)).
+    - destruct (type_correct_bool _ Hty) as [b Hb].
+      now (exists (HTBool b)).
+  Defined.
+
+End Source.
+
+Section Target.
+  Definition tprg := LExp.
+  Definition tpar := tprg.
+  Definition tctx := unit.
+  Definition tplug (p : tpar) (c : tctx) := p.
+
+  Definition target := {| prg := tprg; par := tpar; ctx := tctx; plug := tplug |}.
+
+  Definition traceT := LTrace.
+
+  Definition semT : tprg -> traceT -> Prop := fun p t => lsem p = t.
+  Definition semanticsT : Semantics target traceT.
+  Proof.
+    exists semT.
+    destruct W; now eexists.
+  Defined.
+
+End Target.
+
+Section CompilationChain.
+  Definition compile_w : prg source -> prg target :=
+    fun (p : prg source) => compile (proj1_sig p).
+
+  Definition compiler : CompilationChain source target :=
+    {| compile_whole := compile_w; compile_par := compile_w; compile_ctx := id |}.
+
+End CompilationChain.
+
+Definition rel_TC := rel_TC compiler semanticsS semanticsT tilde.
+
+Lemma correctness : rel_TC.
+Proof.
+  unfold rel_TC.
+  unfold NonRobustTraceCriterion.rel_TC.
+  intros [es Hty] tt Hsem.
+  inversion Hty as [τ Hty'].
+  apply correct_compiler in Hty'.
+  exists (hsem es). split; last now auto.
+  simpl in Hsem. now rewrite Hsem in Hty'.
+Qed.
+
+
+
