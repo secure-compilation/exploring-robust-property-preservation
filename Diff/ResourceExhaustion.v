@@ -45,7 +45,20 @@ Inductive syntactic_eq : traceS -> traceT -> Prop :=
 Notation "t__s '≡' t__t" := (syntactic_eq t__s t__t) (no associativity, at level 10).
 Hint Constructors syntactic_eq.
 
-Axiom prefixTS : finprefT -> traceS -> Prop.
+Definition prefixTS (m__t : finprefT) (t__s : traceS) : Prop :=
+  match m__t with
+  | fstop l__t (inl e__t) =>
+    match t__s with
+    | tstop l__s e__s => e__t = e__s /\ l__t = l__s
+    | _ => False
+    end
+  | fstop _ (inr _) => False
+  | ftbd l__t =>
+    match t__s with
+    | tstop l__s _ | tsilent l__s => Stream.list_list_prefix l__t l__s
+    | tstream s__s => Stream.list_stream_prefix l__t s__s
+    end
+  end.
 
 Definition rel : traceS -> traceT -> Prop :=
   fun t__s t__t => t__s ≡ t__t \/ exists m, (t__t = tstop m OOM /\ prefixTS (ftbd m) t__s).
@@ -58,8 +71,8 @@ Inductive syntactic_eq_finpref : finprefS -> finprefT -> Prop :=
     syntactic_eq_finpref (ftbd l) (ftbd l)
 .
 
-Definition rel_finpref : finprefS -> finprefT -> Prop :=
-  fun m__s m__t => syntactic_eq_finpref m__s m__t \/ exists l, (m__t = fstop l OOM /\ prefix_finpref (ftbd l) m__s).
+(* Definition rel_finpref : finprefS -> finprefT -> Prop := *)
+(*   fun m__s m__t => syntactic_eq_finpref m__s m__t \/ exists l, (m__t = fstop l OOM /\ prefix_finpref (ftbd l) m__s). *)
 
 Definition GC_traceT_traceS : Galois_Connection traceT traceS :=
   induced_connection rel.
@@ -80,12 +93,14 @@ Proof.
   - exists (tstop l (an_es endstateS)). split.
     apply HDense. econstructor; eexists; eauto.
     right; eexists; split; eauto.
-    admit. (* property of prefixTS *)
+    clear; simpl; induction l.
+    reflexivity.
+    now split.
   - destruct Hfin as [l' [e' Hn]].
     inversion Hn.
   - destruct Hfin as [l' [e' Hn]].
     inversion Hn.
-Admitted.
+Qed.
 
 Lemma σ_preserves_dense : forall (π : propT),
     Dense π -> Dense (σ π).
@@ -125,12 +140,12 @@ Lemma trace_TS_rel : forall (t__t : traceT),
 Proof.
   destruct t__t as [l [e | []] | l | s];
     try now left; constructor.
-  - right. 
+  - right.
     exists l.
     split.
     reflexivity.
-    admit. (* trivial property of prefixTS *)
-Admitted.
+    now induction l; split.
+Qed.
 
 Definition finpref_ST (m__s : finprefS) : finprefT :=
   match m__s with
@@ -189,7 +204,22 @@ Proof.
         -- destruct Hrel as [m [H1 H2]]; try now auto.
            inversion H1; subst.
            simpl in Hpref'.
-           admit. (* trivial property of prefixTS *)
+           destruct t__s as [l'' e'' | l'' | s''];
+             try now eapply Stream.list_list_prefix_trans; eassumption.
+           simpl in *.
+           { clear -Hpref' H2.
+             generalize dependent s''. generalize dependent m.
+             induction l as [| e l]; intros m Hlm s Hms.
+             - reflexivity.
+             - destruct m as [| e' l'];
+                 destruct Hlm;
+                 subst.
+               destruct s as [e s].
+               simpl in *.
+               destruct Hms as [? Hl's]; subst.
+               split; first reflexivity.
+               now eapply IHl; eassumption.
+           }
       * destruct Hrel as [Hrel | Hrel].
         -- destruct t__s as [l'' e'' | l'' | s''];
              try now auto.
@@ -204,7 +234,7 @@ Proof.
            assumption.
         -- destruct Hrel as [m [H1 H2]];
              try now auto.
-Admitted.
+Qed.
 
 Definition finpref_TS (m__t : finprefT) : finprefS :=
   match m__t with
@@ -216,9 +246,211 @@ Definition finpref_TS (m__t : finprefT) : finprefS :=
 Definition trace_ST (t__s : traceS) : traceT :=
   match t__s with
   | tstop l e => tstop l (inl e : es endstateT)
+  (* | tstop l e => tstop l OOM *)
   | tsilent l => tsilent l
   | tstream s => tstream  s
   end.
+
+Definition no_OOM : propT :=
+  fun t__t => not (exists l, t__t = tstop l OOM).
+
+Lemma σ_no_OOM : Safety (σ (no_OOM)).
+Proof.
+  unfold no_OOM, σ, GC_traceT_traceS, induced_connection, up_rel; simpl.
+  unfold Safety.
+  intros t__s H.
+  setoid_rewrite not_forall_ex_not in H;
+    setoid_rewrite not_imp in H;
+    setoid_rewrite <- dne in H.
+  destruct H as [t__t [Hrel [m Ht__t]]]; subst.
+  destruct Hrel as [Hrel | Hrel].
+  - now inversion Hrel.
+  - destruct Hrel as [m' [Heq Hpref]];
+      inversion Heq; subst m'.
+    exists (ftbd m).
+    split; first assumption.
+    intros t__s' Hpref' Hn.
+    specialize (Hn (tstop m OOM)).
+    assert (rel t__s' (tstop m OOM)) by now eauto.
+    specialize (Hn H).
+    rewrite not_ex_forall_not in Hn.
+    now specialize (Hn m).
+Qed.
+
+Definition stop_implies_OOM : propT :=
+  fun t__t => exists l e, t__t = tstop l e -> e = OOM.
+
+Lemma σ_stop_implies_OOM : Safety (σ (stop_implies_OOM)).
+Proof.
+  unfold stop_implies_OOM, σ, GC_traceT_traceS, induced_connection, up_rel;
+    simpl.
+  unfold Safety.
+  intros t__s H.
+  setoid_rewrite not_forall_ex_not in H;
+    setoid_rewrite not_imp in H;
+    setoid_rewrite not_ex_forall_not in H;
+    setoid_rewrite not_ex_forall_not in H;
+    setoid_rewrite not_imp in H.
+  destruct H as [t__t [Hrel H]].
+  now destruct (H nil OOM) as [_ Hn].
+Qed.
+
+Definition stop_implies_not_OOM : propT :=
+  fun t__t => exists l e, t__t = tstop l e -> e <> OOM.
+
+Lemma σ_stop_implies_not_OOM : Safety (σ (stop_implies_not_OOM)).
+Proof.
+  unfold stop_implies_not_OOM, σ, GC_traceT_traceS;
+  unfold induced_connection, up_rel;
+    simpl.
+  unfold Safety.
+  intros t__s H.
+  setoid_rewrite not_forall_ex_not in H;
+    setoid_rewrite not_imp in H;
+    setoid_rewrite not_ex_forall_not in H;
+    setoid_rewrite not_ex_forall_not in H;
+    setoid_rewrite not_imp in H.
+  destruct H as [t__t [Hrel H]].
+  destruct (H nil (inl (an_es endstateS) : es endstateT)) as [_ Hn].
+  now rewrite <- dne in Hn.
+Qed.
+
+Definition stops_now : propT :=
+  fun t__t => (exists e, t__t = tstop nil e) \/ t__t = tsilent nil.
+
+
+Lemma stops_now_safety : Safety (stops_now).
+Proof.
+  unfold stops_now, Safety.
+  intros t__t Hn.
+  setoid_rewrite de_morgan2 in Hn;
+    setoid_rewrite not_ex_forall_not in Hn.
+  destruct Hn as [Hn1 Hn2].
+  destruct t__t as [[| ev l] es | l | s].
+  - now specialize (Hn1 es).
+  - exists (ftbd (ev::l)).
+    split.
+    + split; first reflexivity; now apply Stream.list_list_prefix_ref.
+    + intros t__t' Hpref.
+      setoid_rewrite de_morgan2;
+        setoid_rewrite not_ex_forall_not.
+      split.
+      intros es'.
+      destruct t__t' as [[| ev'' l''] es'' | l'' | s''];
+        try now auto.
+      destruct t__t' as [[| ev'' l''] es'' | [| ev'' l''] | s''];
+        try now auto.
+  - destruct l as [| ev l]; try now auto.
+    exists (ftbd (ev::l)).
+    split.
+    + split; first reflexivity; now apply Stream.list_list_prefix_ref.
+    + intros t__t' Hpref.
+      setoid_rewrite de_morgan2;
+        setoid_rewrite not_ex_forall_not.
+      split.
+      intros es'.
+      destruct t__t' as [[| ev'' l''] es'' | l'' | s''];
+        try now auto.
+      destruct t__t' as [[| ev'' l''] es'' | [| ev'' l''] | s''];
+        try now auto.
+  - destruct s as [ev s].
+    exists (ftbd (ev::nil)).
+    split.
+    + split; reflexivity.
+    + intros t__t' Hpref.
+      setoid_rewrite de_morgan2;
+        setoid_rewrite not_ex_forall_not.
+      split.
+      intros es'.
+      destruct t__t' as [[| ev'' l''] es'' | l'' | s''];
+        try now auto.
+      destruct t__t' as [[| ev'' l''] es'' | [| ev'' l''] | s''];
+        try now auto.
+Qed.
+
+Lemma σ_stops_now : Safety (σ stops_now).
+Proof.
+  unfold stops_now, σ, GC_traceT_traceS;
+  unfold induced_connection, up_rel;
+    simpl.
+  unfold Safety.
+  intros t__s H.
+  setoid_rewrite not_forall_ex_not in H;
+    setoid_rewrite not_imp in H;
+    setoid_rewrite de_morgan2 in H;
+    setoid_rewrite not_ex_forall_not in H.
+  destruct H as [t__t [Hrel [H1 H2]]].
+  destruct Hrel as [Hrel | Hrel].
+  - destruct Hrel; try now auto.
+    + destruct l as [| e' l']; first now specialize (H1 (inl e)).
+      exists (ftbd (e' :: l')).
+      split. split; first reflexivity; now apply Stream.list_list_prefix_ref.
+      intros t__s Hpref Hn.
+      destruct t__s as [[| e'' l''] estate | [| e'' l'' ] | [e'' s'']];
+        try now auto.
+      * specialize (Hn (tstop (e'' :: l'') (inl estate : es endstateT ))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee.
+        inversion Hn.
+      * specialize (Hn (tsilent (e'' :: l''))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee. inversion Hn.
+      * specialize (Hn (tstream (Stream.scons e'' s''))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee. inversion Hn.
+    + destruct l as [|]; try now auto.
+      exists (ftbd (e :: l)).
+      split. split; first reflexivity; now apply Stream.list_list_prefix_ref.
+      intros t__s Hpref Hn.
+      destruct t__s as [[| e'' l''] estate | [| e'' l'' ] | [e'' s'']];
+        try now auto.
+      * specialize (Hn (tstop (e'' :: l'') (inl estate : es endstateT ))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee.
+        inversion Hn.
+      * specialize (Hn (tsilent (e'' :: l''))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee. inversion Hn.
+      * specialize (Hn (tstream (Stream.scons e'' s''))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee. inversion Hn.
+    + destruct s as [e s].
+      exists (ftbd (e::nil)).
+      split. split; reflexivity.
+      intros t__s Hpref Hn.
+      destruct t__s.
+      * specialize (Hn (tstop l (inl e0 : es endstateT))).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        now inversion Hee; subst.
+        inversion Hn.
+      * specialize (Hn (tsilent l)).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        now inversion Hee.
+        now inversion Hn; subst.
+      * specialize (Hn (tstream s0)).
+        destruct Hn as [[ee Hee] | Hn]; eauto.
+        inversion Hee.
+        inversion Hn.
+  - destruct Hrel as [l [H3 H4]]; subst.
+    destruct l as [| e l]; first now specialize (H1 OOM).
+    clear H1 H2.
+    exists (ftbd (e::l)).
+    split. simpl in *. assumption.
+    intros t__s' Hpref Hn.
+    destruct t__s'.
+    * specialize (Hn (tstop l0 (inl e0 : es endstateT))).
+      destruct Hn as [[ee Hee] | Hn]; eauto.
+      now inversion Hee; subst.
+      inversion Hn.
+    * specialize (Hn (tsilent l0)).
+      destruct Hn as [[ee Hee] | Hn]; eauto.
+      now inversion Hee.
+      now inversion Hn; subst.
+    * specialize (Hn (tstream s)).
+      destruct Hn as [[ee Hee] | Hn]; eauto.
+      inversion Hee.
+      inversion Hn.
+Qed.
 
 Lemma σ_preserves_safety : forall (π : propT),
     Safety π -> Safety (σ π).
@@ -245,14 +477,26 @@ Proof.
         try now auto.
       * now inversion Hm1 as [Hm1' ?]; inversion Hm1'.
       * inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst.
-        destruct t__s as [l'' e'' | l'' | s''].
-        -- admit. (* trivial from H2 *)
-        -- simpl. admit. (* trivial from H2 *)
-        -- simpl. admit. (* trivial from H2 *)
-      * destruct t__s as [l'' e'' | l'' | s''].
-        -- simpl. admit. (* trivial from Hm1 and H2 *)
-        -- simpl. admit. (* trivial from Hm1 and H2 *)
-        -- simpl. admit. (* trivial from Hm1 and H2 *)
+        now destruct t__s as [l'' e'' | l'' | s''];
+          assumption.
+      * destruct t__s as [l'' e'' | l'' | s''];
+          try now eapply Stream.list_list_prefix_trans; eassumption.
+        simpl in *.
+        (* TODO: same proof as above, factorize *)
+        { clear -H2 Hm1.
+          generalize dependent s''. generalize dependent m.
+          rename l' into l.
+          induction l as [| e l]; intros m Hlm s Hms.
+          - reflexivity.
+          - destruct m as [| e' l'];
+              destruct Hlm;
+              subst.
+            destruct s as [e s].
+            simpl in *.
+            destruct Hms as [? Hl's]; subst.
+            split; first reflexivity.
+            now eapply IHl; eassumption.
+        }
   - intros t__s' Hpref'.
     rewrite not_forall_ex_not;
       setoid_rewrite not_imp.
@@ -262,12 +506,22 @@ Proof.
       * left. now constructor.
       * left. now constructor.
       * left. now constructor.
-    + apply Hm2.
-      destruct m__t as [l [e | []] | l].
+    + destruct m__t as [l [e | []] | l].
       * destruct t__s' as [l' e' | l' | s'];
           try now auto.
+        apply Hm2.
         now destruct Hpref'; subst.
-      * admit. (* NOT trivial *)
+      * destruct Hrel as [Hrel | Hrel].
+        -- destruct Hrel; try now auto.
+           inversion Hm1 as [Hm1' _]; inversion Hm1'.
+        -- destruct Hrel as [m [H1 H2]];
+             subst.
+           apply Hm2.
+           destruct t__s' as [l' e' | l' | s'];
+             try now auto.
+           ++ simpl in *. admit. (* wrong? *)
+           ++ admit.
+           ++ simpl in *. admit.
       * destruct t__s' as [l' e' | l' | s'];
           try now auto.
 Admitted.
