@@ -15,3 +15,5 @@ NonRobustTraceCriterion.v
 UcoPreservation.v
 NonRobustSafetyDef.v
 NonRobustSafetyCriterion.v
+NonRobustHyperDef.v
+NonRobustHyperCriterion.v
