@@ -455,73 +455,97 @@ Qed.
 Lemma σ_preserves_safety : forall (π : propT),
     Safety π -> Safety (σ π).
 Proof.
-  unfold Safety, σ, GC_traceT_traceS, induced_connection, up_rel; simpl.
-  intros π Hsafety t__s Ht.
-  rewrite not_forall_ex_not in Ht;
-    setoid_rewrite not_imp in Ht.
-  destruct Ht as [t__t [Hrel Hnπ]].
-  destruct (Hsafety t__t Hnπ) as [m__t [Hm1 Hm2]].
-  exists (finpref_TS m__t).
-  split.
-  - destruct Hrel as [Hrel | Hrel].
-    + inversion Hrel; subst.
-      * destruct m__t as [l' [e' | []] | l'];
-          try now inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst.
-        now assumption.
-      * destruct m__t as [l' [e' | []] | l'];
-          try now auto.
-      * destruct m__t as [l' [e' | []] | l'];
-          try now auto.
-    + destruct Hrel as [m [H1 H2]]; subst.
-      destruct m__t as [l' [e' | []] | l'];
-        try now auto.
-      * now inversion Hm1 as [Hm1' ?]; inversion Hm1'.
-      * inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst.
-        now destruct t__s as [l'' e'' | l'' | s''];
-          assumption.
-      * destruct t__s as [l'' e'' | l'' | s''];
-          try now eapply Stream.list_list_prefix_trans; eassumption.
-        simpl in *.
-        (* TODO: same proof as above, factorize *)
-        { clear -H2 Hm1.
-          generalize dependent s''. generalize dependent m.
-          rename l' into l.
-          induction l as [| e l]; intros m Hlm s Hms.
-          - reflexivity.
-          - destruct m as [| e' l'];
-              destruct Hlm;
-              subst.
-            destruct s as [e s].
-            simpl in *.
-            destruct Hms as [? Hl's]; subst.
-            split; first reflexivity.
-            now eapply IHl; eassumption.
-        }
-  - intros t__s' Hpref'.
-    rewrite not_forall_ex_not;
-      setoid_rewrite not_imp.
-    exists (trace_ST t__s').
-    split.
-    + destruct t__s' as [l e | l | s].
-      * left. now constructor.
-      * left. now constructor.
-      * left. now constructor.
-    + destruct m__t as [l [e | []] | l].
-      * destruct t__s' as [l' e' | l' | s'];
-          try now auto.
-        apply Hm2.
-        now destruct Hpref'; subst.
-      * destruct Hrel as [Hrel | Hrel].
-        -- destruct Hrel; try now auto.
-           inversion Hm1 as [Hm1' _]; inversion Hm1'.
-        -- destruct Hrel as [m [H1 H2]];
-             subst.
-           apply Hm2.
-           destruct t__s' as [l' e' | l' | s'];
-             try now auto.
-           ++ simpl in *. admit. (* wrong? *)
-           ++ admit.
-           ++ simpl in *. admit.
-      * destruct t__s' as [l' e' | l' | s'];
-          try now auto.
-Admitted.
+  intros π__T safety_π__T t__S not_t__S.
+  unfold σ, γ in not_t__S. simpl in not_t__S. unfold up_rel in not_t__S. 
+  rewrite not_forall_ex_not in not_t__S. 
+  destruct not_t__S as [t__T not_t__S]. rewrite not_imp in not_t__S.
+  destruct not_t__S as [rel_ts_tt not_t__T].
+  destruct (safety_π__T t__T not_t__T) as [m__T [pref_mt_tt mt_wit]].
+  destruct m__T. 
+  + (* CA: in case mT = fstop l es, rel ts tT -> ts = tT
+           (prove a separate lemma for this)
+           and hence one just has to pick ms = mT
+     
+       CA: in case mT = fstop l out_of_memory then every source continuation of 
+           mT is still related with tT, so it is not in σ(πT)
+
+    *) admit.
+        
+  + (* CA: in case mT = ftbd l, 
+           then mT < tT and mT <= ts.
+           In particular tT' = mT;out_of_mem ∉ πT.
+           Notice that ∀ tS' > mT, rel tS' tT', hence tS' ∉ σ(πT).
+     *) admit.
+Admitted. 
+        
+  
+ (*  unfold Safety, σ, GC_traceT_traceS, induced_connection, up_rel; simpl. *)
+(*   intros π Hsafety t__s Ht. *)
+(*   rewrite not_forall_ex_not in Ht; *)
+(*     setoid_rewrite not_imp in Ht. *)
+(*   destruct Ht as [t__t [Hrel Hnπ]]. *)
+(*   destruct (Hsafety t__t Hnπ) as [m__t [Hm1 Hm2]]. *)
+(*   exists (finpref_TS m__t). *)
+(*   split. *)
+(*   - destruct Hrel as [Hrel | Hrel]. *)
+(*     + inversion Hrel; subst. *)
+(*       * destruct m__t as [l' [e' | []] | l']; *)
+(*           try now inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst. *)
+(*         now assumption. *)
+(*       * destruct m__t as [l' [e' | []] | l']; *)
+(*           try now auto. *)
+(*       * destruct m__t as [l' [e' | []] | l']; *)
+(*           try now auto. *)
+(*     + destruct Hrel as [m [H1 H2]]; subst. *)
+(*       destruct m__t as [l' [e' | []] | l']; *)
+(*         try now auto. *)
+(*       * now inversion Hm1 as [Hm1' ?]; inversion Hm1'. *)
+(*       * inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst. *)
+(*         now destruct t__s as [l'' e'' | l'' | s'']; *)
+(*           assumption. *)
+(*       * destruct t__s as [l'' e'' | l'' | s'']; *)
+(*           try now eapply Stream.list_list_prefix_trans; eassumption. *)
+(*         simpl in *. *)
+(*         (* TODO: same proof as above, factorize *) *)
+(*         { clear -H2 Hm1. *)
+(*           generalize dependent s''. generalize dependent m. *)
+(*           rename l' into l. *)
+(*           induction l as [| e l]; intros m Hlm s Hms. *)
+(*           - reflexivity. *)
+(*           - destruct m as [| e' l']; *)
+(*               destruct Hlm; *)
+(*               subst. *)
+(*             destruct s as [e s]. *)
+(*             simpl in *. *)
+(*             destruct Hms as [? Hl's]; subst. *)
+(*             split; first reflexivity. *)
+(*             now eapply IHl; eassumption. *)
+(*         } *)
+(*   - intros t__s' Hpref'. *)
+(*     rewrite not_forall_ex_not; *)
+(*       setoid_rewrite not_imp. *)
+(*     exists (trace_ST t__s'). *)
+(*     split. *)
+(*     + destruct t__s' as [l e | l | s]. *)
+(*       * left. now constructor. *)
+(*       * left. now constructor. *)
+(*       * left. now constructor. *)
+(*     + destruct m__t as [l [e | []] | l]. *)
+(*       * destruct t__s' as [l' e' | l' | s']; *)
+(*           try now auto. *)
+(*         apply Hm2. *)
+(*         now destruct Hpref'; subst. *)
+(*       * destruct Hrel as [Hrel | Hrel]. *)
+(*         -- destruct Hrel; try now auto. *)
+(*            inversion Hm1 as [Hm1' _]; inversion Hm1'. *)
+(*         -- destruct Hrel as [m [H1 H2]]; *)
+(*              subst. *)
+(*            apply Hm2. *)
+(*            destruct t__s' as [l' e' | l' | s']; *)
+(*              try now auto. *)
+(*            ++ simpl in *. admit. (* wrong? *) *)
+(*            ++ admit. *)
+(*            ++ simpl in *. admit. *)
+(*       * destruct t__s' as [l' e' | l' | s']; *)
+(*           try now auto. *)
+(* Admitted. *)
