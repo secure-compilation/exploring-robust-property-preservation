@@ -77,3 +77,14 @@ Definition prefix_finpref {E : Events} {Es : Endstates}
     end.
 
 
+Lemma prefix_stop_terminating_trace {E : Events} {Es : Endstates}
+                                    (l : @list (ev E))
+                                    (e : es Es)
+                                    (t : @trace E Es):
+  prefix (fstop l e) t -> t = tstop l e. 
+Proof.
+  intros H_pref. destruct t; try now inversion H_pref.
+  destruct l0, l; inversion H_pref; subst; auto;
+    inversion H_pref; subst.
+  + inversion H1. + inversion H1. + now rewrite H0.    
+Qed. 

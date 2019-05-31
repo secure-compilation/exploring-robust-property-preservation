@@ -1,6 +1,7 @@
 Require Import ClassicalExtras.
 
 Require Import TraceModel.
+Require Import Stream.
 Require Import Properties.
 Require Import Galois.
 
@@ -14,7 +15,6 @@ Axiom event : Events.
 Axiom endstate : Endstates.
 
 Definition endstateS : Endstates := endstate.
-
 
 Definition out_of_memory := unit.
 Definition endstateT : Endstates :=
@@ -452,6 +452,28 @@ Proof.
       inversion Hn.
 Qed.
 
+
+Lemma rel_target_terminating (t__S : traceS)
+                             (l : list (ev event))
+                             (e : es endstate):
+  rel t__S ((@tstop event endstateT l) ((inl out_of_memory e))) -> 
+       t__S = (@tstop event endstateS l e). 
+Proof.
+  destruct t__S; eauto; intros [rel_by_eq | [m [H1 H2]]];
+    try now inversion rel_by_eq.
+  + subst. now induction l.
+  + now inversion H1. 
+  + now inversion H1.
+Qed. 
+
+Lemma rel_tstop_OOM (l : list (ev event))
+                    (e : es endstateS):
+  rel (tstop l e) (tstop l OOM).  
+Proof.
+  right. exists l. split; auto. 
+  now induction l. 
+Qed.
+  
 Lemma σ_preserves_safety : forall (π : propT),
     Safety π -> Safety (σ π).
 Proof.
@@ -462,90 +484,37 @@ Proof.
   destruct not_t__S as [rel_ts_tt not_t__T].
   destruct (safety_π__T t__T not_t__T) as [m__T [pref_mt_tt mt_wit]].
   destruct m__T. 
-  + (* CA: in case mT = fstop l es, rel ts tT -> ts = tT
-           (prove a separate lemma for this)
-           and hence one just has to pick ms = mT
-     
-       CA: in case mT = fstop l out_of_memory then every source continuation of 
-           mT is still related with tT, so it is not in σ(πT)
-
-    *) admit.
-        
-  + (* CA: in case mT = ftbd l, 
-           then mT < tT and mT <= ts.
-           In particular tT' = mT;out_of_mem ∉ πT.
-           Notice that ∀ tS' > mT, rel tS' tT', hence tS' ∉ σ(πT).
-     *) admit.
-Admitted. 
-        
-  
- (*  unfold Safety, σ, GC_traceT_traceS, induced_connection, up_rel; simpl. *)
-(*   intros π Hsafety t__s Ht. *)
-(*   rewrite not_forall_ex_not in Ht; *)
-(*     setoid_rewrite not_imp in Ht. *)
-(*   destruct Ht as [t__t [Hrel Hnπ]]. *)
-(*   destruct (Hsafety t__t Hnπ) as [m__t [Hm1 Hm2]]. *)
-(*   exists (finpref_TS m__t). *)
-(*   split. *)
-(*   - destruct Hrel as [Hrel | Hrel]. *)
-(*     + inversion Hrel; subst. *)
-(*       * destruct m__t as [l' [e' | []] | l']; *)
-(*           try now inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst. *)
-(*         now assumption. *)
-(*       * destruct m__t as [l' [e' | []] | l']; *)
-(*           try now auto. *)
-(*       * destruct m__t as [l' [e' | []] | l']; *)
-(*           try now auto. *)
-(*     + destruct Hrel as [m [H1 H2]]; subst. *)
-(*       destruct m__t as [l' [e' | []] | l']; *)
-(*         try now auto. *)
-(*       * now inversion Hm1 as [Hm1' ?]; inversion Hm1'. *)
-(*       * inversion Hm1 as [Hm1' ?]; inversion Hm1'; subst. *)
-(*         now destruct t__s as [l'' e'' | l'' | s'']; *)
-(*           assumption. *)
-(*       * destruct t__s as [l'' e'' | l'' | s'']; *)
-(*           try now eapply Stream.list_list_prefix_trans; eassumption. *)
-(*         simpl in *. *)
-(*         (* TODO: same proof as above, factorize *) *)
-(*         { clear -H2 Hm1. *)
-(*           generalize dependent s''. generalize dependent m. *)
-(*           rename l' into l. *)
-(*           induction l as [| e l]; intros m Hlm s Hms. *)
-(*           - reflexivity. *)
-(*           - destruct m as [| e' l']; *)
-(*               destruct Hlm; *)
-(*               subst. *)
-(*             destruct s as [e s]. *)
-(*             simpl in *. *)
-(*             destruct Hms as [? Hl's]; subst. *)
-(*             split; first reflexivity. *)
-(*             now eapply IHl; eassumption. *)
-(*         } *)
-(*   - intros t__s' Hpref'. *)
-(*     rewrite not_forall_ex_not; *)
-(*       setoid_rewrite not_imp. *)
-(*     exists (trace_ST t__s'). *)
-(*     split. *)
-(*     + destruct t__s' as [l e | l | s]. *)
-(*       * left. now constructor. *)
-(*       * left. now constructor. *)
-(*       * left. now constructor. *)
-(*     + destruct m__t as [l [e | []] | l]. *)
-(*       * destruct t__s' as [l' e' | l' | s']; *)
-(*           try now auto. *)
-(*         apply Hm2. *)
-(*         now destruct Hpref'; subst. *)
-(*       * destruct Hrel as [Hrel | Hrel]. *)
-(*         -- destruct Hrel; try now auto. *)
-(*            inversion Hm1 as [Hm1' _]; inversion Hm1'. *)
-(*         -- destruct Hrel as [m [H1 H2]]; *)
-(*              subst. *)
-(*            apply Hm2. *)
-(*            destruct t__s' as [l' e' | l' | s']; *)
-(*              try now auto. *)
-(*            ++ simpl in *. admit. (* wrong? *) *)
-(*            ++ admit. *)
-(*            ++ simpl in *. admit. *)
-(*       * destruct t__s' as [l' e' | l' | s']; *)
-(*           try now auto. *)
-(* Admitted. *)
+  + destruct es.
+    ++ destruct t__T; inversion pref_mt_tt.
+       apply prefix_stop_terminating_trace in pref_mt_tt. 
+       subst.
+       assert (t__S = tstop l0 e) by now apply rel_target_terminating.
+       subst.
+       exists (fstop l0 e). split; try now auto. 
+       intros t__S' pref_m_t__S'.   
+       unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
+       exists (@tstop event endstateT l0 (inl out_of_memory e)). 
+       rewrite not_imp. split; auto. 
+       apply prefix_stop_terminating_trace in pref_m_t__S'. now subst.
+    ++ destruct t__T; inversion pref_mt_tt. subst.
+       destruct rel_ts_tt as [Heq | [m [H1 H2]]].
+       +++ inversion Heq.
+       +++ rewrite H1 in *.     
+           exists (ftbd m). split; auto.
+           intros t__S' Hpref'.  unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
+           exists (tstop m OOM). rewrite not_imp.
+           split; auto. right. now exists m.
+  + assert (prefix (ftbd l) (tstop l OOM)). { simpl; now apply  list_list_prefix_ref. } 
+    specialize (mt_wit (tstop l OOM) H). 
+    exists (ftbd l). split.    
+    ++ destruct rel_ts_tt as  [Heq | [m [H1 H2]]].
+       +++ inversion Heq; subst; now simpl in *.
+       +++ subst. destruct t__S; simpl in *. 
+           eapply list_list_prefix_trans. exact pref_mt_tt. exact H2.
+           eapply list_list_prefix_trans. exact pref_mt_tt. exact H2.
+           eapply list_stream_prefix_trans. exact pref_mt_tt. exact H2.
+    ++ intros t__S' Hpref'.  unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
+       exists (tstop l OOM). rewrite not_imp.
+       split; auto. right. now exists l.
+Qed. 
+   
