@@ -72,7 +72,7 @@ Section TracePropertiesCriterion.
   Proof. apply: Adj_σTP_iff_τTP. by apply: rel_adjunction_law. Qed.   
 
   
-  Theorem tilde_TC_τTP : rel_TC <-> τTP.
+  Theorem rel_TC_τTP : rel_TC <-> τTP.
 
   Proof.
     setoid_rewrite contra_τTP. split.
@@ -85,8 +85,8 @@ Section TracePropertiesCriterion.
       move => s [Hsems H]. exists s. split; auto; by apply: NNPP. 
   Qed. 
 
-  Theorem tilde_TC_σTP : rel_TC <-> σTP.  
-  Proof. by rewrite σTP_τTP tilde_TC_τTP. Qed. 
+  Theorem rel_TC_σTP : rel_TC <-> σTP.  
+  Proof. by rewrite σTP_τTP rel_TC_τTP. Qed. 
   
   
 End TracePropertiesCriterion.
