@@ -225,7 +225,7 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma type_correct_nat : 
+Lemma type_correct_nat :
   forall he : HExp,
     typing he TNat ->
     exists n, hsem he = HTNat n.
@@ -238,8 +238,8 @@ Proof.
   apply H1.
   reflexivity.
 Qed.
-    
-Lemma type_correct_bool : 
+
+Lemma type_correct_bool :
   forall he : HExp,
     typing he TBool ->
     exists b, hsem he = HTBool b.
@@ -252,7 +252,7 @@ Proof.
   apply H2.
   reflexivity.
 Qed.
-    
+
 Theorem correct_compiler : forall he : HExp, forall t : type,
       typing he t ->
       tilde (hsem he) (lsem (compile he)).

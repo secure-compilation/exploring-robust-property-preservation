@@ -2,14 +2,14 @@ From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicit Defensive.  
+Unset Printing Implicit Defensive.
 
 Require Import FunctionalExtensionality.
 Require Import ClassicalExtras.
 Require Import MyNotation.
 
 Require Import TraceModel.
-Require Import Galois. 
+Require Import Galois.
 
 Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
 
@@ -20,14 +20,14 @@ Variable E : Events.
 Variable Es : Endstates.
 
 Definition prop (trace_set : Set)  := trace_set -> Prop.
-Definition hprop (trace_set : Set) := (prop trace_set) -> Prop.  
+Definition hprop (trace_set : Set) := (prop trace_set) -> Prop.
 Definition h_true (trace_set : Set ) : hprop (trace_set) := fun (b : prop (trace_set)) => True.
 
 
 Definition fprop {E : Events} {Es: Endstates} :=
   @finpref E Es -> Prop.
 
-Notation "M <<< b" := (forall m, M m -> exists t, b t /\ prefix m t) (at level 50).  
+Notation "M <<< b" := (forall m, M m -> exists t, b t /\ prefix m t) (at level 50).
 
 Definition Safety {E : Events}
            {Es : Endstates}
@@ -68,11 +68,11 @@ Inductive Observations  {E : Events} {Es : Endstates} : (@finpref E Es -> Prop) 
 
 Definition Cl  {E : Events} {Es : Endstates}
                (π : prop (@trace E Es)) : prop (@trace E Es) :=
-  fun t => forall S, Safety S -> π ⊆ S -> S t.   
+  fun t => forall S, Safety S -> π ⊆ S -> S t.
 
 Lemma Cl_bigger  {E : Events} {Es : Endstates}
-                 (π: prop (@trace E Es)) : π ⊆ (Cl π). 
-Proof. firstorder. Qed. 
+                 (π: prop (@trace E Es)) : π ⊆ (Cl π).
+Proof. firstorder. Qed.
 
 Lemma Cl_Safety {E : Events} {Es : Endstates}
                 (π: prop (@trace E Es)): Safety (Cl π).
@@ -83,7 +83,7 @@ Proof.
   move/not_imp: H. move => [π_leq_π' not_π'_t].
   destruct (safety_π' t not_π'_t) as [m [m_leq_t m_wit]].
   exists m. split; auto. move => t' m_leq_t' Hf.
-  apply: (m_wit t'). assumption. by apply: Hf. 
+  apply: (m_wit t'). assumption. by apply: Hf.
 Qed.
 
 Lemma Cl_id_on_Safe {E : Events} {Es : Endstates}
@@ -92,8 +92,8 @@ Lemma Cl_id_on_Safe {E : Events} {Es : Endstates}
 Proof.
   move => Safety_π. apply: functional_extensionality => t.
   apply: prop_extensionality.
-    by firstorder. 
-Qed.  
+    by firstorder.
+Qed.
 
 Lemma Cl_smallest {E : Events} {Es : Endstates}
                   (π: prop (@trace E Es)) :
@@ -101,13 +101,13 @@ Lemma Cl_smallest {E : Events} {Es : Endstates}
 Proof. by firstorder. Qed.
 
 Lemma Cl_mono {E : Events} {Es : Endstates} : monotone (@Cl E Es).
-Proof. 
+Proof.
   move => π1 π2 sub t cl2_t.
   apply: cl2_t.
   apply: Cl_Safety. apply: subset_trans. exact: sub. exact: Cl_bigger.
-Qed.  
+Qed.
 
-Lemma Cl_idmp {E : Events} {Es : Endstates} : idempotent (@Cl E Es). 
+Lemma Cl_idmp {E : Events} {Es : Endstates} : idempotent (@Cl E Es).
 Proof. move => π. apply: Cl_id_on_Safe. apply: Cl_Safety. Qed.
 
 
@@ -117,15 +117,15 @@ Definition safety_uco {E : Events} {Es : Endstates} := Build_Uco (@Cl_mono E Es)
 
 
 Lemma Safety_Cl_prop {E : Events} {Es : Endstates} :
-  @Safety E Es = (lift (uco safety_uco)) (@h_true (@trace E Es)).  
+  @Safety E Es = (lift (uco safety_uco)) (@h_true (@trace E Es)).
 Proof.
-  apply: functional_extensionality => π.  
-  apply: prop_extensionality. split => H. 
+  apply: functional_extensionality => π.
+  apply: prop_extensionality. split => H.
   + exists π. split; rewrite //=.
-      by rewrite Cl_id_on_Safe. 
-  + move: H. rewrite //=. move => [b [H Heq]]. subst.     
-    apply: Cl_Safety. 
-Qed. 
+      by rewrite Cl_id_on_Safe.
+  + move: H. rewrite //=. move => [b [H Heq]]. subst.
+    apply: Cl_Safety.
+Qed.
 
 
 (*****************************************************************************)
@@ -142,7 +142,7 @@ Definition Dense {E : Events} {Es : Endstates}
 Definition dCl {E : Events} {Es : Endstates} : prop (@trace E Es) -> prop (@trace E Es) :=
   fun π => (fun t => finite t \/ π t).
 
-Lemma Dense_dCl {E : Events} {Es : Endstates} 
+Lemma Dense_dCl {E : Events} {Es : Endstates}
                   (π: prop (@trace E Es)) : Dense (dCl π).
 Proof. firstorder. Qed.
 
@@ -150,7 +150,7 @@ Lemma dCl_mono {E : Events} {Es : Endstates} :
   monotone (@dCl E Es).
 Proof.
   move => π1 π2 sub t1. rewrite /dCl.
-  move => [K1 | K2]; [by left | right; by apply: sub].   
+  move => [K1 | K2]; [by left | right; by apply: sub].
 Qed.
 
 Lemma dCl_idmp {E : Events} {Es : Endstates} :
@@ -159,12 +159,12 @@ Proof.
   rewrite /dCl => π.
   apply: functional_extensionality => t.
   apply: prop_extensionality.
-  firstorder. 
+  firstorder.
 Qed.
 
 Lemma dCl_ext {E : Events} {Es : Endstates} :
   extensive (@dCl E Es).
-Proof.  
+Proof.
   rewrite /dCl => π t π_t. by right.
 Qed.
 
@@ -173,10 +173,10 @@ Lemma dCl_id_on_Dense {E : Events} {Es : Endstates}
   Dense π -> dCl π = π.
 Proof.
   rewrite /Dense /dCl => H_dense.
-  apply: functional_extensionality => t. 
-  apply: prop_extensionality. 
-  split; auto. move => [k | k]; [by apply: H_dense | by []]. 
-Qed. 
+  apply: functional_extensionality => t.
+  apply: prop_extensionality.
+  split; auto. move => [k | k]; [by apply: H_dense | by []].
+Qed.
 
 Definition dense_uco {E : Events} {Es : Endstates} :=
   Build_Uco (@dCl_mono E Es)
@@ -184,7 +184,7 @@ Definition dense_uco {E : Events} {Es : Endstates} :=
             dCl_ext.
 
 Lemma Dense_Cl_prop {E : Events} {Es : Endstates} :
-  Dense = (lift (uco dense_uco)) (@h_true (@trace E Es)). 
+  Dense = (lift (uco dense_uco)) (@h_true (@trace E Es)).
 Proof.
   apply: functional_extensionality => π.
   apply: prop_extensionality.
@@ -210,8 +210,8 @@ Definition sCl {trace_set : Set}
                hprop trace_set :=
   fun b => exists b', H b' /\ b ⊆ b'.
 
-Lemma sCl_bigger {trace_set : Set} (H : hprop trace_set) : H ⊆ (sCl H). 
-Proof. firstorder. Qed.   
+Lemma sCl_bigger {trace_set : Set} (H : hprop trace_set) : H ⊆ (sCl H).
+Proof. firstorder. Qed.
 
 Lemma sCl_SCH {trace_set : Set} (H : hprop trace_set) : SSC (sCl H).
 Proof.
@@ -221,7 +221,7 @@ Qed.
 Lemma sCl_id_on_SSC {trace_set : Set} (H: hprop trace_set): SSC H -> sCl H = H.
 Proof.
   move => H_SSC. apply: functional_extensionality => b.
-  apply: prop_extensionality. firstorder. 
+  apply: prop_extensionality. firstorder.
 Qed.
 
 Lemma sCl_smallest {trace_set : Set} (H: hprop trace_set):
@@ -229,7 +229,7 @@ Lemma sCl_smallest {trace_set : Set} (H: hprop trace_set):
 Proof.
   move => H' ssc_H' H_leq_H' b [b' [ b_leq_b' H_b']].
   apply: (ssc_H' b'); auto.
-Qed.   
+Qed.
 
 (*CA's TODO: sCl as uco *)
 
@@ -241,7 +241,7 @@ Qed.
 Definition HSafe {E : Events} {Es : Endstates}
                  (H: hprop (@trace E Es)) :=
   forall b, ~ H b -> (exists M, Observations M /\ M <<< b /\
-                     (forall b', M <<< b' -> ~ H b')). 
+                     (forall b', M <<< b' -> ~ H b')).
 
 
 (*****************************************************************************)
@@ -250,44 +250,44 @@ Definition HSafe {E : Events} {Es : Endstates}
 
 Definition hsCl {E : Events} {Es : Endstates}
                  (H: hprop (@trace E Es)) : (hprop (@trace E Es)) :=
-  fun b => forall Hs, HSafe Hs -> H ⊆ Hs -> Hs b. 
+  fun b => forall Hs, HSafe Hs -> H ⊆ Hs -> Hs b.
 
 Lemma hsCl_bigger {E : Events} {Es : Endstates}
                   (H: hprop (@trace E Es)) :  H ⊆ hsCl H.
-Proof. by firstorder. Qed. 
+Proof. by firstorder. Qed.
 
 Lemma hsCl_HSafe {E : Events} {Es : Endstates}
-                 (H: hprop (@trace E Es)) : HSafe (hsCl H). 
+                 (H: hprop (@trace E Es)) : HSafe (hsCl H).
 Proof.
-  move => b. move/not_forall_ex_not => not_H_b. 
+  move => b. move/not_forall_ex_not => not_H_b.
   destruct not_H_b as [H' not_H'_b].
   move/not_imp: not_H'_b. move => [HSafe_H' not_H'_b].
   move/not_imp: not_H'_b. move => [H_leq_H' not_H'_b].
   destruct (HSafe_H' b not_H'_b) as [M [obs_M [M_leq_b M_wit]]].
   exists M. repeat (split; auto).
-  move => b' M_leq_b' Hf. apply: (M_wit b'); auto. 
+  move => b' M_leq_b' Hf. apply: (M_wit b'); auto.
     by apply: Hf.
-Qed.     
+Qed.
 
 Lemma HSafe_SCH {E : Events} {Es : Endstates} :
   forall H, @HSafe E Es H -> SSC H.
-Proof. 
-  move => H HSafe_H b Hb b' b'_leq_b. 
+Proof.
+  move => H HSafe_H b Hb b' b'_leq_b.
   apply: NNPP => not_H_b'.
   destruct (HSafe_H b' not_H_b') as [M [obs_M [M_leq_b' M_wit]]].
-  apply: (M_wit b); firstorder. 
-Qed. 
+  apply: (M_wit b); firstorder.
+Qed.
 
 Lemma sCl_id_on_HSafe {E : Events} {Es : Endstates} :
   forall H, @HSafe E Es H -> sCl H = H.
 Proof.
   move => H HSafe_H.
   have SSC_H: (SSC H) by apply: HSafe_SCH.
-    by rewrite (sCl_id_on_SSC SSC_H). 
-Qed.   
+    by rewrite (sCl_id_on_SSC SSC_H).
+Qed.
 
 Lemma hsCl_sCl {E : Events} {Es : Endstates} :
-  forall H : (hprop (@trace E Es)), sCl H ⊆ hsCl H.  
+  forall H : (hprop (@trace E Es)), sCl H ⊆ hsCl H.
 Proof.
   move => H.
   have ssc: SSC (hsCl H).

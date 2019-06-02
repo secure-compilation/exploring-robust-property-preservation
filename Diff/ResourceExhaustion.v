@@ -122,7 +122,7 @@ Proof.
 Qed.
 
 
-(* The goal is now to prove that τ and/or σ preserve Safety. 
+(* The goal is now to prove that τ and/or σ preserve Safety.
    I need to define σ and τ for fprop, in order to use them
    to transform the set of bad prefixes *)
 Check Set.
@@ -456,65 +456,64 @@ Qed.
 Lemma rel_target_terminating (t__S : traceS)
                              (l : list (ev event))
                              (e : es endstate):
-  rel t__S ((@tstop event endstateT l) ((inl out_of_memory e))) -> 
-       t__S = (@tstop event endstateS l e). 
+  rel t__S ((@tstop event endstateT l) ((inl out_of_memory e))) ->
+       t__S = (@tstop event endstateS l e).
 Proof.
   destruct t__S; eauto; intros [rel_by_eq | [m [H1 H2]]];
     try now inversion rel_by_eq.
   + subst. now induction l.
-  + now inversion H1. 
   + now inversion H1.
-Qed. 
+  + now inversion H1.
+Qed.
 
 Lemma rel_tstop_OOM (l : list (ev event))
                     (e : es endstateS):
-  rel (tstop l e) (tstop l OOM).  
+  rel (tstop l e) (tstop l OOM).
 Proof.
-  right. exists l. split; auto. 
-  now induction l. 
+  right. exists l. split; auto.
+  now induction l.
 Qed.
-  
+
 Lemma σ_preserves_safety : forall (π : propT),
     Safety π -> Safety (σ π).
 Proof.
   intros π__T safety_π__T t__S not_t__S.
-  unfold σ, γ in not_t__S. simpl in not_t__S. unfold up_rel in not_t__S. 
-  rewrite not_forall_ex_not in not_t__S. 
+  unfold σ, γ in not_t__S. simpl in not_t__S. unfold up_rel in not_t__S.
+  rewrite not_forall_ex_not in not_t__S.
   destruct not_t__S as [t__T not_t__S]. rewrite not_imp in not_t__S.
   destruct not_t__S as [rel_ts_tt not_t__T].
   destruct (safety_π__T t__T not_t__T) as [m__T [pref_mt_tt mt_wit]].
-  destruct m__T. 
+  destruct m__T.
   + destruct es.
     ++ destruct t__T; inversion pref_mt_tt.
-       apply prefix_stop_terminating_trace in pref_mt_tt. 
+       apply prefix_stop_terminating_trace in pref_mt_tt.
        subst.
        assert (t__S = tstop l0 e) by now apply rel_target_terminating.
        subst.
-       exists (fstop l0 e). split; try now auto. 
-       intros t__S' pref_m_t__S'.   
+       exists (fstop l0 e). split; try now auto.
+       intros t__S' pref_m_t__S'.
        unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
-       exists (@tstop event endstateT l0 (inl out_of_memory e)). 
-       rewrite not_imp. split; auto. 
+       exists (@tstop event endstateT l0 (inl out_of_memory e)).
+       rewrite not_imp. split; auto.
        apply prefix_stop_terminating_trace in pref_m_t__S'. now subst.
     ++ destruct t__T; inversion pref_mt_tt. subst.
        destruct rel_ts_tt as [Heq | [m [H1 H2]]].
        +++ inversion Heq.
-       +++ rewrite H1 in *.     
+       +++ rewrite H1 in *.
            exists (ftbd m). split; auto.
            intros t__S' Hpref'.  unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
            exists (tstop m OOM). rewrite not_imp.
            split; auto. right. now exists m.
-  + assert (prefix (ftbd l) (tstop l OOM)). { simpl; now apply  list_list_prefix_ref. } 
-    specialize (mt_wit (tstop l OOM) H). 
-    exists (ftbd l). split.    
+  + assert (prefix (ftbd l) (tstop l OOM)). { simpl; now apply  list_list_prefix_ref. }
+    specialize (mt_wit (tstop l OOM) H).
+    exists (ftbd l). split.
     ++ destruct rel_ts_tt as  [Heq | [m [H1 H2]]].
        +++ inversion Heq; subst; now simpl in *.
-       +++ subst. destruct t__S; simpl in *. 
+       +++ subst. destruct t__S; simpl in *.
            eapply list_list_prefix_trans. exact pref_mt_tt. exact H2.
            eapply list_list_prefix_trans. exact pref_mt_tt. exact H2.
            eapply list_stream_prefix_trans. exact pref_mt_tt. exact H2.
     ++ intros t__S' Hpref'.  unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
        exists (tstop l OOM). rewrite not_imp.
        split; auto. right. now exists l.
-Qed. 
-   
+Qed.

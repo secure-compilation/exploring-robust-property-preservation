@@ -1,7 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
-Unset Printing Implicit Defensive. 
+Unset Printing Implicit Defensive.
 
 Require Import ClassicalExtras.
 Require Import Setoid.
@@ -10,19 +10,19 @@ Require Import Stream.
 
 Record Events := {
 
-               ev : Set;       
+               ev : Set;
                an_ev : ev;
                another_ev : ev;
                different_evs : an_ev <> another_ev;
-               eq_ev_dec : forall (e1 e2 : ev), {e1 = e2} + {e1 <> e2} 
-               }. 
+               eq_ev_dec : forall (e1 e2 : ev), {e1 = e2} + {e1 <> e2}
+               }.
 
 
 Record Endstates := {
 
-              es : Set;            
+              es : Set;
               an_es : es
-              }. 
+              }.
 
 (** A trace represents either a stopped execution, a silently diverging
     execution or an infinite execution. *)
@@ -36,14 +36,14 @@ Definition finite {E: Events} {Es : Endstates} (t : @trace E Es) : Prop :=
   exists l e, t = tstop l e.
 
 Definition infinite {E: Events} {Es : Endstates} (t : @trace E Es) : Prop :=
-  ~ finite t. 
-  
+  ~ finite t.
+
 
 (** A finite prefix is a list of evs, that can be continued (ftbd)
     or not (fstop). *)
 Variant finpref {E : Events} {Es : Endstates} : Set :=
 | fstop (l : list (ev E)) (es : (es Es)) : finpref
-| ftbd  (l : list (ev E)) : finpref. 
+| ftbd  (l : list (ev E)) : finpref.
 
 Tactic Notation "destruct" "finpref" ident(m) "as" ident(e) ident(f) ident(p) :=
   destruct m as [ [| e p] f
@@ -81,10 +81,10 @@ Lemma prefix_stop_terminating_trace {E : Events} {Es : Endstates}
                                     (l : @list (ev E))
                                     (e : es Es)
                                     (t : @trace E Es):
-  prefix (fstop l e) t -> t = tstop l e. 
+  prefix (fstop l e) t -> t = tstop l e.
 Proof.
   intros H_pref. destruct t; try now inversion H_pref.
   destruct l0, l; inversion H_pref; subst; auto;
     inversion H_pref; subst.
-  + inversion H1. + inversion H1. + now rewrite H0.    
-Qed. 
+  + inversion H1. + inversion H1. + now rewrite H0.
+Qed.
