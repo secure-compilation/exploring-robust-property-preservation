@@ -20,3 +20,5 @@ NonRobustHyperCriterion.v
 Relation4Correctness.v
 
 ResourceExhaustion.v
+
+TypeRelationExample.v
