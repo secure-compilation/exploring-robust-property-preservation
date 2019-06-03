@@ -394,6 +394,3 @@ Proof.
   exists (hsem es). split; last now auto.
   simpl in Hsem. now rewrite Hsem in Hty'.
 Qed.
-
-
-
