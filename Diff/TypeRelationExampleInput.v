@@ -44,6 +44,16 @@ Definition LTrace := (list nat * LResult)%type.
 
 Import ListNotations.
 
+(*
+
+Should semantics be defined for typed programs only?
+
+What would type soundness be?
+
+Maybe go for small-step?
+
+*)
+
 Inductive hsem : HExp -> HTrace -> Prop :=
 | HSNat : forall n,
     hsem (HNat n) (nil, HRNat n)
@@ -206,6 +216,8 @@ Inductive typing : HExp -> type -> Prop :=
     typing (HLe he1 he2) TBool
 | type_hinput :
     typing HInput TNat.
+
+(* easy to prove there is a trace in a small-step semantics. *)
 
 Theorem type_correct :
   forall he : HExp,
@@ -451,6 +463,39 @@ Proof.
     inversion Hcontra.
 Qed.
 
+
+(*
+
+HInputBool ~> ( [ HINat _ ], HRError )
+HInputBool ~> ( [ HIBool true ], HRBool true )
+HInputBool ~> ( [ HIBool false ], HRBool false )
+
+LInputBool ~> ( [ LINat _ ], LRError )
+LInputBool ~> ( [ LINat 1 ], LRBool true )
+LInputBool ~> ( [ LINat 0 ], LRBool false )
+
+P = if HInputBool then 1 else 0
+
+P! = if cast(LInputNat) <= 0 then 0 else 1
+
+1. extend the tilde relation s.t. true <-> 1, 2, 3, ...; false <-> 0; <----
+
+2.A. cast inputs / cast outputs;
+
+2.B. throw an exception on wrong input / cast output;
+true | true ==> 1 + 1
+
+2.C. continue w/out cast on inputs / cast output;
+
+2.D. cast input to 1 whenever it is not zero;
+
+2.E. throw an exception on wrong input;
+
+2.F. continue w/out cast on inputs.
+
+LInputBool ~> ( [ LINat 2 ], LRNat 1 )
+
+*)
 Theorem correct_compiler : forall he : HExp, forall t : type,
       typing he t ->
       forall l hr,
