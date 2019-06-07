@@ -31,3 +31,4 @@ Qed.
 
 Notation "f ∘ g" := (fun x => f ( g x )) (at level 50).
 
+Definition single {X : Type} (t : X) : X -> Prop := fun x => x = t. 
