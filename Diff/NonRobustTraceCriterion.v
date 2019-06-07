@@ -35,7 +35,9 @@ Section TracePropertiesCriterion.
   Variable Target_Semantics : Semantics Target trace__T.
 
   Local Definition sem__S := sem Source_Semantics.
+  Local Definition beh__S := beh Source_Semantics. 
   Local Definition sem__T := sem Target_Semantics.
+  Local Definition beh__T := beh Target_Semantics. 
   Local Definition prg__S := prg Source.
   Local Definition prg__T := prg Target.
   Local Definition sat__S := sat Source_Semantics.
@@ -56,8 +58,13 @@ Section TracePropertiesCriterion.
 
   Definition rel_TC := forall W t, sem__T (W ↓) t -> exists s, rel s t /\ sem__S W s.
 
-  Check τTP.
+  Lemma rel_TC' : rel_TC <-> (forall W, beh__T (W ↓) ⊆ (τ' (beh__S W))).
+  Proof.
+    rewrite /τ' /α //= /low_rel;
+    split => H W t__T Wcmp_t; specialize (H W t__T Wcmp_t); firstorder.
+  Qed.
 
+  
   Local Definition τTP := τTP compilation_chain
                           Source_Semantics Target_Semantics
                           τ'.
