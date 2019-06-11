@@ -20,6 +20,9 @@ NonRobustHyperCriterion.v
 Relation4Correctness.v
 ANI.v
 
+RobustTraceProperty.v
+RobustTraceCriterion.v
+
 ResourceExhaustion.v
 
 TypeRelationExample.v

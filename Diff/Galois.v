@@ -268,4 +268,3 @@ Definition uco_sharp {A C : Set} (ϕ : @Uco C)
                (@best_approximation_idmp A C ins ϕ)
                (@best_approximation_ext A C ins ϕ).
 
-

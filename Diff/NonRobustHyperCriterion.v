@@ -61,7 +61,15 @@ Section HyperCriterion.
 
   Local Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
 
+  Local Definition τP := τTP compilation_chain
+                             Source_Semantics Target_Semantics
+                             τ'. 
 
+  Local Definition σP := σTP compilation_chain
+                             Source_Semantics Target_Semantics
+                             σ'. 
+  
+  
   Local Definition τHP := τHP compilation_chain
                               Source_Semantics Target_Semantics
                               τ'.
