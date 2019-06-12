@@ -58,7 +58,7 @@ Lemma Galois_equiv {A C: Set}
 Proof.
   split.
   - move => H_adj. split.
-    + move => c1 c2 H_sub. rewrite H_adj.
+    + move => c1 c2 H_sub. rewrite H_adj. 
       apply: (subset_trans H_sub). by rewrite -H_adj.
     + split.
       ++ move => a1 a2 H_sub. rewrite -H_adj.
@@ -268,3 +268,61 @@ Definition uco_sharp {A C : Set} (ϕ : @Uco C)
                (@best_approximation_idmp A C ins ϕ)
                (@best_approximation_ext A C ins ϕ).
 
+
+(***************************************************************)
+(* every galois connection α : 2^C ⇆ 2^A : γ  induces a 
+   relation, ∼ : C → A → Prop
+
+   such that the induced adjunction is again α ⇆ γ
+ *)
+(***************************************************************)
+
+Require Import Coq.Logic.ProofIrrelevance.
+
+Definition induced_rel {A C : Set}
+                       (gal : @Galois_Connection A C) : C -> A -> Prop :=
+  fun (c : C) (a : A) =>
+    ((α gal) (single c)) a.
+
+(*CA: classical result, it follows from the adjunction law *)
+Lemma α_scott_continuos {A C : Set}
+                        (gal : @Galois_Connection A C)
+                        (π__C : C -> Prop) :
+  (α gal) (π__C) = fun (a : A) => exists c, π__C c /\ (α gal) (single c) a. 
+Admitted. 
+
+Lemma γ_scott_continuos {A C : Set}
+                        (gal : @Galois_Connection A C)
+                        (π__A : A -> Prop) :
+  (γ gal) (π__A) = fun (c : C) => exists a, π__A a /\ (γ gal) (single a) c.
+Admitted.                                      
+
+Lemma induced_connection_induced_rel_α {A C : Set}
+                                       (gal : @Galois_Connection A C):
+
+  α (@induced_connection A C (@induced_rel A C gal)) = α gal.
+Admitted.
+
+Lemma induced_connection_induced_rel_γ {A C : Set}
+                                       (gal : @Galois_Connection A C):
+
+  γ (@induced_connection A C (@induced_rel A C gal)) = γ gal.
+Admitted.
+
+
+Lemma induced_connection_induced_rel {A C : Set}
+                                     (gal : @Galois_Connection A C):
+
+  (@induced_connection A C (@induced_rel A C gal)) = gal.
+Proof.
+    have α_eq : (α (induced_connection (induced_rel gal)) = α gal)
+     by rewrite induced_connection_induced_rel_α. 
+    have γ_eq : (γ (induced_connection (induced_rel gal)) = γ gal)
+     by rewrite induced_connection_induced_rel_γ.  
+    destruct (induced_connection (induced_rel gal)), gal.
+    simpl in *. subst. 
+    revert adjunction_law0 adjunction_law1 => H1 H2.  
+    now rewrite (proof_irrelevance _ H1 H2). 
+Qed.      
+    
+ 
