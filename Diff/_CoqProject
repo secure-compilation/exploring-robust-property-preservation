@@ -25,6 +25,8 @@ RobustTraceCriterion.v
 UcoRobustPreservation.v
 RobustSafetyPreservation.v
 RobustSafetyCriterion.v
+RobustHyperProperty.v
+RobustSSCHProperty.v
 
 ResourceExhaustion.v
 

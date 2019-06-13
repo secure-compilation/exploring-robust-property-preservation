@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect. 
 
 Set Implicit Arguments.
 Unset Printing Implicit Defensive.
@@ -118,6 +118,5 @@ Section Closure_Operators_RobustPreservation.
   move => H_adj. rewrite -uco_adjuncts'.
     by rewrite -uco_aux. assumption.
 Qed.
-
-
+ 
 End Closure_Operators_RobustPreservation.

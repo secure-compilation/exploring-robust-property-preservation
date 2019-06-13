@@ -119,5 +119,13 @@ Proof.
 Qed.
 
 
-
-
+Lemma rhsat_upper_closed {L : Language}
+                         {trace_set : Set}
+                         (S : Semantics L trace_set)
+                         (P : par L ) (H1 H2 : hprop trace_set) :
+  rhsat S P H1 -> H1 ⊆ H2 -> rhsat S P H2.  
+Proof.
+  intros rsat1 Hsuper C. 
+  apply Hsuper.
+  now apply (rsat1 C).
+Qed. 
