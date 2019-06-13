@@ -22,6 +22,9 @@ ANI.v
 
 RobustTraceProperty.v
 RobustTraceCriterion.v
+UcoRobustPreservation.v
+RobustSafetyPreservation.v
+RobustSafetyCriterion.v
 
 ResourceExhaustion.v
 
