@@ -1,3 +1,4 @@
+Require Import Coq.Init.Nat.
 Require Import Coq.Strings.String.
 Require Import Coq.FSets.FMapInterface.
 Require Import Coq.FSets.FMapWeakList.
@@ -26,7 +27,7 @@ Inductive expr : Set :=
 | Const : nat -> expr
 | Plus  : expr -> expr -> expr
 | Times : expr -> expr -> expr
-| IfLt  : expr -> expr -> expr -> expr.
+| IfLe  : expr -> expr -> expr -> expr -> expr.
 
 (* Source language. *)
 Module Src.
