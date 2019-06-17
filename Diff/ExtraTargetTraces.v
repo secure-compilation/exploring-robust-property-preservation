@@ -58,18 +58,84 @@ Module Core.
   Definition funmap := StringMap.t expr.
   Definition funmap_turn := StringMap.t (turn * expr).
 
+  (* Structural properties of expressions. *)
+  Inductive funless : expr -> Prop :=
+  | FunlessConst : forall n,
+      funless (Const n)
+  | FunlessPlus : forall e1 e2,
+      funless e1 -> funless e2 -> funless (Plus e1 e2)
+  | FunlessTimes : forall e1 e2,
+      funless e1 -> funless e2 -> funless (Times e1 e2)
+  | FunlessIfLe : forall econd1 econd2 ethen eelse,
+      funless econd1 -> funless econd2 -> funless ethen -> funless eelse ->
+      funless (IfLe econd1 econd2 ethen eelse)
+  | FunlessOut : forall eout e,
+      funless eout -> funless e -> funless (Out eout e)
+  | FunlessArg :
+      funless Arg.
+
+  Inductive argless : expr -> Prop :=
+  | ArglessConst : forall n,
+      argless (Const n)
+  | ArglessPlus : forall e1 e2,
+      argless e1 -> argless e2 -> argless (Plus e1 e2)
+  | ArglessTimes : forall e1 e2,
+      argless e1 -> argless e2 -> argless (Times e1 e2)
+  | ArglessIfLe : forall econd1 econd2 ethen eelse,
+      argless econd1 -> argless econd2 -> argless ethen -> argless eelse ->
+      argless (IfLe econd1 econd2 ethen eelse)
+  | ArglessOut : forall eout e,
+      argless eout -> argless e -> argless (Out eout e)
+  | ArglessFun id earg :
+      argless earg -> argless (Fun id earg).
+
+  (* Some additional helpers to write properties. *)
+  Definition funmap_bodies (fs : funmap) : list expr :=
+    List.map snd (StringMap.elements fs).
+
+  Definition funmap_funless (fs : funmap) : Prop :=
+    Forall funless (funmap_bodies fs).
+
+  Definition funmap_turn_bodies (fs : funmap_turn) : funmap :=
+    StringMap.map snd fs.
+
+  Inductive well_formed_calls (fs : funmap_turn) : expr -> Prop :=
+  | CallsConst : forall n,
+      well_formed_calls fs (Const n)
+  | CallsPlus : forall e1 e2,
+      well_formed_calls fs e1 -> well_formed_calls fs e2 ->
+      well_formed_calls fs (Plus e1 e2)
+  | CallsTimes : forall e1 e2,
+      well_formed_calls fs e1 -> well_formed_calls fs e2 ->
+      well_formed_calls fs (Times e1 e2)
+  | CallsIfLe : forall econd1 econd2 ethen eelse,
+      well_formed_calls fs econd1 -> well_formed_calls fs econd2 ->
+      well_formed_calls fs ethen -> well_formed_calls fs eelse ->
+      well_formed_calls fs (IfLe econd1 econd2 ethen eelse)
+  | CallsOut : forall eout e,
+      well_formed_calls fs eout -> well_formed_calls fs e ->
+      well_formed_calls fs (Out eout e)
+  | CallsFun id earg :
+      StringMap.mem id fs = true ->
+      well_formed_calls fs earg -> well_formed_calls fs (Fun id earg)
+  | CallsArg :
+      well_formed_calls fs Arg.
+
   (* Programs and contexts (as records, Type and not Set). *)
   Record par :=
     {
       par_funs : funmap;
       par_main : expr;
       par_wf   : False (* TODO: Add well-formedness conditions. *)
+                 (* funmap_funless par_funs /\ *)
+                 (* argless par_main *)
     }.
 
   Record ctx :=
     {
       ctx_funs : funmap;
       ctx_wf   : False (* TODO: Add well-formedness conditions. *)
+                 (* funmap_funless ctx_funs *)
     }.
 
   Record prg := (* Type, not Set. *)
@@ -77,6 +143,9 @@ Module Core.
       prg_funs : funmap_turn;
       prg_main : expr;
       prg_wf   : False (* TODO: Add well-formedness conditions. *)
+                 (* funmap_funless (funmap_turn_bodies prg_funs) /\ *)
+                 (* argless prg_main /\ *)
+                 (* well_formed_calls prg_funs prg_main *)
     }.
 
   (* Linking. Assume main in the program and combine functions from program and
