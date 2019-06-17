@@ -7,9 +7,9 @@ Require Import MyNotation.
 
 Record Language := {
 
-   prg : Set; (* Whole programs *)
-   par : Set; (* Partial programs *)
-   ctx : Set; (* Contexts *)
+   prg : Type; (* Whole programs *)
+   par : Type; (* Partial programs *)
+   ctx : Type; (* Contexts *)
    plug : par -> ctx -> prg (* Linking operation *)
 
    }.
