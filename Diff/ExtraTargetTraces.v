@@ -47,26 +47,34 @@ Module Core.
   | Arg   : expr.
 
   (* Function types.
-       RB: At the moment, functions should not call other functions! *)
-  Definition funType : Set := expr -> expr.
+       RB: Well-formedness conditions are at the moment basically restrictions on
+     functions.
+      - For the sake of simplicity, functions are not allowed to call other
+        functions. (When they do, start by avoiding recursivity.)
+      - Functions take singleton arguments (enforced syntactically). Further,
+        argument references may not appear in main expressions.
+      - Function bodies are otherwise simple expressions, where the argument has
+        its reserved, special meaning. *)
+  Definition funmap := StringMap.t expr.
+  Definition funmap_turn := StringMap.t (turn * expr).
 
   (* Programs and contexts (as records, Type and not Set). *)
   Record par :=
     {
-      par_funs : StringMap.t funType;
+      par_funs : funmap;
       par_main : expr;
       par_wf   : False (* TODO: Add well-formedness conditions. *)
     }.
 
   Record ctx :=
     {
-      ctx_funs : StringMap.t funType;
+      ctx_funs : funmap;
       ctx_wf   : False (* TODO: Add well-formedness conditions. *)
     }.
 
   Record prg := (* Type, not Set. *)
     {
-      prg_funs : StringMap.t (turn * funType);
+      prg_funs : funmap_turn;
       prg_main : expr;
       prg_wf   : False (* TODO: Add well-formedness conditions. *)
     }.
@@ -75,7 +83,7 @@ Module Core.
      context with tags to remember provenance.
      RB: Clashes are resolved by favoring the program side, but should never
      be allowed. *)
-  Definition link_fun (par_fun ctx_fun : option funType) :=
+  Definition link_fun (par_fun ctx_fun : option expr) :=
     match par_fun, ctx_fun with
     | Some f, _ => Some (ProgramTurn, f)
     | _, Some f => Some (ContextTurn, f)
