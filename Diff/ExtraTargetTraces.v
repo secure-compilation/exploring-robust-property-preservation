@@ -37,13 +37,14 @@ Module Core.
      a separate level makes little difference.
        One can abuse Coq's computational mechanism to an extent, but not to the
      point that the semantics cannot see (relevant) function calls. *)
-  Inductive expr : Set :=
+  Inductive expr : Type :=
   | Const : nat -> expr
   | Plus  : expr -> expr -> expr
   | Times : expr -> expr -> expr
   | IfLe  : expr -> expr -> expr -> expr -> expr
   | Out   : expr -> expr -> expr
-  | Fun   : string -> expr -> expr.
+  | Fun   : StringMap.key -> expr -> expr
+  | Arg   : expr.
 
   (* Function types.
        RB: At the moment, functions should not call other functions! *)
@@ -119,6 +120,7 @@ Module Core.
           | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
           end
         | Fun id arg => (0, []) (* TODO *)
+        | Arg => (0, []) (* TODO *)
         end
     in
     let fix gen_trace (res: nat) (outs : list nat) : trace :=
