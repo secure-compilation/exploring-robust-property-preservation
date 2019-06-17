@@ -6,6 +6,7 @@ Require Import Coq.FSets.FMapInterface.
 Require Import Coq.FSets.FMapWeakList.
 Require Import TraceModel.
 Require Import LanguageModel.
+Require Import ChainModel.
 
 (* Simple binary location: program or context. *)
 Inductive turn : Set :=
@@ -198,8 +199,7 @@ Module Source.
   Definition sem_wrap (p : prg) : Core.trace -> Prop := Core.sem (prg_core p).
 
   Remark trace_exists : forall W : prg, exists t : Core.trace, sem_wrap W t.
-    intro W. destruct W as [Wcore Woutless]. exists (Core.eval_prg Wcore).
-    now apply Core.SemEval.
+    intros [Wcore Wout]. exists (Core.eval_prg Wcore). now apply Core.SemEval.
   Qed.
 
   Definition sem := Build_Semantics lang sem_wrap trace_exists.
@@ -207,4 +207,14 @@ End Source.
 
 (* Compiler. *)
 Section Compiler.
+  (* Build the identity compiler from the shared core and define the chain.
+       Observe that this transformation amounts to stripping off the extra,
+     source-only properties stating the absence of Out commands and their
+     associated events. *)
+  Definition comp_prg (p : prg Source.lang) : prg Target.lang := Source.prg_core p.
+  Definition comp_par (p : par Source.lang) : par Target.lang := Source.par_core p.
+  Definition comp_ctx (c : ctx Source.lang) : ctx Target.lang := Source.ctx_core c.
+
+  Definition chain :=
+    Build_CompilationChain Source.lang Target.lang comp_prg comp_par comp_ctx.
 Section Compiler.
