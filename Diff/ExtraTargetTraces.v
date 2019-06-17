@@ -26,7 +26,7 @@ Module StringMap : WS := Make DecidableString.
 
 (* Shared core of source and target languages. For reuse, it seems easiest that
    they assemble the following components only very slightly differently. *)
-Section Core.
+Module Core.
   (* Base expressions.
        RB: An observable effect sequenced with a follow-up expression is added to
      the core and allowed selectively. Without let bindings, this is not very
@@ -79,6 +79,7 @@ Section Core.
     | _, Some f => Some (ContextTurn, f)
     | _, _ => None
     end.
+
   Definition link (p : par) (c : ctx) : prg :=
     Build_prg
       (StringMap.map2 link_fun (par_funs p) (ctx_funs c))
@@ -129,15 +130,80 @@ Section Core.
 
   Inductive sem : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p = t -> sem p t.
-End Core.
 
-(* Source language. *)
-Module Source.
-End Source.
+  Remark trace_exists : forall W : prg, exists t : trace, sem W t.
+    intro W. exists (eval_prg W). now apply SemEval.
+  Qed.
+End Core.
 
 (* Target language. *)
 Module Target.
+  (* The target language is simply the full, unadulterated core. *)
+  Definition lang := Build_Language Core.link.
+  Definition sem := Build_Semantics lang Core.sem Core.trace_exists.
 End Target.
+
+(* Source language. *)
+Module Source.
+  (* A series of inductive definitions describing the absence of Out statements.
+     In expressions, symbolic function calls say nothing about the function
+     definitions proper. *)
+  Inductive outless_expr : Core.expr -> Prop :=
+  | OutlessConst : forall n,
+      outless_expr (Core.Const n)
+  | OutlessPlus : forall e1 e2,
+      outless_expr e1 -> outless_expr e2 -> outless_expr (Core.Plus e1 e2)
+  | OutlessTimes : forall e1 e2,
+      outless_expr e1 -> outless_expr e2 -> outless_expr (Core.Times e1 e2)
+  | OutlessIfLe : forall econd1 econd2 ethen eelse,
+      outless_expr econd1 -> outless_expr econd2 ->
+      outless_expr ethen -> outless_expr eelse ->
+      outless_expr (Core.IfLe econd1 econd2 ethen eelse)
+  | OutlessFun : forall id earg,
+      outless_expr earg -> outless_expr (Core.Fun id earg).
+
+  Inductive outless_prg : Core.prg -> Prop :=
+  | OutlessPrg : forall prg,
+      outless_expr (Core.prg_main prg) -> outless_prg prg.
+  (* TODO: Deal with functions. *)
+
+  (* Decorate core programs with their additional property. *)
+  Record par :=
+    {
+      par_core    : Core.par;
+      par_outless : False (* TODO: Add well-formedness conditions. *)
+    }.
+
+  Record ctx :=
+    {
+      ctx_core    : Core.ctx;
+      ctx_outless : False (* TODO: Add well-formedness conditions. *)
+    }.
+
+  Record prg :=
+    {
+      prg_core    : Core.prg;
+      prg_outless : False (* TODO: Add well-formedness conditions. *)
+    }.
+
+  (* Wrap link operation and define language. *)
+  Definition link (p : par) (c : ctx) : prg :=
+    Build_prg
+      (Core.link (par_core p) (ctx_core c))
+      (par_outless p). (* TODO *)
+
+  Definition lang := Build_Language link.
+
+  (* Wrap core and define semantics. *)
+  Definition sem_wrap (p : prg) : Core.trace -> Prop := Core.sem (prg_core p).
+
+  Remark trace_exists : forall W : prg, exists t : Core.trace, sem_wrap W t.
+    intro W. destruct W as [Wcore Woutless]. exists (Core.eval_prg Wcore).
+    now apply Core.SemEval.
+  Qed.
+
+  Definition sem := Build_Semantics lang sem_wrap trace_exists.
+End Source.
 
 (* Compiler. *)
 Section Compiler.
