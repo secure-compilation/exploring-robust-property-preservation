@@ -1,5 +1,7 @@
 Require Import Coq.Init.Nat.
 Require Import Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
 Require Import Coq.FSets.FMapInterface.
 Require Import Coq.FSets.FMapWeakList.
 Require Import TraceModel.
@@ -25,7 +27,6 @@ Module StringMap : WS := Make DecidableString.
 (* Shared core of source and target languages. For reuse, it seems easiest that
    they assemble the following components only very slightly differently. *)
 Section Core.
-
   (* Base expressions.
        RB: An observable effect sequenced with a follow-up expression is added to
      the core and allowed selectively. Without let bindings, this is not very
@@ -84,30 +85,50 @@ Section Core.
       (par_main p)
       (par_wf p). (* TODO *)
 
-  Fail Build_Language link.
-
   (* Traces as evaluation results. *)
   Inductive trace :=
   | Output : nat -> trace -> trace
   | Result : nat -> trace.
 
-  (* Evaluation-based semantics. *)
-  Definition eval_prg (p : prg) : nat :=
-    let fix eval e :=
+  (* Evaluation-based semantics, returns both trace and result.
+       RB: An Out expression can itself produce traces, which is nonstandard.
+     Should it? *)
+  Definition eval_prg (p : prg) : trace :=
+    let fix eval (e : expr) : (nat * list nat) :=
         match e with
-        | Const n => n
-        | Plus e1 e2 => eval e1 + eval e2
-        | Times e1 e2 => eval e1 * eval e2
+        | Const n => (n, [])
+        | Plus e1 e2 =>
+          match eval e1, eval e2 with
+          | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2)
+          end
+        | Times e1 e2 =>
+          match eval e1, eval e2 with
+          | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2)
+          end
         | IfLe ecomp1 ecomp2 ethen eelse =>
-          if eval ecomp1 <=? eval ecomp2 then eval ethen else eval eelse
-        | Out _ e => eval e (* TODO *)
-        | Fun id arg => 0 (* TODO *)
+          match eval ecomp1, eval ecomp2 with
+          | (n1, t1), (n2, t2) =>
+            if n1 <=? n2
+            then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t)
+            else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t)
+          end
+        | Out eout e =>
+          match eval eout, eval e with
+          | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
+          end
+        | Fun id arg => (0, []) (* TODO *)
         end
     in
-    eval (prg_main p).
+    let fix gen_trace (res: nat) (outs : list nat) : trace :=
+        match outs with
+        | [] => Result res
+        | out :: outs' => Output out (gen_trace res outs')
+        end
+    in
+    let '(n, t) := eval (prg_main p) in gen_trace n t.
 
   Inductive sem : prg -> trace -> Prop :=
-  | SemEval : forall p n, eval_prg p = n -> sem p (Result n).
+  | SemEval : forall p t, eval_prg p = t -> sem p t.
 End Core.
 
 (* Source language. *)
