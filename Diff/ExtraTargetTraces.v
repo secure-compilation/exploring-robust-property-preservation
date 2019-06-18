@@ -202,8 +202,8 @@ Module Core.
 
   (* Traces as evaluation results. *)
   Inductive trace :=
-  | Output : nat -> trace -> trace
-  | Result : nat -> trace.
+  | Result : nat -> trace
+  | Output : nat -> trace -> trace.
 
   (* Evaluation-based semantics, returns both trace and result.
        RB: An Out expression can itself produce traces, which is nonstandard.
@@ -378,15 +378,15 @@ Module Compiler.
 End Compiler.
 
 (* Compiler proofs. *)
-Module RTC.
+Module RTCtilde.
   (* A simple trace relation that does not track program-context changes. It
      will say less about the target in the source, but also be a bit easier to
      prove. *)
   Inductive trel : Core.trace -> Core.trace -> Prop :=
-  | RelOutput : forall ns nt t,
-      trel (Core.Result ns) (Core.Output nt t) -> trel (Core.Result ns) t
   | RelResult : forall ns nt,
-      trel (Core.Result ns) (Core.Result nt).
+      trel (Core.Result ns) (Core.Result nt)
+  | RelOutput : forall ns nt t,
+      trel (Core.Result ns) t -> trel (Core.Result ns) (Core.Output nt t).
 
   (* Clean up contexts and traces.
        RB: Better names to avoid Core vs. Target and Source confusion. *)
@@ -411,16 +411,35 @@ Module RTC.
 
   Fixpoint clean_trace (t : Core.trace) : Core.trace :=
     match t with
-    | Core.Output n t' => clean_trace t'
     | Core.Result n => t
+    | Core.Output n t' => clean_trace t'
     end.
 
-  (* Main theorem. *)
-  Theorem extra_target_RTC : rel_RTC Compiler.chain Source.sem Target.sem trel.
+  (* Properties of trace cleanup. *)
+  Lemma clean_trace_result : forall t, exists n, clean_trace t = Core.Result n.
   Proof.
-    unfold rel_RTC. simpl. intros par_s ctx_t t Hsem.
-    exists (clean_ctx ctx_t), (clean_trace t). split.
-    - admit.
-    - admit.
+    intros t. induction t as [n | n t [n' IHt]].
+    - now exists n.
+    - now exists n'.
+  Qed.
+
+  Lemma trel_clean_trace : forall t, trel (clean_trace t) t.
+  Proof.
+    intros t. induction t as [| n t IHt].
+    - now constructor.
+    - simpl. destruct (clean_trace_result t) as [n' Hclean].
+      rewrite Hclean in *. now constructor.
+  Qed.
+
+  (* Properties of context cleanup. *)
+
+  (* Main theorem. *)
+  Theorem extra_target_RTCt : rel_RTC Compiler.chain Source.sem Target.sem trel.
+  Proof.
+    unfold rel_RTC. simpl. intros [par_s Houtless] ctx_t t Hsem.
+    exists (clean_ctx ctx_t), (clean_trace t). simpl in Hsem. split.
+    - now apply trel_clean_trace.
+    - unfold Source.sem_wrap.
+      unfold Compiler.comp_par in Hsem. simpl.
   Admitted.
-End RTC.
+End RTCtilde.
