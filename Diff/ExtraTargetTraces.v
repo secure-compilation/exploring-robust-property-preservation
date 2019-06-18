@@ -352,35 +352,54 @@ Module Source.
   Definition funmap_outless (fs : Core.funmap) : Prop :=
     Forall outless_expr (Core.funmap_bodies fs).
 
-  Inductive outless_prg : Core.prg -> Prop :=
-  | OutlessPrg : forall prg,
-      funmap_outless (Core.funmap_turn_bodies (Core.prg_funs prg)) ->
-      outless_expr (Core.prg_main prg) -> outless_prg prg.
-
   (* Decorate core programs with their additional property. *)
+  Record par_wf (p : Core.par) :=
+    {
+      par_wf_funs_outless : funmap_outless (Core.par_funs p);
+      par_wf_main_outless : outless_expr (Core.par_main p)
+    }.
+
   Record par :=
     {
-      par_core    : Core.par;
-      par_outless : True (* TODO: Add well-formedness conditions. *)
+      par_core : Core.par;
+      par_prop : par_wf par_core
+    }.
+
+  Record ctx_wf (c : Core.ctx) :=
+    {
+      ctx_wf_funs_outless : funmap_outless (Core.ctx_funs c);
     }.
 
   Record ctx :=
     {
-      ctx_core    : Core.ctx;
-      ctx_outless : True (* TODO: Add well-formedness conditions. *)
+      ctx_core : Core.ctx;
+      ctx_prop : ctx_wf ctx_core
+    }.
+
+  Record prg_wf (p : Core.prg) :=
+    {
+      prg_wf_funs_outless :
+        funmap_outless (Core.funmap_turn_bodies (Core.prg_funs p));
+      prg_wf_main_outless : outless_expr (Core.prg_main p)
     }.
 
   Record prg :=
     {
-      prg_core    : Core.prg;
-      prg_outless : True (* TODO: Add well-formedness conditions. *)
+      prg_core : Core.prg;
+      prg_prop : prg_wf prg_core
     }.
 
   (* Wrap link operation and define language. *)
+  Lemma link_wf (p : par) (c : ctx) :
+    par_wf (par_core p) ->
+    ctx_wf (ctx_core c) ->
+    prg_wf (Core.link (par_core p) (ctx_core c)).
+  Admitted.
+
   Definition link (p : par) (c : ctx) : prg :=
     Build_prg
       (Core.link (par_core p) (ctx_core c))
-      (par_outless p). (* TODO *)
+      (link_wf _ _ (par_prop p) (ctx_prop c)).
 
   Definition lang := Build_Language link.
 
@@ -433,12 +452,24 @@ Module RTCtilde.
     | Core.Fun f e' => Core.Fun f (clean_expr e')
     end.
 
+  Lemma core_ctx_wf_clean_expr (ctx : Core.ctx) :
+    Core.ctx_wf (Core.ctx_funs ctx) ->
+    Core.ctx_wf (StringMap.map clean_expr (Core.ctx_funs ctx)).
+  Admitted.
+
+  Definition clean_ctx_core (ctx : Core.ctx) :=
+    (Core.Build_ctx
+       (StringMap.map clean_expr (Core.ctx_funs ctx))
+       (core_ctx_wf_clean_expr _ (Core.ctx_prop ctx))).
+
+  Lemma source_ctx_wf_clean_expr (ctx : Core.ctx) :
+    Source.ctx_wf (clean_ctx_core ctx).
+  Admitted.
+
   Definition clean_ctx (ctx : Core.ctx) : Source.ctx :=
     Source.Build_ctx
-      (Core.Build_ctx
-         (StringMap.map clean_expr (Core.ctx_funs ctx))
-         I)
-      I.
+      (clean_ctx_core ctx)
+      (source_ctx_wf_clean_expr _).
 
   Fixpoint clean_trace (t : Core.trace) : Core.trace :=
     match t with
