@@ -316,10 +316,14 @@ Module Source.
   | OutlessFun : forall id earg,
       outless_expr earg -> outless_expr (Core.Fun id earg).
 
+  Definition funmap_outless (fs : Core.funmap) : Prop :=
+    Forall outless_expr (Core.funmap_bodies fs).
+
+  Check Core.funmap_turn_bodies.
   Inductive outless_prg : Core.prg -> Prop :=
   | OutlessPrg : forall prg,
+      funmap_outless (Core.funmap_turn_bodies (Core.prg_funs prg)) ->
       outless_expr (Core.prg_main prg) -> outless_prg prg.
-  (* TODO: Deal with functions. *)
 
   (* Decorate core programs with their additional property. *)
   Record par :=
