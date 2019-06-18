@@ -8,6 +8,7 @@ Require Import Coq.FSets.FSetWeakList.
 Require Import TraceModel.
 Require Import LanguageModel.
 Require Import ChainModel.
+Require Import RobustTraceCriterion.
 
 (* Simple binary location: program or context. *)
 Inductive turn : Set :=
@@ -363,7 +364,7 @@ Module Source.
 End Source.
 
 (* Compiler. *)
-Section Compiler.
+Module Compiler.
   (* Build the identity compiler from the shared core and define the chain.
        Observe that this transformation amounts to stripping off the extra,
      source-only properties stating the absence of Out commands and their
@@ -375,3 +376,51 @@ Section Compiler.
   Definition chain :=
     Build_CompilationChain Source.lang Target.lang comp_prg comp_par comp_ctx.
 End Compiler.
+
+(* Compiler proofs. *)
+Module RTC.
+  (* A simple trace relation that does not track program-context changes. It
+     will say less about the target in the source, but also be a bit easier to
+     prove. *)
+  Inductive trel : Core.trace -> Core.trace -> Prop :=
+  | RelOutput : forall ns nt t,
+      trel (Core.Result ns) (Core.Output nt t) -> trel (Core.Result ns) t
+  | RelResult : forall ns nt,
+      trel (Core.Result ns) (Core.Result nt).
+
+  (* Clean up contexts and traces.
+       RB: Better names to avoid Core vs. Target and Source confusion. *)
+  Fixpoint clean_expr (e : Core.expr) : Core.expr :=
+    match e with
+    | Core.Const _ | Core.Arg => e
+    | Core.Plus e1 e2 => Core.Plus (clean_expr e1) (clean_expr e2)
+    | Core.Times e1 e2 => Core.Times (clean_expr e1) (clean_expr e2)
+    | Core.Out _ e' => clean_expr e'
+    | Core.IfLe econd1 econd2 ethen eelse =>
+      Core.IfLe (clean_expr econd1) (clean_expr econd2)
+                (clean_expr ethen) (clean_expr eelse)
+    | Core.Fun f e' => Core.Fun f (clean_expr e')
+    end.
+
+  Definition clean_ctx (ctx : Core.ctx) : Source.ctx :=
+    Source.Build_ctx
+      (Core.Build_ctx
+         (StringMap.map clean_expr (Core.ctx_funs ctx))
+         I)
+      I.
+
+  Fixpoint clean_trace (t : Core.trace) : Core.trace :=
+    match t with
+    | Core.Output n t' => clean_trace t'
+    | Core.Result n => t
+    end.
+
+  (* Main theorem. *)
+  Theorem extra_target_RTC : rel_RTC Compiler.chain Source.sem Target.sem trel.
+  Proof.
+    unfold rel_RTC. simpl. intros par_s ctx_t t Hsem.
+    exists (clean_ctx ctx_t), (clean_trace t). split.
+    - admit.
+    - admit.
+  Admitted.
+End RTC.
