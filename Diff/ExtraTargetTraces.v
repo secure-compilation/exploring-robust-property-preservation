@@ -206,9 +206,13 @@ Module Core.
 
   (* Evaluation-based semantics, returns both trace and result.
        RB: An Out expression can itself produce traces, which is nonstandard.
-     Should it? *)
-  Definition eval_prg (p : prg) : trace :=
-    let fix eval (e : expr) : (nat * list nat) :=
+     Should it?
+       RB: Rename to eval?
+       RB: Currently no program-context switching information recorded.
+       RB: Also currently, getting away with two simple but mostly redundant
+     fixpoints. *)
+  Definition eval_fun (arg : nat) (e : expr) : (nat * list nat) :=
+    let fix eval e :=
         match e with
         | Const n => (n, [])
         | Plus e1 e2 =>
@@ -226,21 +230,57 @@ Module Core.
             then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t)
             else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t)
           end
-        | Out eout e =>
-          match eval eout, eval e with
+        | Out eout e' =>
+          match eval eout, eval e' with
           | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
           end
-        | Fun id arg => (0, []) (* TODO *)
-        | Arg => (0, []) (* TODO *)
+        | Fun id earg => (0, []) (* Bad case, rule out in closed programs. *)
+        | Arg => (arg, [])
         end
-    in
+    in eval e.
+
+  Definition eval_main (fs : funmap_turn) (e : expr) : (nat * list nat) :=
+    let fix eval e :=
+        match e with
+        | Const n => (n, [])
+        | Plus e1 e2 =>
+          match eval e1, eval e2 with
+          | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2)
+          end
+        | Times e1 e2 =>
+          match eval e1, eval e2 with
+          | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2)
+          end
+        | IfLe ecomp1 ecomp2 ethen eelse =>
+          match eval ecomp1, eval ecomp2 with
+          | (n1, t1), (n2, t2) =>
+            if n1 <=? n2
+            then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t)
+            else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t)
+          end
+        | Out eout e' =>
+          match eval eout, eval e' with
+          | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
+          end
+        | Fun id earg =>
+          let '(arg, targ) := eval earg in
+          match StringMap.find id fs with
+          | Some (_, e') =>
+            let '(n, t) := eval_fun arg e' in
+            (n, targ ++ t)
+          | None => (0, []) (* Bad case, rule out in closed programs. *)
+          end
+        | Arg => (0, []) (* Bad case, ruled out by main. *)
+        end
+    in eval e.
+
+  Definition eval_prg (p : prg) : trace :=
     let fix gen_trace (res: nat) (outs : list nat) : trace :=
         match outs with
         | [] => Result res
         | out :: outs' => Output out (gen_trace res outs')
         end
-    in
-    let '(n, t) := eval (prg_main p) in gen_trace n t.
+    in let '(n, t) := eval_main (prg_funs p) (prg_main p) in gen_trace n t.
 
   Inductive sem : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p = t -> sem p t.
