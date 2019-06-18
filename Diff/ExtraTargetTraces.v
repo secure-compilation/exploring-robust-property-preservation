@@ -10,6 +10,8 @@ Require Import LanguageModel.
 Require Import ChainModel.
 Require Import RobustTraceCriterion.
 
+Set Bullet Behavior "Strict Subproofs".
+
 (* Simple binary location: program or context. *)
 Inductive turn : Set :=
 | ProgramTurn
@@ -146,40 +148,61 @@ Module Core.
   Definition closed (fs : funmap_turn) (e : expr) : bool :=
     StringSet.equal (elements_set _ fs) (funs e).
 
-  (* Well-formedness conditions. *)
-  (* TODO *)
+  (* Programs and contexts with their well-formedness conditions. *)
+  Record par_wf (funs : funmap) (main : expr) :=
+    {
+      par_wf_funless : funmap_funless funs;
+      par_wf_argless : argless main
+    }.
 
-  (* Programs and contexts (as records, Type and not Set). *)
   Record par :=
     {
       par_funs : funmap;
       par_main : expr;
-      par_wf   : True (* TODO: Add well-formedness conditions. *)
-                 (* funmap_funless par_funs /\ *)
-                 (* argless par_main *)
+      par_prop : par_wf par_funs par_main
+    }.
+
+  Record ctx_wf (funs : funmap) :=
+    {
+      ctx_wf_funless : funmap_funless funs
     }.
 
   Record ctx :=
     {
       ctx_funs : funmap;
-      ctx_wf   : True (* TODO: Add well-formedness conditions. *)
-                 (* funmap_funless ctx_funs *)
+      ctx_prop : ctx_wf ctx_funs
     }.
 
-  Record prg := (* Type, not Set. *)
+  Record prg_wf (funs : funmap_turn) (main : expr) :=
+    {
+      prg_wf_funless : funmap_funless (funmap_turn_bodies funs);
+      prg_wf_argless : argless main;
+      prg_wf_calls : well_formed_calls funs main
+    }.
+
+  Record prg :=
     {
       prg_funs : funmap_turn;
       prg_main : expr;
-      prg_wf   : True (* TODO: Add well-formedness conditions. *)
-                 (* funmap_funless (funmap_turn_bodies prg_funs) /\ *)
-                 (* argless prg_main /\ *)
-                 (* well_formed_calls prg_funs prg_main *)
+      prg_prop : prg_wf prg_funs prg_main
     }.
 
   (* Linking. Assume main in the program and combine functions from program and
      context with tags to remember provenance.
-     RB: Clashes are resolved by favoring the program side, but should never
-     be allowed. *)
+       RB: Clashes are resolved by favoring the program side, but should never
+     be allowed. (Inline auxiliaries?) *)
+
+  (* First, trivially, consider the case of the empty program. *)
+  Lemma wf_empty_prg : prg_wf (StringMap.empty _) (Const 0).
+  Admitted.
+
+  Definition empty_prg : prg :=
+    Build_prg
+      (StringMap.empty _)
+      (Const 0)
+      wf_empty_prg.
+
+  (* Second, compose proper well-formedness proofs. *)
   Definition link_fun (par_fun ctx_fun : option expr) :=
     match par_fun, ctx_fun with
     | Some f, _ => Some (ProgramTurn, f)
@@ -187,18 +210,27 @@ Module Core.
     | _, _ => None
     end.
 
-  Definition link (p : par) (c : ctx) : prg :=
-    let prg_funs := (StringMap.map2 link_fun (par_funs p) (ctx_funs c)) in
-    if closed prg_funs (par_main p) then
-      Build_prg
-        prg_funs
-        (par_main p)
-        (par_wf p) (* TODO *)
-    else (* Bad case, can be ruled out by well-formedness but to clean up. *)
-      Build_prg
-        (StringMap.empty _)
-        (Const 0)
-        (par_wf p). (* TODO *)
+  Definition link_funs (p : par) (c : ctx) :=
+    StringMap.map2 link_fun (par_funs p) (ctx_funs c).
+
+  Lemma link_wf  (p : par) (c : ctx) :
+    closed (link_funs p c) (par_main p) = true ->
+    par_wf (par_funs p) (par_main p) ->
+    ctx_wf (ctx_funs c) ->
+    prg_wf (link_funs p c) (par_main p).
+  Admitted.
+
+  (* RB: Check how this works inside proofs. *)
+  Definition link (p : par) (c : ctx) : prg.
+    set (prg_funs := link_funs p c).
+    destruct (closed prg_funs (par_main p)) eqn:Hisclosed.
+    - exact (Build_prg
+               prg_funs
+               (par_main p)
+               (link_wf _ _ Hisclosed (par_prop p) (ctx_prop c))).
+    - (* Bad case, can be ruled out by well-formedness but to clean up. *)
+      exact empty_prg.
+  Defined.
 
   (* Traces as evaluation results. *)
   Inductive trace :=
@@ -320,7 +352,6 @@ Module Source.
   Definition funmap_outless (fs : Core.funmap) : Prop :=
     Forall outless_expr (Core.funmap_bodies fs).
 
-  Check Core.funmap_turn_bodies.
   Inductive outless_prg : Core.prg -> Prop :=
   | OutlessPrg : forall prg,
       funmap_outless (Core.funmap_turn_bodies (Core.prg_funs prg)) ->
