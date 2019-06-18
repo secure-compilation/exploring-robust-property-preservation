@@ -1,4 +1,45 @@
-(* Add LoadPath ".". *)
+Add LoadPath ".".
+
+(*
+
+- Should semantics be defined for typed programs only?
+
+- What would type soundness be?
+
+- Maybe go for small-step?
+
+- easy to prove there is a trace in a small-step semantics.
+
+HInBool ~> ( [ HINat _ ], HRError )
+HInBool ~> ( [ HIBool true ], HRBool true )
+HInBool ~> ( [ HIBool false ], HRBool false )
+
+LInBool ~> ( [ LINat _ ], LRError )
+LInBool ~> ( [ LINat 1 ], LRBool true )
+LInBool ~> ( [ LINat 0 ], LRBool false )
+
+P = if HInBool then 1 else 0
+
+P! = if cast(LInNat) <= 0 then 0 else 1
+
+1. extend the tilde relation s.t. true <-> 1, 2, 3, ...; false <-> 0; <----
+
+2.A. cast inputs / cast outputs;
+
+2.B. throw an exception on wrong input / cast output;
+true | true ==> 1 + 1
+
+2.C. continue w/out cast on inputs / cast output;
+
+2.D. cast input to 1 whenever it is not zero;
+
+2.E. throw an exception on wrong input;
+
+2.F. continue w/out cast on inputs.
+
+LInBool ~> ( [ LINat 2 ], LRNat 1 )
+
+*)
 
 Inductive HExp :=
   HNat : nat -> HExp
@@ -7,14 +48,15 @@ Inductive HExp :=
 | HTimes : HExp -> HExp -> HExp
 | HIte : HExp -> HExp -> HExp -> HExp
 | HLe : HExp -> HExp -> HExp
-| HInput : HExp.
+| HInBool : HExp
+| HInNat : HExp.
 
 Inductive LExp :=
   LNat : nat -> LExp
 | LPlus : LExp -> LExp -> LExp
 | LTimes : LExp -> LExp -> LExp
 | LIte : LExp -> LExp -> LExp -> LExp -> LExp
-| LInput.
+| LIn : LExp.
 
 Fixpoint compile (he : HExp) : LExp :=
   match he with
@@ -25,7 +67,8 @@ Fixpoint compile (he : HExp) : LExp :=
   | HTimes he1 he2 => LTimes (compile he1) (compile he2)
   | HLe he1 he2 => LIte (compile he1) (compile he2) (LNat 1) (LNat 0)
   | HIte he1 he2 he3 => LIte (compile he1) (LNat 0) (compile he3) (compile he2)
-  | HInput => LInput
+  | HInBool => LIn
+  | HInNat => LIn
   end.
 
 Require Import List.
@@ -35,24 +78,21 @@ Inductive HResult :=
 | HRNat : nat -> HResult
 | HRError : HResult.
 
-Definition HTrace := (list nat * HResult)%type.
+Inductive HInput :=
+| HIBool : bool -> HInput
+| HINat : nat -> HInput.
+
+Definition HTrace := (list HInput * HResult)%type.
 
 Inductive LResult :=
 | LRNat : nat -> LResult.
 
-Definition LTrace := (list nat * LResult)%type.
+Inductive LInput :=
+| LINat : nat -> LInput.
+
+Definition LTrace := (list LInput * LResult)%type.
 
 Import ListNotations.
-
-(*
-
-Should semantics be defined for typed programs only?
-
-What would type soundness be?
-
-Maybe go for small-step?
-
-*)
 
 Inductive hsem : HExp -> HTrace -> Prop :=
 | HSNat : forall n,
@@ -140,8 +180,15 @@ Inductive hsem : HExp -> HTrace -> Prop :=
       hsem he1 (hl1, HRNat n1) ->
       hsem he2 (hl2, HRError) ->
       hsem (HLe he1 he2) (app hl1 hl2, HRError)
-| HSInput : forall n,
-    hsem HInput ([n], HRNat n).
+| HSInNatSuccess : forall n,
+    hsem HInNat ([HINat n], HRNat n)
+(* | HSInNatError : forall b, *)
+(*     hsem HInNat ([HIBool b], HRError) *)
+| HSInBoolSuccess : forall b,
+    hsem HInBool ([HIBool b], HRBool b)
+(* | HSInBoolError : forall n, *)
+(*     hsem HInBool ([HINat n], HRError) *)
+.
 
 Inductive lsem : LExp -> LTrace -> Prop :=
 | LSNat : forall n,
@@ -171,24 +218,38 @@ Inductive lsem : LExp -> LTrace -> Prop :=
     lsem le4 (ll4, LRNat n4) ->
     lsem (LIte le1 le2 le3 le4) (app ll1 (app ll2 ll4), LRNat n4)
 | LSInput : forall n,
-    lsem LInput ([n], LRNat n).
+    lsem LIn ([LINat n], LRNat n).
 
-Definition tilde (ht : HTrace) (lt : LTrace) : Prop :=
-  match ht, lt with
-  | (l1, HRNat n1), (l2, LRNat n2) => l1 = l2 /\ n1 = n2
-  | (l1, HRBool true), (l2, LRNat 1)
-  | (l1, HRBool false), (l2, LRNat 0) => l1 = l2
-  | _, _ => False
+Definition tildeInput (hi : HInput) (li : LInput) : bool :=
+  match (hi, li) with
+  | (HINat n, LINat m) => PeanoNat.Nat.eqb n m
+  | (HIBool true, LINat (S m)) => true
+  | (HIBool false, LINat 0) => true
+  | _ => false
   end.
 
-(* (* another way this could be defined *) *)
-(* Definition tilde' (ht:HTrace) (lt:LTrace) : Prop := *)
-(*   match ht, lt with *)
-(*   | (l1, HRNat n1), (l2, LRNat n2) => l1 = l2 /\ n1 = n2 *)
-(*   | (l1, HRBool true), (l2, LRNat 1) *)
-(*   | (l1, HRBool false), (l2, LRNat 0) => l1 = l2 *)
-(*   | _, _ => False *)
-(*   end. *)
+Fixpoint tildeInputs (his : list HInput) (lis : list LInput) : bool :=
+  match (his, lis) with
+  | ([], []) => true
+  | (x :: his', y :: lis') => andb (tildeInput x y) (tildeInputs his' lis')
+  | _ => false
+  end.
+
+Definition tildeResult (hr : HResult) (lr : LResult) :=
+  match (hr, lr) with
+  | (HRNat n, LRNat m) => PeanoNat.Nat.eqb n m
+  | (HRBool true, LRNat (S m)) => true
+  | (HRBool false, LRNat 0) => false
+  | _ => false
+  end.
+
+Definition tilde (ht : HTrace) (lt : LTrace) : bool :=
+  match ht, lt with
+  | (l1, HRNat n), (l2, LRNat m) => andb (tildeInputs l1 l2) (PeanoNat.Nat.eqb n m)
+  | (l1, HRBool true), (l2, LRNat (S m)) => tildeInputs l1 l2
+  | (l1, HRBool false), (l2, LRNat 0) => tildeInputs l1 l2
+  | _, _ => false
+  end.
 
 Inductive type :=
   TNat
@@ -214,10 +275,10 @@ Inductive typing : HExp -> type -> Prop :=
     typing he1 TNat ->
     typing he2 TNat ->
     typing (HLe he1 he2) TBool
-| type_hinput :
-    typing HInput TNat.
-
-(* easy to prove there is a trace in a small-step semantics. *)
+| type_hinnat :
+    typing HInNat TNat
+| type_hinbool :
+    typing HInBool TBool.
 
 Theorem type_correct :
   forall he : HExp,
@@ -303,73 +364,95 @@ Proof.
       destruct H1.
       inversion H1.
   - inversion H.
-  - admit.
-  (* - (* ite return TNat *) inversion H. subst. *)
-  (*   specialize (IHhe1 TBool H3). *)
-  (*   specialize (IHhe2 TNat H5). *)
-  (*   specialize (IHhe3 TNat H6). *)
-  (*   destruct IHhe1 as [ IHhe1' IHhe1'' ]. *)
-  (*   destruct IHhe2 as [ IHhe2' IHhe2'' ]. *)
-  (*   destruct IHhe3 as [ IHhe3' IHhe3'' ]. *)
-  (*   clear IHhe1'. *)
-  (*   clear IHhe2''. *)
-  (*   clear IHhe3''. *)
-  (*   specialize (IHhe1'' eq_refl). *)
-  (*   specialize (IHhe2' eq_refl). *)
-  (*   specialize (IHhe3' eq_refl). *)
-  (*   inversion IHhe1'' as [ b Hb ]. *)
-  (*   destruct b. *)
-  (*   + destruct IHhe2' as [ n2 ]. *)
-  (*     exists n2. *)
-  (*     simpl. rewrite Hb. assumption. *)
-  (*   + destruct IHhe3' as [ n3 ]. *)
-  (*     exists n3. *)
-  (*     simpl. rewrite Hb. *)
-  (*     assumption. *)
-  - (* ite returning TBool *)
-    admit.
-    (* inversion H. subst. *)
-    (* specialize (IHhe1 TBool H3). *)
-    (* specialize (IHhe2 TBool H5). *)
-    (* specialize (IHhe3 TBool H6). *)
-    (* destruct IHhe1 as [ IHhe1' IHhe1'' ]. *)
-    (* destruct IHhe2 as [ IHhe2' IHhe2'' ]. *)
-    (* destruct IHhe3 as [ IHhe3' IHhe3'' ]. *)
-    (* clear IHhe1'. *)
-    (* clear IHhe2'. *)
-    (* clear IHhe3'. *)
-    (* specialize (IHhe1'' eq_refl). *)
-    (* specialize (IHhe2'' eq_refl). *)
-    (* specialize (IHhe3'' eq_refl). *)
-    (* inversion IHhe1'' as [ b Hb ]. *)
-    (* destruct b. *)
-    (* + destruct IHhe2'' as [ b2 ]. *)
-    (*   exists b2. *)
-    (*   simpl. rewrite Hb. assumption. *)
-    (* + destruct IHhe3'' as [ b3 ]. *)
-    (*   exists b3. *)
-    (*   simpl. rewrite Hb. *)
-    (*   assumption. *)
+  - (* ite return TNat *) inversion H. subst. clear H.
+    specialize (IHhe1 TBool H4).
+    specialize (IHhe2 TNat H6).
+    specialize (IHhe3 TNat H7).
+    inversion H0; subst.
+    + specialize (IHhe2 hl2 hr H9).
+      destruct IHhe2 as [ IHhe2 IHhe2useless ].
+      clear IHhe2useless.
+      specialize (IHhe2 eq_refl).
+      assumption.
+    + specialize (IHhe3 hl3 hr H9).
+      destruct IHhe3 as [ IHhe3 IHhe3useless ].
+      clear IHhe3useless.
+      specialize (IHhe3 eq_refl).
+      assumption.
+    + specialize (IHhe1 l (HRNat n1) H1).
+      destruct IHhe1 as [ IHhe1useless IHhe1 ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H.
+    + specialize (IHhe1 l HRError H1).
+      destruct IHhe1 as [ IHhe1useless IHhe1 ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H.
+  - (* ite return Bool *)
+     inversion H. subst. clear H.
+    specialize (IHhe1 TBool H4).
+    specialize (IHhe2 TBool H6).
+    specialize (IHhe3 TBool H7).
+    inversion H0; subst.
+    + specialize (IHhe2 hl2 hr H9).
+      destruct IHhe2 as [ IHhe2useless IHhe2 ].
+      clear IHhe2useless.
+      specialize (IHhe2 eq_refl).
+      assumption.
+    + specialize (IHhe3 hl3 hr H9).
+      destruct IHhe3 as [ IHhe3useless IHhe3 ].
+      clear IHhe3useless.
+      specialize (IHhe3 eq_refl).
+      assumption.
+    + specialize (IHhe1 l (HRNat n1) H1).
+      destruct IHhe1 as [ IHhe1useless IHhe1 ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H.
+    + specialize (IHhe1 l HRError H1).
+      destruct IHhe1 as [ IHhe1useless IHhe1 ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H.
+  - (* HLe returning nat *)
+    inversion H.
+  - (* HLe returning bool *)
+    inversion H; subst.
+    specialize (IHhe1 TNat H3).
+    clear H3.
+    specialize (IHhe2 TNat H4).
+    clear H4.
+    inversion H0; subst.
+    + exists (Nat.leb n1 n2).
+      reflexivity.
+    + specialize (IHhe1 l (HRBool b1) H2).
+      destruct IHhe1 as [ IHhe1 IHhe1useless ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H1.
+    + specialize (IHhe1 l HRError H2).
+      destruct IHhe1 as [ IHhe1 IHhe1useless ].
+      clear IHhe1useless.
+      specialize (IHhe1 eq_refl).
+      destruct IHhe1. inversion H1.
+    + specialize (IHhe2 hl2 (HRBool b2) H6).
+      destruct IHhe2 as [ IHhe2 IHhe2useless ].
+      clear IHhe2useless.
+      specialize (IHhe2 eq_refl).
+      destruct IHhe2. inversion H1.
+    + specialize (IHhe2 hl2 HRError H6).
+      destruct IHhe2 as [ IHhe2 IHhe2useless ].
+      clear IHhe2useless.
+      specialize (IHhe2 eq_refl).
+      destruct IHhe2. inversion H1.
   - inversion H.
-  - (* hle *) admit.
-    (*  inversion H. *)
-    (* subst. *)
-    (* specialize (IHhe1 TNat H2). *)
-    (* specialize (IHhe2 TNat H3). *)
-    (* destruct IHhe1 as [ IHhe1' IHhe1'' ]. *)
-    (* destruct IHhe2 as [ IHhe2' IHhe2'' ]. *)
-    (* clear IHhe1''. *)
-    (* clear IHhe2''. *)
-    (* specialize (IHhe1' eq_refl). *)
-    (* specialize (IHhe2' eq_refl). *)
-    (* inversion IHhe1' as [ n1 Hn1 ]. *)
-    (* inversion IHhe2' as [ n2 Hn2 ]. *)
-    (* exists (Nat.leb n1 n2). *)
-    (* simpl. rewrite Hn1. rewrite Hn2. *)
-    (* reflexivity. *)
-  - admit.
-  - admit.
-Admitted.
+  - inversion H0.
+    exists b. reflexivity.
+  - inversion H0.
+    exists n. reflexivity.
+  - inversion H.
+Qed.
  
 Lemma type_correct_nat :
   forall he : HExp,
@@ -409,11 +492,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* Theorem tilde_app : *)
-(*   tilde (hl1, hr1) (ll1, lr1) -> *)
-(*   tilde (hl2, hr2) (ll2, lr2) -> *)
-
-Definition translate (hr : HResult) : LResult :=
+Definition translateResult (hr : HResult) : LResult :=
   match hr with
   | HRNat n => LRNat n
   | HRBool true => LRNat 1
@@ -421,20 +500,53 @@ Definition translate (hr : HResult) : LResult :=
   | HRError => LRNat 0
   end.
 
-Theorem tilde_translate :
-  forall l x,
-    not (x = HRError) ->
-    tilde (l, x) (l, translate x).
+Fixpoint translateInputs (hl : list HInput) : list LInput :=
+  match hl with
+  | [] => []
+  | HINat n :: hl' => LINat n :: translateInputs hl'
+  | HIBool true :: hl' => LINat 1 :: translateInputs hl'
+  | HIBool false :: hl'  => LINat 0 :: translateInputs hl'
+  end.
+
+Theorem tildeInputs_translate :
+  forall hl,
+    tildeInputs hl (translateInputs hl) = true.
 Proof.
-  unfold translate.
+  induction hl.
+  - reflexivity.
+  - destruct a.
+    + destruct b.
+      * simpl. assumption.
+      * simpl. assumption.
+    + simpl. unfold tildeInput.
+      rewrite PeanoNat.Nat.eqb_refl.
+      simpl.
+      assumption.
+Qed.
+
+Theorem tilde_translate :
+  forall h x,
+    not (x = HRError) ->
+    tilde (h, x) (translateInputs h, translateResult x) = true.
+Proof.
+  intros h x.
+  intros Hx.
   destruct x.
   - destruct b.
-    + constructor.
-    + constructor.
-  - simpl. split.
-    + reflexivity.
-    + reflexivity.
-  - intros. apply H. reflexivity.
+    + unfold translateResult.
+      unfold tilde.
+      apply tildeInputs_translate.
+    + unfold translateResult.
+      unfold tilde.
+      apply tildeInputs_translate.
+  - unfold translateResult.
+    unfold tilde.
+    rewrite tildeInputs_translate.
+    simpl.
+    apply PeanoNat.Nat.eqb_refl.
+  -
+
+    exfalso. apply Hx. reflexivity.
 Qed.
 
 Theorem type_soundness :
@@ -463,49 +575,39 @@ Proof.
     inversion Hcontra.
 Qed.
 
+Lemma translateInputs_distr :
+  forall hl1 hl2,
+    translateInputs (hl1 ++ hl2) =
+    (translateInputs hl1) ++ (translateInputs hl2).
+Proof.
+  intros.
+  induction hl1.
+  - simpl.
+    reflexivity.
+  - simpl.
+    destruct a.
+    + destruct b.
+      * simpl.
+        rewrite IHhl1.
+        reflexivity.
+      * simpl.
+        rewrite IHhl1.
+        reflexivity.
+    + simpl.
+      rewrite IHhl1.
+      reflexivity.
+Qed.
 
-(*
-
-HInputBool ~> ( [ HINat _ ], HRError )
-HInputBool ~> ( [ HIBool true ], HRBool true )
-HInputBool ~> ( [ HIBool false ], HRBool false )
-
-LInputBool ~> ( [ LINat _ ], LRError )
-LInputBool ~> ( [ LINat 1 ], LRBool true )
-LInputBool ~> ( [ LINat 0 ], LRBool false )
-
-P = if HInputBool then 1 else 0
-
-P! = if cast(LInputNat) <= 0 then 0 else 1
-
-1. extend the tilde relation s.t. true <-> 1, 2, 3, ...; false <-> 0; <----
-
-2.A. cast inputs / cast outputs;
-
-2.B. throw an exception on wrong input / cast output;
-true | true ==> 1 + 1
-
-2.C. continue w/out cast on inputs / cast output;
-
-2.D. cast input to 1 whenever it is not zero;
-
-2.E. throw an exception on wrong input;
-
-2.F. continue w/out cast on inputs.
-
-LInputBool ~> ( [ LINat 2 ], LRNat 1 )
-
-*)
 Theorem correct_compiler : forall he : HExp, forall t : type,
       typing he t ->
-      forall l hr,
-        hsem he (l, hr) ->
-        exists lr,
-          tilde (l, hr) (l, lr) /\ lsem (compile he) (l, lr).
+      forall hl hr,
+        hsem he (hl, hr) ->
+        tilde (hl, hr) (translateInputs hl, translateResult hr) = true /\
+        lsem (compile he) (translateInputs hl, translateResult hr).
 Proof.
-  induction he; intros t Ht l hr HS; exists (translate hr);     inversion Ht; subst; inversion HS; subst.
+  induction he; intros t Ht hl hr HS; inversion Ht; subst; inversion HS; subst.
   - split.
-    + split; reflexivity.
+    + simpl. apply PeanoNat.Nat.eqb_refl.
     + constructor.
   - destruct b.
     + split.
@@ -517,33 +619,25 @@ Proof.
   - (* HPlus *)
     specialize (IHhe1 TNat H1 hl1 (HRNat n1) H4).
     specialize (IHhe2 TNat H3 hl2 (HRNat n2) H6).
-    inversion IHhe1 as [ lr1 ]. subst.
-    inversion IHhe2 as [ lr2 ]. subst.
-    destruct lr1 as [ x1 ].
-    destruct lr2 as [ x2 ].
-    inversion H.
-    destruct H.
-    destruct H.
-    simpl in *.
-    subst.
-    destruct H0.
-    destruct H0.
-    simpl in *.
-    subst.
+    destruct IHhe1 as [ IHhe1tilde IHhe1lsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2lsem ].
     split.
-    + split; reflexivity.
-    + simpl. constructor.
+    + simpl.
+      rewrite tildeInputs_translate.
+      rewrite PeanoNat.Nat.eqb_refl.
+      reflexivity.
+    + simpl. rewrite translateInputs_distr. constructor.
       * assumption.
       * assumption.
   - (* HPlus error *)
     exfalso. 
     assert (Hcontra : exists n, HRError = HRNat n).
-    { apply (type_correct_nat (HPlus he1 he2) (type_plus he1 he2 H1 H3) l).
+    { apply (type_correct_nat (HPlus he1 he2) (type_plus he1 he2 H1 H3) hl).
       assumption. }
     inversion Hcontra. inversion H.
   - (* HPlus error left *)
     assert (Hcontra : exists n, HRError = HRNat n).
-    { apply (type_correct_nat he1 H1 l).
+    { apply (type_correct_nat he1 H1 hl).
       assumption. }
     inversion Hcontra. inversion H.
   - (* HPlus bool right *)
@@ -559,33 +653,25 @@ Proof.
   - (* HRTimes *)
     specialize (IHhe1 TNat H1 hl1 (HRNat n1) H4).
     specialize (IHhe2 TNat H3 hl2 (HRNat n2) H6).
-    inversion IHhe1 as [ lr1 ]. subst.
-    inversion IHhe2 as [ lr2 ]. subst.
-    destruct lr1 as [ x1 ].
-    destruct lr2 as [ x2 ].
-    inversion H.
-    destruct H.
-    destruct H.
-    simpl in *.
-    subst.
-    destruct H0.
-    destruct H0.
-    simpl in *.
-    subst.
+    destruct IHhe1 as [ IHhe1tilde IHhe1lsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2lsem ].
     split.
-    + split; reflexivity.
-    + simpl. constructor.
+    + simpl.
+      rewrite tildeInputs_translate.
+      rewrite PeanoNat.Nat.eqb_refl.
+      reflexivity.
+    + simpl. rewrite translateInputs_distr. constructor.
       * assumption.
       * assumption.
   - (* HTimes error *)
     exfalso. 
     assert (Hcontra : exists n, HRError = HRNat n).
-    { apply (type_correct_nat (HTimes he1 he2) (type_times he1 he2 H1 H3) l).
+    { apply (type_correct_nat (HTimes he1 he2) (type_times he1 he2 H1 H3) hl).
       assumption. }
     inversion Hcontra. inversion H.
   - (* HTimes error left *)
     assert (Hcontra : exists n, HRError = HRNat n).
-    { apply (type_correct_nat he1 H1 l).
+    { apply (type_correct_nat he1 H1 hl).
       assumption. }
     inversion Hcontra. inversion H.
   - (* HTimes bool right *)
@@ -601,125 +687,51 @@ Proof.
   - (* HIte true *)
     specialize (IHhe1 TBool H2 hl1 (HRBool true) H1).
     specialize (IHhe2 t H4 hl2 hr H8).
-    inversion IHhe1 as [ lr1 ]. subst.
-    inversion IHhe2 as [ lr2 ]. subst.
-    destruct lr1 as [ x1 ].
-    destruct lr2 as [ x2 ].
+    destruct IHhe1 as [ IHhe1tilde IHhe1lsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2lsem ].
     clear IHhe3.
-    clear IHhe2.
-    clear IHhe1.
     split.
-    + apply tilde_translate.
-      inversion H.
-      destruct H.
-      destruct H0.
+    + rewrite tilde_translate. 
+      reflexivity.
       eapply type_soundness.
-      apply H4.
-      apply H8.
+      apply Ht.
+      apply HS.
     + simpl.
+      rewrite translateInputs_distr.
       replace hl2 with (nil ++ hl2).
-      remember (translate hr) as thr.
+      rewrite translateInputs_distr.
+      remember (translateResult hr) as thr.
       destruct thr. 
       eapply LSIteRight.
-      * apply H.
+      * apply IHhe1lsem.
       * constructor.
-      * destruct H.
-        unfold tilde in H.
-        destruct x1 as [ | x1' ]. 
-        *** exfalso. apply H.
-        *** intro Hcontra. inversion Hcontra.
-      * destruct H0.
-        assert (Hnoterr : hr <> HRError).
-        { eapply type_soundness. apply H4. apply H8. }
-        rewrite Heqthr.
-        assert (tilde (hl2, hr) (hl2, translate hr)).
-        { apply tilde_translate. assumption. }
-        destruct hr.
-        ** simpl in Heqthr.
-           destruct b.
-           *** destruct Heqthr.
-               clear Hnoterr.
-               unfold translate.
-               unfold tilde in H0.
-               destruct x2.
-               exfalso. apply H0.
-               destruct x2.
-               assumption.
-               exfalso. apply H0.
-           *** destruct Heqthr.
-               clear Hnoterr.
-               unfold translate.
-               unfold tilde in H0.
-               destruct x2.
-               assumption.
-               exfalso. apply H0.
-        ** unfold translate in *. inversion Heqthr.
-           unfold tilde in H0. subst.
-           inversion H0. subst.
-           assumption.
-        ** exfalso. apply Hnoterr. reflexivity.
-      * reflexivity.
+      * intro Hcontra. inversion Hcontra.
+      * apply IHhe2lsem.
+      * simpl. reflexivity.
   - (* HIte false *)
     specialize (IHhe1 TBool H2 hl1 (HRBool false) H1).
     specialize (IHhe3 t H5 hl3 hr H8).
-    inversion IHhe1 as [ lr1 ]. subst.
-    inversion IHhe3 as [ lr3 ]. subst.
-    destruct lr1 as [ x1 ].
-    destruct lr3 as [ x3 ].
-    clear IHhe3.
+    destruct IHhe1 as [ IHhe1tilde IHhe1lsem ].
+    destruct IHhe3 as [ IHhe3tilde IHhe3lsem ].
     clear IHhe2.
-    clear IHhe1.
     split.
-    + apply tilde_translate.
-      inversion H.
-      destruct H.
-      destruct H0.
+    + rewrite tilde_translate. 
+      reflexivity.
       eapply type_soundness.
-      apply H5.
-      apply H8.
+      apply Ht.
+      apply HS.
     + simpl.
+      rewrite translateInputs_distr.
       replace hl3 with (nil ++ hl3).
-      remember (translate hr) as thr.
+      rewrite translateInputs_distr.
+      remember (translateResult hr) as thr.
       destruct thr. 
       eapply LSIteLeft.
-      * apply H.
+      * apply IHhe1lsem.
       * constructor.
-      * destruct H.
-        unfold tilde in H.
-        destruct x1 as [ | x1' ]. 
-        ** apply le_n.
-        ** exfalso. apply H.
-      * destruct H0.
-        assert (Hnoterr : hr <> HRError).
-        { eapply type_soundness. apply H5. apply H8. }
-        rewrite Heqthr.
-        assert (tilde (hl3, hr) (hl3, translate hr)).
-        { apply tilde_translate. assumption. }
-        destruct hr.
-        ** simpl in Heqthr.
-           destruct b.
-           *** destruct Heqthr.
-               clear Hnoterr.
-               unfold translate.
-               unfold tilde in H0.
-               destruct x3.
-               exfalso. apply H0.
-               destruct x3.
-               assumption.
-               exfalso. apply H0.
-           *** destruct Heqthr.
-               clear Hnoterr.
-               unfold translate.
-               unfold tilde in H0.
-               destruct x3.
-               assumption.
-               exfalso. apply H0.
-        ** unfold translate in *. inversion Heqthr.
-           unfold tilde in H0. subst.
-           inversion H0. subst.
-           assumption.
-        ** exfalso. apply Hnoterr. reflexivity.
-      * reflexivity.
+      * apply le_n.
+      * apply IHhe3lsem.
+      * simpl. reflexivity.
   - (* HIte error *)
     assert (HRError <> HRError).
     eapply type_soundness.
@@ -735,46 +747,44 @@ Proof.
   - (* HLe *)
     specialize (IHhe1 TNat H1 hl1 (HRNat n1) H4).
     specialize (IHhe2 TNat H3 hl2 (HRNat n2) H6).
-    inversion IHhe1 as [ lr1 ]. subst.
-    inversion IHhe2 as [ lr2 ]. subst.
-    destruct lr1 as [ x1 ].
-    destruct lr2 as [ x2 ].
-    inversion H.
-    destruct H.
-    destruct H.
-    simpl in *.
-    subst.
-    destruct H0.
-    destruct H0.
-    simpl in *.
-    subst.
-    remember (Nat.leb x1 x2) as b.
+    destruct IHhe1 as [ IHhe1tilde IHhe1lsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2lsem ].
+    remember (Nat.leb n1 n2) as b.
     destruct b.
     + split.
-      * reflexivity.
-      * replace hl2 with (hl2 ++ []).
-        eapply LSIteLeft.
-        apply H7.
-        apply H8.
-        apply PeanoNat.Nat.leb_le.
-        symmetry.
-        apply Heqb.
-        constructor.
-        rewrite app_nil_end.
+      * simpl.
+        rewrite tildeInputs_translate.
         reflexivity.
+      * simpl.
+        rewrite translateInputs_distr.
+        replace hl2 with (hl2 ++ []).
+        ** rewrite translateInputs_distr.
+           eapply LSIteLeft.
+           *** apply IHhe1lsem.
+           *** apply IHhe2lsem.
+           *** apply PeanoNat.Nat.leb_le.
+               rewrite <- Heqb.
+               reflexivity.
+           *** constructor.
+        ** rewrite app_nil_end.
+           reflexivity.
     + split.
-      * reflexivity.
-      * replace hl2 with (hl2 ++ []).
-        eapply LSIteRight.
-        apply H7.
-        apply H8.
-        rewrite <- PeanoNat.Nat.leb_le.
-        rewrite <- Heqb.
-        intro Hcontra.
-        inversion Hcontra.
-        constructor.
-        rewrite app_nil_end.
+      * simpl.
+        rewrite tildeInputs_translate.
         reflexivity.
+      * simpl.
+        rewrite translateInputs_distr.
+        replace hl2 with (hl2 ++ []).
+        ** rewrite translateInputs_distr.
+           eapply LSIteRight.
+           *** apply IHhe1lsem.
+           *** apply IHhe2lsem.
+           *** apply PeanoNat.Nat.leb_nle.
+               rewrite <- Heqb.
+               reflexivity.
+           *** constructor.
+        ** rewrite app_nil_end.
+           reflexivity.
   - (* HLe error *)
     assert (HRError <> HRError).
     eapply type_soundness.
@@ -799,12 +809,299 @@ Proof.
     apply Ht.
     apply HS.
     contradiction H. reflexivity.
-  - split.
-    + unfold tilde.
-      unfold translate.
-      split; reflexivity.
-    + unfold translate.
+  - (* HInBool *)
+    split.
+    + unfold translateInputs.
+      unfold translateResult.
+      destruct b.
+      * reflexivity.
+      * reflexivity.
+    + unfold translateResult.
+      unfold translateInputs.
+      destruct b.
+      * constructor.
+      * constructor.
+  - (* HInNat *)
+    split.
+    + unfold translateInputs.
+      unfold translateResult.
+      simpl.
+      rewrite PeanoNat.Nat.eqb_refl.
+      unfold tildeInput.
+      rewrite PeanoNat.Nat.eqb_refl.
+      reflexivity.
+    + unfold translateResult.
+      unfold translateInputs.
+      simpl.
       constructor.
+Qed.
+
+Definition hr_is_not_nat (hr : HResult) :=
+  hr = HRError \/ hr = HRBool true \/ hr = HRBool false.
+
+Definition hr_is_not_bool (hr : HResult) :=
+  forall b, hr <> HRBool b.
+
+Theorem type_soundness_nat :
+  forall he hl hr,
+    typing he TNat ->
+    hsem he (hl, hr) ->
+    hr_is_not_nat hr ->
+    False.
+Proof.
+  intros he hl hr Ht HS Hr.
+  inversion Hr; subst.
+  - assert (Hcontra : HRError <> HRError).
+    eapply type_soundness.
+    apply Ht.
+    apply HS.
+    exfalso.
+    apply Hcontra.
+    reflexivity.
+  - destruct H.
+    + assert (Hcontra : exists n, hr = HRNat n).
+      eapply type_correct_nat.
+      apply Ht.
+      apply HS.
+      subst.
+      destruct Hcontra.
+      inversion H.
+    + assert (Hcontra : exists n, hr = HRNat n).
+      eapply type_correct_nat.
+      apply Ht.
+      apply HS.
+      subst.
+      destruct Hcontra.
+      inversion H.
+Qed.
+
+Theorem type_soundness_nat' :
+  forall he hl hr,
+    typing he TNat ->
+    hsem he (hl, hr) ->
+    exists n,
+      hr = HRNat n.
+Admitted.
+    
+Theorem type_soundness_bool :
+  forall he hl hr,
+    typing he TBool ->
+    hsem he (hl, hr) ->
+    hr_is_not_bool hr ->
+    False.
+Proof.
+  intros he hl hr Ht HS Hr.
+  assert (Hrtrue : hr <> HRBool true).
+  apply Hr.
+  assert (Hrfalse : hr <> HRBool false).
+  apply Hr.
+  assert (H : exists b, hr = HRBool b).
+  eapply type_correct_bool.
+  apply Ht.
+  apply HS.
+  destruct H.
+  destruct x; subst.
+  - apply Hrtrue. reflexivity.
+  - apply Hrfalse. reflexivity.
+Qed.
+
+Theorem type_soundness_bool' :
+  forall he hl hr,
+    typing he TBool ->
+    hsem he (hl, hr) ->
+    exists n,
+      hr = HRBool n.
+Admitted.
+    
+Theorem at_least_one_trace:
+  forall he t,
+    typing he t ->
+    exists hl hr,
+      hsem he (hl, hr).
+Proof.
+  intros he. induction he; intros t Ht.
+  - exists [].
+    exists (HRNat n).
+    constructor.
+  - exists [].
+    exists (HRBool b).
+    constructor.
+  - (* HPlus *)
+    inversion Ht; subst.
+    specialize (IHhe2 TNat H3).
+    specialize (IHhe1 TNat H1).
+    destruct IHhe2 as [ hl2 IHhe2 ].
+    destruct IHhe2 as [ hr2 IHhe2 ].
+    destruct IHhe1 as [ hl1 IHhe1 ].
+    destruct IHhe1 as [ hr1 IHhe1 ].
+    destruct hr1.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      right.
+      destruct b.
+      * left; reflexivity.
+      * right; reflexivity.
+    + destruct hr2.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        right.
+        destruct b.
+        ** left; reflexivity.
+        ** right; reflexivity.
+      * exists (hl1 ++ hl2).
+        exists (HRNat (n + n0)).
+        constructor; assumption.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        left.
+        reflexivity.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      left.
+      reflexivity.
+  - (* Times *)
+    inversion Ht; subst.
+    specialize (IHhe2 TNat H3).
+    specialize (IHhe1 TNat H1).
+    destruct IHhe2 as [ hl2 IHhe2 ].
+    destruct IHhe2 as [ hr2 IHhe2 ].
+    destruct IHhe1 as [ hl1 IHhe1 ].
+    destruct IHhe1 as [ hr1 IHhe1 ].
+    destruct hr1.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      right.
+      destruct b.
+      * left; reflexivity.
+      * right; reflexivity.
+    + destruct hr2.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        right.
+        destruct b.
+        ** left; reflexivity.
+        ** right; reflexivity.
+      * exists (hl1 ++ hl2).
+        exists (HRNat (n * n0)).
+        constructor; assumption.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        left.
+        reflexivity.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      left.
+      reflexivity.
+  - (* HIte *)
+    inversion Ht; subst.
+    specialize (IHhe1 TBool H2).
+    specialize (IHhe2 t H4).
+    specialize (IHhe3 t H5).
+    destruct IHhe2 as [ hl2 IHhe2 ].
+    destruct IHhe2 as [ hr2 IHhe2 ].
+    destruct IHhe1 as [ hl1 IHhe1 ].
+    destruct IHhe1 as [ hr1 IHhe1 ].
+    destruct IHhe3 as [ hl3 IHhe3 ].
+    destruct IHhe3 as [ hr3 IHhe3 ].
+    destruct hr1.
+    + destruct b.
+      * exists (hl1 ++ hl2).
+        exists (hr2).
+        apply HSIteLeft; assumption.
+      * exists (hl1 ++ hl3).
+        exists (hr3).
+        apply HSIteRight; assumption.
+    + exfalso.
+      eapply type_soundness_bool.
+      apply H2.
+      apply IHhe1.
+      intro.
+      intro Hcontra.
+      inversion Hcontra.
+    + exfalso.
+      eapply type_soundness_bool.
+      apply H2.
+      apply IHhe1.
+      intro.
+      intro Hcontra.
+      inversion Hcontra.
+  - (* HLe *)
+    inversion Ht; subst.
+    specialize (IHhe2 TNat H3).
+    specialize (IHhe1 TNat H1).
+    destruct IHhe2 as [ hl2 IHhe2 ].
+    destruct IHhe2 as [ hr2 IHhe2 ].
+    destruct IHhe1 as [ hl1 IHhe1 ].
+    destruct IHhe1 as [ hr1 IHhe1 ].
+    destruct hr1.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      right.
+      destruct b.
+      * left; reflexivity.
+      * right; reflexivity.
+    + destruct hr2.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        right.
+        destruct b.
+        ** left; reflexivity.
+        ** right; reflexivity.
+      * exists (hl1 ++ hl2).
+        exists (HRBool (Nat.leb n n0)).
+        constructor; assumption.
+      * exfalso.
+        eapply type_soundness_nat.
+        apply H3.
+        apply IHhe2.
+        compute.
+        left.
+        reflexivity.
+    + exfalso.
+      eapply type_soundness_nat.
+      apply H1.
+      apply IHhe1.
+      compute.
+      left.
+      reflexivity.
+  - (* HInBool *)
+    exists [HIBool true].
+    exists (HRBool true).
+    constructor.
+  - (* HInNat *)
+    exists [HINat 0].
+    exists (HRNat 0).
+    constructor.
 Qed.
 
 Require Import LanguageModel.
@@ -822,68 +1119,359 @@ Section Source.
 
   Definition traceS := HTrace.
 
-  (* 
-Lemma type_correct_nat :
-  forall he : HExp,
-    typing he TNat ->
-    forall hl hr,
-      hsem he (hl, hr) ->
-      exists n, hr = HRNat n.
-   *)
-  
   Definition semS : sprg -> traceS -> Prop := fun p t => hsem (proj1_sig p) t.
 
-(* this does not work yet 
   Definition semanticsS : Semantics source traceS.
   Proof.
     exists semS.
     destruct W as [e [[|] Hty]].
-    - destruct (type_correct_nat e Hty) as [n Hn].
-      now (exists (HTNat n)).
-    - destruct (type_correct_bool _ Hty) as [b Hb].
-      now (exists (HTBool b)).
+    - assert (H : exists hl hr, hsem e (hl, hr)).
+      eapply at_least_one_trace.
+      apply Hty.
+      destruct H as [ hl H ].
+      destruct H as [ hr H ].
+      exists (hl, hr).
+      unfold semS.
+      simpl.
+      assumption.
+    - assert (H : exists hl hr, hsem e (hl, hr)).
+      eapply at_least_one_trace.
+      apply Hty.
+      destruct H as [ hl H ].
+      destruct H as [ hr H ].
+      exists (hl, hr).
+      unfold semS.
+      simpl.
+      assumption.
   Defined.
-*)
 
 End Source.
 
-(* Section Target. *)
-(*   Definition tprg := LExp. *)
-(*   Definition tpar := tprg. *)
-(*   Definition tctx := unit. *)
-(*   Definition tplug (p : tpar) (c : tctx) := p. *)
+Section Target.
+  Definition tprg := LExp.
+  Definition tpar := tprg.
+  Definition tctx := unit.
+  Definition tplug (p : tpar) (c : tctx) := p.
 
-(*   Definition target := {| prg := tprg; par := tpar; ctx := tctx; plug := tplug |}. *)
+  Definition target := {| prg := tprg; par := tpar; ctx := tctx; plug := tplug |}.
 
-(*   Definition traceT := LTrace. *)
+  Definition traceT := LTrace.
 
-(*   Definition semT : tprg -> traceT -> Prop := fun p t => lsem p = t. *)
-(*   Definition semanticsT : Semantics target traceT. *)
-(*   Proof. *)
-(*     exists semT. *)
-(*     destruct W; now eexists. *)
-(*   Defined. *)
+  Definition semT : tprg -> traceT -> Prop := fun p t => lsem p t.
+  Definition semanticsT : Semantics target traceT.
+  Proof.
+    exists semT.
+    induction W.
+    - eexists.
+      constructor.
+    - destruct IHW1.
+      destruct IHW2.
+      unfold semT in *.
+      destruct x.
+      destruct l0.
+      destruct x0.
+      destruct l1.
+      eexists.
+      constructor.
+      apply H.
+      apply H0.
+    - destruct IHW1.
+      destruct IHW2.
+      unfold semT in *.
+      destruct x.
+      destruct l0.
+      destruct x0.
+      destruct l1.
+      eexists.
+      constructor.
+      apply H.
+      apply H0.
+    - destruct IHW1.
+      destruct IHW2.
+      destruct IHW3.
+      destruct IHW4.
+      unfold semT in *.
+      destruct x.
+      destruct l0.
+      destruct x0.
+      destruct l1.
+      destruct x1.
+      destruct l2.
+      destruct x2.
+      destruct l3.
+      remember (Nat.leb n n0) as b.
+      destruct b.
+      * eexists.
+        eapply LSIteLeft.
+        apply H.
+        apply H0.
+        apply PeanoNat.Nat.leb_le.
+        symmetry.
+        apply Heqb.
+        apply H1.
+      * eexists.
+        eapply LSIteRight.
+        apply H.
+        apply H0.
+        apply PeanoNat.Nat.leb_nle.
+        symmetry.
+        apply Heqb.
+        apply H2.
+    - eexists.
+      unfold semT.
+      apply (LSInput 0).
+  Defined.
 
-(* End Target. *)
+End Target.
 
-(* Section CompilationChain. *)
-(*   Definition compile_w : prg source -> prg target := *)
-(*     fun (p : prg source) => compile (proj1_sig p). *)
+Section CompilationChain.
+  Definition compile_w : prg source -> prg target :=
+    fun (p : prg source) => compile (proj1_sig p).
 
-(*   Definition compiler : CompilationChain source target := *)
-(*     {| compile_whole := compile_w; compile_par := compile_w; compile_ctx := id |}. *)
+  Definition compiler : CompilationChain source target :=
+    {| compile_whole := compile_w; compile_par := compile_w; compile_ctx := id |}.
 
-(* End CompilationChain. *)
+End CompilationChain.
 
-(* Definition rel_TC := rel_TC compiler semanticsS semanticsT tilde. *)
+Definition rel_TC := rel_TC compiler semanticsS semanticsT (fun h l => tilde h l = true).
 
-(* Lemma correctness : rel_TC. *)
-(* Proof. *)
-(*   unfold rel_TC. *)
-(*   unfold NonRobustTraceCriterion.rel_TC. *)
-(*   intros [es Hty] tt Hsem. *)
-(*   inversion Hty as [τ Hty']. *)
-(*   apply correct_compiler in Hty'. *)
-(*   exists (hsem es). split; last now auto. *)
-(*   simpl in Hsem. now rewrite Hsem in Hty'. *)
-(* Qed. *)
+Lemma tildeInputs_app :
+  forall hl1 hl2 ll1 ll2,
+    tildeInputs hl1 ll1 = true ->
+    tildeInputs hl2 ll2 = true ->
+    tildeInputs (hl1 ++ hl2) (ll1 ++ ll2) = true.
+Admitted.
+
+Lemma tilde_tildeInputs :
+  forall hl1 hr1 ll1 lr1,
+    tilde (hl1, hr1) (ll1, lr1) = true ->
+    tildeInputs hl1 ll1 = true.
+Admitted.
+
+Lemma tilde_tildeResult :
+  forall hl1 hr1 ll1 lr1,
+    tilde (hl1, hr1) (ll1, lr1) = true ->
+    tildeResult hr1 lr1 = true.
+Admitted.
+
+Lemma ti_tr_tilde :
+  forall hl1 hr1 ll1 lr1,
+    tildeInputs hl1 ll1 = true ->
+    tildeResult hr1 lr1 = true ->
+    tilde (hl1, hr1) (ll1, lr1) = true.
+Proof.
+  intros hl1 hr1 ll1 lr1.
+  intros HI.
+  intros HR.
+  destruct hr1; destruct lr1; inversion HI; inversion HR.
+  destruct b; destruct n; inversion H0; inversion H1.
+  simpl.
+  remember (tildeInputs hl1 ll1) as x.
+  destruct x; reflexivity.
+  unfold tildeResult in HR.
+  simpl.
+  rewrite HR.
+  case (tildeInputs hl1 ll1); reflexivity.
+Qed.
+  
+Lemma andb_proj2 :
+  forall b1 b2,
+    andb b1 b2 = true ->
+    b2 = true.
+Proof.
+  intros; destruct b1; destruct b2; destruct H; reflexivity.
+Qed.
+
+Lemma correctness : rel_TC.
+Proof.
+  unfold rel_TC.
+  unfold NonRobustTraceCriterion.rel_TC.
+  unfold NonRobustTraceCriterion.cmp.
+  unfold compile_whole.
+  unfold compiler.
+  unfold compile_w.
+  unfold NonRobustTraceCriterion.sem__T.
+  unfold sem. unfold semanticsT.
+  unfold prg.
+  simpl.
+  unfold sprg.
+  simpl.
+  unfold semT.
+  unfold proj1_sig.
+  simpl.
+  intros W.
+  intros t.
+  destruct W as [ he Ht ].
+  destruct Ht as [ ty Ht ].
+  unfold semS.
+  unfold proj1_sig.
+  intro H.
+
+  (* eapply correct_compiler in Ht.
+  destruct Ht as [ Htilde Hlsem ]. *)
+  generalize dependent Ht.
+  generalize dependent t.
+  generalize dependent ty.
+  induction he.
+  - (* HNat *)
+    simpl.
+    intros ty.
+    intros t.
+    intros Hlsem.
+    intros Ht.
+    destruct t as [ li lr ].
+    inversion Hlsem; subst.
+    exists ([], HRNat n).
+    split.
+    + simpl. apply PeanoNat.Nat.eqb_refl.
+    + constructor.
+  - (* HBool *) simpl.
+    intros ty.
+    intros t.
+    intros Hlsem.
+    intros Ht.
+    destruct t as [ li lr ].
+    destruct b.
+    + inversion Hlsem; subst.
+      exists ([], HRBool true).
+      split.
+      * simpl. reflexivity. 
+      * simpl. constructor.
+    + inversion Hlsem; subst.
+      exists ([], HRBool false).
+      split.
+      * simpl. reflexivity. 
+      * simpl. constructor.
+  - (* HPlus *)
+    intros ty.
+    intros t Hlsem Ht.
+    simpl in Hlsem.
+    inversion Hlsem; subst.
+    inversion Ht; subst.
+    specialize (IHhe1 TNat (ll1, LRNat n1) H1 H2).
+    specialize (IHhe2 TNat (ll2, LRNat n2) H3 H5).
+    destruct IHhe1 as [ s1 IHhe1 ].
+    destruct IHhe2 as [ s2 IHhe2 ].
+    destruct IHhe1 as [ IHhe1tilde IHhe1hsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2hsem ].
+    destruct s1 as [ hl1 hr1 ].
+    destruct s2 as [ hl2 hr2 ].
+    apply type_soundness_nat' with (hl := hl1) (hr := hr1) in H2.
+    Focus 2.
+    apply IHhe1hsem.
+    destruct H2 as [ n1' H2 ]. subst.
+    apply type_soundness_nat' with (hl := hl2) (hr := hr2) in H5.
+    Focus 2.
+    apply IHhe2hsem.
+    assert (Hn1 : n1' = n1).
+    { inversion IHhe1tilde. apply PeanoNat.Nat.eqb_eq.
+      eapply andb_proj2. apply H0. }
+    destruct H5 as [ n2' H5 ]. subst.
+    assert (Hn2 : n2' = n2).
+    { inversion IHhe2tilde. apply PeanoNat.Nat.eqb_eq.
+      eapply andb_proj2. apply H0. }
+    subst.
+    eexists (hl1 ++ hl2, HRNat (n1 + n2)).
+    split.
+    unfold tilde.
+    rewrite PeanoNat.Nat.eqb_refl.
+    rewrite tildeInputs_app.
+    reflexivity.
+    eapply tilde_tildeInputs.
+    apply IHhe1tilde.
+    eapply tilde_tildeInputs.
+    apply IHhe2tilde.
+    constructor.
+    apply IHhe1hsem.
+    apply IHhe2hsem.
+  - (* HTimes *)
+    intros ty.
+    intros t Hlsem Ht.
+    simpl in Hlsem.
+    inversion Hlsem; subst.
+    inversion Ht; subst.
+    specialize (IHhe1 TNat (ll1, LRNat n1) H1 H2).
+    specialize (IHhe2 TNat (ll2, LRNat n2) H3 H5).
+    destruct IHhe1 as [ s1 IHhe1 ].
+    destruct IHhe2 as [ s2 IHhe2 ].
+    destruct IHhe1 as [ IHhe1tilde IHhe1hsem ].
+    destruct IHhe2 as [ IHhe2tilde IHhe2hsem ].
+    destruct s1 as [ hl1 hr1 ].
+    destruct s2 as [ hl2 hr2 ].
+    apply type_soundness_nat' with (hl := hl1) (hr := hr1) in H2.
+    Focus 2.
+    apply IHhe1hsem.
+    destruct H2 as [ n1' H2 ]. subst.
+    apply type_soundness_nat' with (hl := hl2) (hr := hr2) in H5.
+    Focus 2.
+    apply IHhe2hsem.
+    assert (Hn1 : n1' = n1).
+    { inversion IHhe1tilde. apply PeanoNat.Nat.eqb_eq.
+      eapply andb_proj2. apply H0. }
+    destruct H5 as [ n2' H5 ]. subst.
+    assert (Hn2 : n2' = n2).
+    { inversion IHhe2tilde. apply PeanoNat.Nat.eqb_eq.
+      eapply andb_proj2. apply H0. }
+    subst.
+    eexists (hl1 ++ hl2, HRNat (n1 * n2)).
+    split.
+    unfold tilde.
+    rewrite PeanoNat.Nat.eqb_refl.
+    rewrite tildeInputs_app.
+    reflexivity.
+    eapply tilde_tildeInputs.
+    apply IHhe1tilde.
+    eapply tilde_tildeInputs.
+    apply IHhe2tilde.
+    constructor.
+    apply IHhe1hsem.
+    apply IHhe2hsem.
+  - (* HIte *)
+    admit.
+(*    intros ty.
+    intros t Hlsem Ht.
+    simpl in Hlsem.
+    inversion Hlsem; subst.
+    inversion Ht; subst.
+    specialize (IHhe1 TBool (ll1, LRNat n1) H3 H2).
+    specialize (IHhe2 ty (ll2, LRNat n2) H5 H8).
+    specialize (IHhe3 ty (ll3, LRNat n3) H7 H9).
+    destruct IHhe1 as [ s1 IHhe1 ].
+    destruct IHhe3 as [ s3 IHhe3 ].
+    destruct IHhe1 as [ IHhe1tilde IHhe1hsem ].
+    destruct IHhe3 as [ IHhe3tilde IHhe3hsem ].
+    destruct s1 as [ hl1 hr1 ].
+    destruct s3 as [ hl3 hr3 ].
+    apply type_soundness_bool' with (hl := hl1) (hr := hr1) in H2.
+    Focus 2.
+    apply IHhe1hsem.
+    destruct H2 as [ b Hhr1 ].
+    subst.
+    destruct b.
+    + (* b = true *)
+      simpl.
+      eexists (hl1 ++ [] ++ hl2, hr2).
+    split.
+    apply ti_tr_tilde.
+    apply tildeInputs_app.
+    apply tilde_tildeInputs in IHhe1tilde.
+    apply IHhe1tilde.
+    apply tildeInputs_app.
+    inversion H5.
+    subst.
+    reflexivity.
+    apply tilde_tildeInputs in IHhe3tilde.
+    apply IHhe3tilde.
+    apply tilde_tildeResult in IHhe3tilde.
+    apply IHhe3tilde.
+
+      apply HSIteLeft.
+      apply IHhe1hsem.
+    + apply HSIteRight.
+      apply IHhe1hsem.
+    
+*)    
+    - admit.
+    - admit.
+    - admit.
+Admitted. 
