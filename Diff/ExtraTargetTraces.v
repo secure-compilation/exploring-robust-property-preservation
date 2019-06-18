@@ -4,6 +4,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.FSets.FMapInterface.
 Require Import Coq.FSets.FMapWeakList.
+Require Import Coq.FSets.FSetWeakList.
 Require Import TraceModel.
 Require Import LanguageModel.
 Require Import ChainModel.
@@ -23,7 +24,17 @@ Module DecidableString : DecidableType.
   Axiom eq_dec : forall x y, {eq x y} + {~ eq x y}.
 End DecidableString.
 
-Module StringMap : WS := Make DecidableString.
+Module StringMap : WS with Module E := DecidableString :=
+  FMapWeakList.Make DecidableString.
+
+(* And function name sets, for interfacing purposes. *)
+Module StringSet := FSetWeakList.Make DecidableString.
+Notation "∅" := StringSet.empty (at level 70, no associativity).
+Notation "s1 ∪ s2" := (StringSet.union s1 s2) (at level 70, right associativity).
+
+Definition elements_set (A : Type) (m : StringMap.t A) : StringSet.t :=
+  let keys := map fst (StringMap.elements m) in
+  fold_left (fun acc key => StringSet.add key acc) keys StringSet.empty.
 
 (* Shared core of source and target languages. For reuse, it seems easiest that
    they assemble the following components only very slightly differently. *)
@@ -57,6 +68,7 @@ Module Core.
         its reserved, special meaning. *)
   Definition funmap := StringMap.t expr.
   Definition funmap_turn := StringMap.t (turn * expr).
+  Definition funset := StringSet.t.
 
   (* Structural properties of expressions. *)
   Inductive funless : expr -> Prop :=
@@ -121,6 +133,21 @@ Module Core.
   | CallsArg :
       well_formed_calls fs Arg.
 
+  (* A simple notion of closed program with implicit, exact interfaces. *)
+  Fixpoint funs (e : expr) : funset :=
+    match e with
+    | Const _ | Arg => ∅
+    | Plus e1 e2 | Times e1 e2 | Out e1 e2 => funs e1 ∪ funs e2
+    | IfLe e1 e2 e3 e4 => funs e1 ∪ funs e2 ∪ funs e3 ∪ funs e3
+    | Fun f e => StringSet.add f (funs e)
+    end.
+
+  Definition closed (fs : funmap_turn) (e : expr) : bool :=
+    StringSet.equal (elements_set _ fs) (funs e).
+
+  (* Well-formedness conditions. *)
+  (* TODO *)
+
   (* Programs and contexts (as records, Type and not Set). *)
   Record par :=
     {
@@ -160,10 +187,17 @@ Module Core.
     end.
 
   Definition link (p : par) (c : ctx) : prg :=
-    Build_prg
-      (StringMap.map2 link_fun (par_funs p) (ctx_funs c))
-      (par_main p)
-      (par_wf p). (* TODO *)
+    let prg_funs := (StringMap.map2 link_fun (par_funs p) (ctx_funs c)) in
+    if closed prg_funs (par_main p) then
+      Build_prg
+        prg_funs
+        (par_main p)
+        (par_wf p) (* TODO *)
+    else (* Bad case, can be ruled out by well-formedness but to clean up. *)
+      Build_prg
+        (StringMap.empty _)
+        (Const 0)
+        (par_wf p). (* TODO *)
 
   (* Traces as evaluation results. *)
   Inductive trace :=
@@ -296,4 +330,4 @@ Section Compiler.
 
   Definition chain :=
     Build_CompilationChain Source.lang Target.lang comp_prg comp_par comp_ctx.
-Section Compiler.
+End Compiler.
