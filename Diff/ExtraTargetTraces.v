@@ -153,7 +153,7 @@ Module Core.
     {
       par_funs : funmap;
       par_main : expr;
-      par_wf   : False (* TODO: Add well-formedness conditions. *)
+      par_wf   : True (* TODO: Add well-formedness conditions. *)
                  (* funmap_funless par_funs /\ *)
                  (* argless par_main *)
     }.
@@ -161,7 +161,7 @@ Module Core.
   Record ctx :=
     {
       ctx_funs : funmap;
-      ctx_wf   : False (* TODO: Add well-formedness conditions. *)
+      ctx_wf   : True (* TODO: Add well-formedness conditions. *)
                  (* funmap_funless ctx_funs *)
     }.
 
@@ -169,7 +169,7 @@ Module Core.
     {
       prg_funs : funmap_turn;
       prg_main : expr;
-      prg_wf   : False (* TODO: Add well-formedness conditions. *)
+      prg_wf   : True (* TODO: Add well-formedness conditions. *)
                  (* funmap_funless (funmap_turn_bodies prg_funs) /\ *)
                  (* argless prg_main /\ *)
                  (* well_formed_calls prg_funs prg_main *)
@@ -329,19 +329,19 @@ Module Source.
   Record par :=
     {
       par_core    : Core.par;
-      par_outless : False (* TODO: Add well-formedness conditions. *)
+      par_outless : True (* TODO: Add well-formedness conditions. *)
     }.
 
   Record ctx :=
     {
       ctx_core    : Core.ctx;
-      ctx_outless : False (* TODO: Add well-formedness conditions. *)
+      ctx_outless : True (* TODO: Add well-formedness conditions. *)
     }.
 
   Record prg :=
     {
       prg_core    : Core.prg;
-      prg_outless : False (* TODO: Add well-formedness conditions. *)
+      prg_outless : True (* TODO: Add well-formedness conditions. *)
     }.
 
   (* Wrap link operation and define language. *)
