@@ -1,4 +1,4 @@
-Add LoadPath ".".
+(* Add LoadPath ".". *)
 
 (*
 
@@ -1156,6 +1156,8 @@ Require Import LanguageModel.
 Require Import ChainModel.
 Require Import NonRobustTraceCriterion.
 
+Set Bullet Behavior "Strict Subproofs".
+
 Section Source.
 
   Definition sprg := {e : SExp | exists τ, typing e τ }.
@@ -1676,12 +1678,12 @@ Proof.
            *** apply tildeInputs_app.
                eapply tilde_tildeInputs.
                apply IHse1tilde.
-           *** apply tildeInputs_app.
-               **** reflexivity.
-               **** eapply tilde_tildeInputs.
-                    apply IHse3tilde.
-                    unfold tildeResult. apply PeanoNat.Nat.eqb_refl.
-        ** 
+               apply tildeInputs_app.
+               reflexivity.
+               eapply tilde_tildeInputs.
+               apply IHse3tilde.
+           *** unfold tildeResult. apply PeanoNat.Nat.eqb_refl.
+        **
            apply SSIteRight.
 
            {
@@ -1737,7 +1739,7 @@ Proof.
                destruct Hcontra.
                inversion H.
            }
-        ** (* ty = TBool *)
+      * (* ty = TBool *)
           destruct sr3.
           {
             (* sr3 = SRBool b *)
@@ -1815,8 +1817,7 @@ Proof.
             destruct Hcontra.
             inversion H.
           }
-    +  (* false branch *)
-    + (* true branch *)
+    +
       inversion Ht as [ | | | | se1' se2' se3' t' Ht1 Ht2 Ht3  | | | ]; subst.
       clear Ht.
       specialize (IHse1 TyBool (ll1, TRNat n1) Sle1 Ht1).
@@ -1841,11 +1842,11 @@ Proof.
            *** apply tildeInputs_app.
                eapply tilde_tildeInputs.
                apply IHse1tilde.
-           *** apply tildeInputs_app.
-               **** reflexivity.
-               **** eapply tilde_tildeInputs.
-                    apply IHse2tilde.
-                    unfold tildeResult. apply PeanoNat.Nat.eqb_refl.
+               apply tildeInputs_app.
+               reflexivity.
+               eapply tilde_tildeInputs.
+               apply IHse2tilde.
+           *** unfold tildeResult. apply PeanoNat.Nat.eqb_refl.
         ** 
            apply SSIteLeft.
 
@@ -1902,7 +1903,7 @@ Proof.
                destruct Hcontra.
                inversion H.
            }
-        ** (* ty = TBool *)
+      * (* ty = TBool *)
           destruct sr2.
           {
             (* sr3 = SRBool b *)
