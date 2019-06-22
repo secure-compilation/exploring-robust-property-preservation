@@ -10,10 +10,24 @@ Record Language := {
    prg : Type; (* Whole programs *)
    par : Type; (* Partial programs *)
    ctx : Type; (* Contexts *)
-   plug : par -> ctx -> prg (* Linking operation *)
+   (* Linking operation *)
+   pluggable   : par -> ctx -> bool;
+   plug_opt    : par -> ctx -> option prg;
+   plug_ok     : forall p c, pluggable p c -> exists pc, plug_opt p c = Some pc;
+   default_prg : prg
 
    }.
 
+(* By making the language provide a partial plug instead of a total one and
+   show the type of whole programs is inhabited, a total definition of plug can
+   be restored. On the proof side, the bad case where the partial plug fails
+   can be ruled out whenever the linkability condition is satisfied. *)
+Definition plug (L : Language) : par L -> ctx L -> prg L :=
+  fun p c =>
+    match (plug_opt L) p c with
+    | Some PC => PC
+    | None => default_prg L
+    end.
 
 (* CA: semantics of a language can be defined over an arbitrary set *)
 

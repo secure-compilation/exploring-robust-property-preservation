@@ -240,12 +240,13 @@ Lemma sCl_idmp {trace_set : Set} (H : hprop trace_set) :
   sCl (sCl H) = sCl H.
 Proof. apply: sCl_id_on_SSC. apply: sCl_SCH. Qed.  
 
-Definition ssch_uco {trace_set : Set} : @Uco (trace_set -> Prop) :=
-  @Build_Uco (prop trace_set)
-             sCl
-             sCl_mono 
-             sCl_idmp
-             sCl_bigger.
+(* RB: TODO: Fix this definition. *)
+(* Definition ssch_uco {trace_set : Set} : @Uco (trace_set -> Prop) := *)
+(*   @Build_Uco (prop trace_set) *)
+(*              sCl *)
+(*              sCl_mono  *)
+(*              sCl_idmp *)
+(*              sCl_bigger. *)
 
 
 (*****************************************************************************)
