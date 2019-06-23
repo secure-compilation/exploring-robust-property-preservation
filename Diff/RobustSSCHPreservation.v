@@ -1,3 +1,4 @@
+
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
@@ -14,7 +15,6 @@ Require Import TraceModel.
 Require Import Properties.
 Require Import ChainModel.
 Require Import RobustHyperProperty.
-Require Import UcoRobustPreservation. 
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
@@ -63,8 +63,8 @@ Section RobustSSCHPreservation.
   Variable σ__π : prop__T -> prop__S.
   Variable τ__π : prop__S -> prop__T.  
  
-  Local Definition sCl_σ := (uco (@ssch_uco trace__S)) ∘ (lift σ__π). 
-  Local Definition sCl_τ := (uco (@ssch_uco trace__T)) ∘ (lift τ__π).
+  Definition sCl_σ : hprop__T -> hprop__S := (uco (@ssch_uco trace__S)) ∘ (lift σ__π). 
+  Definition sCl_τ : hprop__S -> hprop__T := (uco (@ssch_uco trace__T)) ∘ (lift τ__π).
 
   Definition sCl_σRhP (P : par__S) (H__T : hprop__T) :=
     rhsat__S P (sCl_σ H__T) -> rhsat__T (P ↓) H__T.

@@ -9,23 +9,23 @@ Require Import MyNotation.
 Require Import FunctionalExtensionality.
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
-Definition monotone {X Y : Set} (f : (X -> Prop) -> (Y -> Prop)) : Prop :=
+Definition monotone {X Y : Type} (f : (X -> Prop) -> (Y -> Prop)) : Prop :=
   forall (π1 π2: X -> Prop), (π1 ⊆ π2) -> (f π1 ⊆ f π2).
 
-Definition idempotent {X : Set} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
+Definition idempotent {X : Type} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
   forall π: X -> Prop, f (f π) = f π.
 
-Definition extensive {X : Set} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
+Definition extensive {X : Type} (f : (X -> Prop) -> (X -> Prop)) : Prop :=
   forall π: X -> Prop, π ⊆ (f π).
 
 
-Definition lift {X Y : Set} (f :(X -> Prop) -> (Y -> Prop))
+Definition lift {X Y : Type} (f :(X -> Prop) -> (Y -> Prop))
                             (H : (X -> Prop) -> Prop) : ((Y -> Prop) -> Prop) :=
   fun (b1 : Y -> Prop) => exists b2, (H b2) /\ b1 = f b2.
 
 (* Definition of the adjunction law *)
 
-Definition Adjunction_law {A C : Set}
+Definition Adjunction_law {A C : Type}
            (α : (C -> Prop) -> (A -> Prop))
            (γ : (A -> Prop) -> (C -> Prop)) :=
   forall (a: A -> Prop) (c: C -> Prop),  (α c) ⊆ a <-> c ⊆ (γ a).
@@ -209,7 +209,7 @@ Definition induced_insertion_swap {A C : Set}
 
 
 (** *upper closure operator  \cite{giacobazzi2018abstract} (pag 7) *)
-Record Uco {X: Set} :=
+Record Uco {X: Type} :=
   {
     uco: (X -> Prop) -> (X -> Prop);
     mono: monotone uco;
