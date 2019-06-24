@@ -292,6 +292,14 @@ Proof.
   apply: (M_wit b); firstorder.
 Qed.
 
+Lemma hsCl_id_on_HSafe {E : Events} {Es : Endstates} :
+  forall H, @HSafe E Es H -> hsCl H = H.
+Proof.
+  move => H HSafe_H.
+  apply: functional_extensionality => b.
+  apply: prop_extensionality. by firstorder. 
+Qed.
+
 Lemma sCl_id_on_HSafe {E : Events} {Es : Endstates} :
   forall H, @HSafe E Es H -> sCl H = H.
 Proof.
@@ -315,4 +323,24 @@ Lemma hsCl_smallest {E : Events} {Es : Endstates}
   forall H', HSafe H' -> H ⊆ H' -> (hsCl H) ⊆ H'.
 Proof. by firstorder. Qed.
 
-(* CA's TODO: hsCl as closure operator *)
+Lemma hsCl_mono {E : Events} {Es : Endstates}:
+  forall H1 H2 : hprop (@trace E Es),
+    H1 ⊆ H2 -> (hsCl H1) ⊆ (hsCl H2).
+Proof. by firstorder. Qed. 
+
+Lemma hsCl_idmp  {E : Events} {Es : Endstates}
+                 (H : hprop (@trace E Es)):
+  hsCl (hsCl H) = hsCl H.
+Proof.
+  rewrite hsCl_id_on_HSafe.
+  reflexivity.
+  exact: hsCl_HSafe. 
+Qed.
+
+Definition hsafe_uco {E : Events} {Es : Endstates} :
+  @Uco ((@trace E Es) -> Prop) :=
+  @Build_Uco (prop (@trace E Es))
+             hsCl
+             hsCl_mono 
+             hsCl_idmp
+             hsCl_bigger.
