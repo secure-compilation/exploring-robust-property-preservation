@@ -259,7 +259,7 @@ Definition HSafe {E : Events} {Es : Endstates}
 
 
 (*****************************************************************************)
-(** *SSC closure operator*)
+(** *HSafe closure operator*)
 (*****************************************************************************)
 
 Definition hsCl {E : Events} {Es : Endstates}
