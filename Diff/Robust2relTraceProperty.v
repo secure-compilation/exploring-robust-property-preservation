@@ -54,63 +54,63 @@ Section Robust2relPreservation.
   Variable σ : (trace__T * trace__T -> Prop) -> (trace__S * trace__S -> Prop).
   Variable τ : (trace__S * trace__S -> Prop) -> (trace__T * trace__T -> Prop).
 
-  Definition σR2P (P1 P2 : par__S) (T : trace__T * trace__T -> Prop) :=
+  Definition σR2rP (P1 P2 : par__S) (T : trace__T * trace__T -> Prop) :=
     rsat__S P1 P2 (σ T) -> rsat__T (P1 ↓) (P2 ↓) T.   
 
-  Definition σR2TP := forall P1 P2 T, σR2P P1 P2 T.
+  Definition σR2rTP := forall P1 P2 T, σR2rP P1 P2 T.
 
-  Lemma contra_σR2P (P1 P2 : par__S) (T : trace__T * trace__T -> Prop) :
-    (σR2P P1 P2 T) <->  ((exists C__T t1 t2, sem__T ( plug__T (P1 ↓) C__T) t1 /\
-                                     sem__T ( plug__T (P2 ↓) C__T) t2 /\  ~ (T (t1,t2))) ->
-                       (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
-                                     sem__S (plug__S P2 C__S) s2 /\  
+  Lemma contra_σR2rP (P1 P2 : par__S) (T : trace__T * trace__T -> Prop) :
+    (σR2rP P1 P2 T) <->  ((exists C__T t1 t2, sem__T ( plug__T (P1 ↓) C__T) t1 /\
+                                      sem__T ( plug__T (P2 ↓) C__T) t2 /\  ~ (T (t1,t2))) ->
+                        (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
+                                      sem__S (plug__S P2 C__S) s2 /\  
                                     ~ (σ T) (s1, s2))).
   Proof.
-    rewrite /σR2P. by rewrite [_ -> _] contra !neg_rsat2.
+    rewrite /σR2rP. by rewrite [_ -> _] contra !neg_rsat2.
   Qed.
 
-  Lemma contra_σR2TP :
-    σR2TP <-> (forall P1 P2 T, (exists C__T t1 t2, sem__T (plug__T (P1 ↓) C__T) t1 /\
+  Lemma contra_σR2rTP :
+    σR2rTP <-> (forall P1 P2 T, (exists C__T t1 t2, sem__T (plug__T (P1 ↓) C__T) t1 /\
                                        sem__T (plug__T (P2 ↓) C__T) t2 /\
                                      ~ (T (t1, t2))) ->
                         (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
                                       sem__S (plug__S P2 C__S) s2 /\
                                      ~ (σ T) (s1, s2))).
   Proof.
-    rewrite /σR2TP.
-    split => H P1 P2 T; by move/contra_σR2P: (H P1 P2 T).
+    rewrite /σR2rTP.
+    split => H P1 P2 T; by move/contra_σR2rP: (H P1 P2 T).
   Qed.
 
-  Definition τR2P (P1 P2 : par__S) (S : trace__S * trace__S -> Prop) :=
+  Definition τR2rP (P1 P2 : par__S) (S : trace__S * trace__S -> Prop) :=
     rsat__S P1 P2 S -> rsat__T (P1 ↓) (P2 ↓) (τ S).
 
-  Definition τR2TP := forall P1 P2 S, τR2P P1 P2 S.
+  Definition τR2rTP := forall P1 P2 S, τR2rP P1 P2 S.
 
-  Lemma contra_τR2P (P1 P2 : par__S) (S : trace__S * trace__S -> Prop) :
-    (τR2P P1 P2 S) <-> ((exists C__T t1 t2, sem__T (plug__T (P1 ↓) C__T) t1 /\
+  Lemma contra_τR2rP (P1 P2 : par__S) (S : trace__S * trace__S -> Prop) :
+    (τR2rP P1 P2 S) <-> ((exists C__T t1 t2, sem__T (plug__T (P1 ↓) C__T) t1 /\
                                     sem__T (plug__T (P2 ↓) C__T) t2 /\
                                    ~ (τ S) (t1, t2)) ->
                       (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
                                     sem__S (plug__S P2 C__S) s2 /\
                                    ~ S (s1, s2))).
   Proof.
-    rewrite /τR2P. by rewrite [_ -> _] contra !neg_rsat2.
+    rewrite /τR2rP. by rewrite [_ -> _] contra !neg_rsat2.
   Qed.
 
-  Lemma contra_τRTP :
-    τR2TP <-> (forall P1 P2 S, ((exists C__T t1 t2, sem__T ( plug__T (P1 ↓) C__T) t1 /\
+  Lemma contra_τR2rTP :
+    τR2rTP <-> (forall P1 P2 S, ((exists C__T t1 t2, sem__T ( plug__T (P1 ↓) C__T) t1 /\
                                          sem__T ( plug__T (P2 ↓) C__T) t2 /\
                                        ~ (τ S) (t1, t2)) ->
                           (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
                                         sem__S (plug__S P2 C__S) s2 /\
                                        ~ S (s1, s2)))).
   Proof.
-    rewrite /τR2TP.
-    split => H P1 P2 S; by move/contra_τR2P: (H P1 P2 S).
+    rewrite /τR2rTP.
+    split => H P1 P2 S; by move/contra_τR2rP: (H P1 P2 S).
   Qed.
 
-  Theorem G_σRTP_iff_τRTP :
-    (Galois_fst τ σ) -> (Galois_snd τ σ) -> (σR2TP <-> τR2TP).
+  Theorem G_σR2rTP_iff_τR2rTP :
+    (Galois_fst τ σ) -> (Galois_snd τ σ) -> (σR2rTP <-> τR2rTP).
   Proof.
     move => G1 G2. split.
     - move => Hσ P1 P2 S Hrsat_src. apply: (Hσ P1 P2 (τ S)).
@@ -120,11 +120,11 @@ Section Robust2relPreservation.
       apply: rsat2_upper_closed. exact H. by apply: G2.
   Qed.
 
-  Corollary Adj_σRTP_iff_τRTP :
-    Adjunction_law τ σ -> (σR2TP <-> τR2TP).
+  Corollary Adj_σR2rTP_iff_τR2rTP :
+    Adjunction_law τ σ -> (σR2rTP <-> τR2rTP).
   Proof.
     rewrite Galois_equiv. move => [ms [mt [G1 G2]]].
-      by apply: G_σRTP_iff_τRTP.
+      by apply: G_σR2rTP_iff_τR2rTP.
   Qed.
 
 End Robust2relPreservation.
