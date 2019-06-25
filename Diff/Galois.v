@@ -269,3 +269,29 @@ Definition uco_sharp {A C : Set} (ϕ : @Uco C)
                (@best_approximation_ext A C ins ϕ).
 
 
+(************************************)
+(*  for relational properties       *)
+(************************************)
+
+Definition low_rel_prod  {A C : Set} (rel : C -> A -> Prop) : (C * C -> Prop) -> (A * A -> Prop) :=
+  fun c =>
+    fun a : A * A => exists x : C * C, c x /\ rel (fst x) (fst a) /\ rel (snd x) (snd a).
+  
+Definition up_rel_prod {A C : Set} (rel : C -> A -> Prop) : (A * A -> Prop) -> (C * C -> Prop) :=
+  fun a =>
+    fun c : C * C => forall y : A * A, rel (fst c) (fst y) -> rel (snd c) (snd y) -> a y.
+
+Lemma induced_adj_law_prod {A C : Set} (rel : C -> A -> Prop) :
+  @Adjunction_law (A * A) (C * C) (low_rel_prod rel) (up_rel_prod rel).
+Proof.
+  move => a c. rewrite /low_rel_prod /up_rel_prod. split.
+  + move => H t h_t t' rel_t_t'_fst rel_t_t'_snd.
+    apply: H. 
+    by exists t.
+  + move => H x [y [c_y [rel_y_x_1 rel_y_x_2]]]. by apply: (H y).
+Qed.
+
+Definition induced_connection_prod {A C : Set} (rel : C -> A -> Prop)
+  : Galois_Connection (A * A) (C * C) :=
+  Build_Galois_Connection (induced_adj_law_prod rel).
+

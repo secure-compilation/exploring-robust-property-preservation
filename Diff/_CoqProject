@@ -31,6 +31,8 @@ RobustSSCHCriterion.v
 RobustHyperSafetyPreservation.v
 RobustHyperSafetyCriterion.v
 
+Robust2relTraceProperty.v
+
 ResourceExhaustion.v
 
 TypeRelationExample.v
