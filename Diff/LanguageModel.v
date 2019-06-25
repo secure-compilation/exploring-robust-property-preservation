@@ -165,3 +165,39 @@ Proof.
   now apply (Hsat1 C t1).
 Qed.
 
+Lemma neg_sat2  {L : Language}
+                {trace_set : Set}
+                {S : Semantics L trace_set} :
+  forall (W1 W2 : prg L) (R : trace_set * trace_set -> Prop),
+    ~ sat2 S W1 W2 R <-> exists t1 t2, sem S W1 t1 /\ sem S W2 t2 /\ ~ R (t1, t2).
+Proof.
+  intros W1 W2 R. unfold sat2.
+  rewrite not_forall_ex_not.
+  split.
+  + intros [t1 H]. rewrite not_forall_ex_not in H.
+    destruct H as [t2 H]. rewrite not_imp in H. destruct H as [H1 H].
+    rewrite not_imp in H. destruct H as [H2 H]. 
+    now exists t1, t2.
+  + intros [t1 [t2 [H1 [H2 H]]]].
+    exists t1. rewrite not_forall_ex_not. exists t2. firstorder.
+Qed.
+
+Lemma neg_rsat2 {L : Language}
+                {trace_set : Set}
+                (S : Semantics L trace_set) :
+  forall (P1 P2 : par L) (R: trace_set * trace_set -> Prop),
+    (~ rsat2 S P1 P2 R <->
+     (exists C t1 t2, sem S (plug L P1 C) t1 /\ sem S (plug L P2 C) t2 /\ ~ R (t1,t2))).
+Proof.
+  intros P1 P2 R.
+  split; unfold rsat2; intros H.
+  - rewrite not_forall_ex_not in H.
+    destruct H as [C H]; exists C.
+    unfold sat2 in H; rewrite not_forall_ex_not in H.
+    destruct H as [t1 H]; exists t1.
+    rewrite not_forall_ex_not in H.
+    destruct H as [t2 H]; exists t2. 
+    now rewrite !not_imp in H.
+  - firstorder.
+Qed.
+
