@@ -231,8 +231,8 @@ Module Target.
     | B_Sing : forall te1 tq1 te2, tbsem te1 tq1 te2 -> tbeh te1 tq1.
 
   (*source calculation of all possible behaviours*)
-  (*Inductive tbeh : te -> tq : Prop :=*)
-    (*| B_Set : .*)
+  (*Inductive tbeh : te -> tq : Prop :=
+    | B_Set : .*)
 
 End Target.
 
@@ -260,6 +260,8 @@ Module Compiler.
 End Compiler.
 
 Module TraceRelation.
+  Module S := Source.
+  Module T := Target.
 
   Inductive trel_msg : sm -> tm -> Prop :=
     | TR_NN
@@ -274,4 +276,9 @@ Module TraceRelation.
 End TraceRelation.
 
 Module RTC.
+  Module S := Source.
+  Module T := Target.
+  Module C := Compiler.
+  Module R := TraceRelation.
+  
 End RTC.
