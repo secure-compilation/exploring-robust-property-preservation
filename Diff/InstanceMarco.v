@@ -105,16 +105,16 @@ Module Source.
     | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) Empty_l (Num n)
     | SM_Ifg : forall se1 se2 sl1 se3 se4, ssm_sem se1 sl1 se2 -> ssm_sem (Ifz se1 se3 se4) sl1 (Ifz se2 se3 se4)
     | SM_Ift : forall n se1 se2, n=0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se1 
-    | SM_Iff : forall n se1 se2, n<>0-> ssem_p (Ifz (Num n) se1 se2) Empty_l se2
+    | SM_Iff : forall n se1 se2, n<>0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se2
     | SM_Pair1 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Pair se1 se3) sl1 (Pair se2 se3) 
     | SM_Pair2 : forall se1 se2 sv1 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Pair sv1 se1) sl1 (Pair sv1 se2)
-    | SM_P11 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P1 se1) sl1 (P1 se2)
-    | SM_P21 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P2 se1) sl1 (P2 se2)
+    | SM_P11 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P1 se1) sl1 (P1 se2)
+    | SM_P21 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P2 se1) sl1 (P2 se2)
     | SM_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P1 (Pair sv1 sv2)) Empty_l sv1
     | SM_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P2 (Pair sv1 sv2)) Empty_l sv2
-    | SM_Send1 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Send se1) sl1 (Send se2)
+    | SM_Send1 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Send se1) sl1 (Send se2)
     | SM_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssm_sem (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
-    | SM_Seq1 : forall se1 se2 se3 sl1 se3, ssm_sem se1 sl1 se2 -> ssm_sem (Seq se1 se3) sl1 (Seq se2 se3)
+    | SM_Seq1 : forall se1 se2 sl1 se3, ssm_sem se1 sl1 se2 -> ssm_sem (Seq se1 se3) sl1 (Seq se2 se3)
     | SM_Seq : forall sv1 se2, sv sv1 -> ssm_sem (Seq sv1 se2) Empty_l se2.
 
   (*source big step reduction that chains messages as queues*)
@@ -122,7 +122,9 @@ Module Source.
     | B_Refl : forall se1, sbsem se1 Empty_q se1
     (*| B_Trans : forall se1 se2 se3 sq1 sq2, sbsem se1 sq1 se2 -> sbsem se2 sq2 se3 -> sbsem se1 ??*)
     (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
-    | B_Act : forall se1 sl1 se2 sq1 se3, ssem se1 sl1 se2 -> sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3.
+    (* | B_Act : forall se1 sl1 se2 sq1 se3, ssm_sem se1 sl1 se2 -> sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
+  (* | B_Act : forall se1 ctx se10 se2 se20 sl1 sq1 se3, se1 = plug ctx se1o -> se2 = plug ctx se20 -> ssm se1 sl1 se2 ->   sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
+  | B_Act : forall ctx se1 se1' sl1 se2 se2' sq1 se3, ssem ctx se1 sl1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> sbsem se2' sq1 se3 -> sbsem se1' (Queue sl1 sq1) se3.
 
   (*source single behaviour (fat leadsto)*)
   Inductive sbeh : se -> sq -> Prop :=
@@ -211,8 +213,8 @@ Module Target.
     | Plug_Ifz : forall te te' te1 te2 tctx, tplug tctx te te' -> tplug (E_Ifz tctx te1 te2) te (Ifz te' te1 te2)
     | Plug_P1 : forall te te' tctx, tplug tctx te te' -> tplug (E_P1 tctx) te (P1 te')
     | Plug_P2 : forall te te' tctx, tplug tctx te te' -> tplug (E_P2 tctx) te (P2 te')
-    | Plug_tend : forall te te' tctx, tplug tctx te te' -> tplug (E_Send tctx) te (tend te')
-    | Plug_teq : forall te1 te1' te2 tctx, tplug tctx te1 te1' -> tplug (E_teq tctx te2) te1 (teq te1' te2).
+    | Plug_tend : forall te te' tctx, tplug tctx te te' -> tplug (E_Send tctx) te (Send te')
+    | Plug_teq : forall te1 te1' te2 tctx, tplug tctx te1 te1' -> tplug (E_Seq tctx te2) te1 (Seq te1' te2).
 
   (* target nonprimitive reductions: the ctx rule*)
   Inductive tsem : tectx -> te -> tl -> te -> Prop :=
@@ -221,14 +223,12 @@ Module Target.
   (* target big step reduction that chains messages as queues*)
   Inductive tbsem : te -> tq -> te -> Prop :=
     | B_Refl : forall te1, tbsem te1 Empty_q te1
-    (* | B_Trans : forall te1 te2 te3 tq1 tq2, tbsem te1 tq1 te2 -> tbsem te2 tq2 te3 -> tbsem te1 ?? *)
-    (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
-    | B_Act : forall te1 tl1 te2 tq1 te3, tsem te1 tl1 te2 -> tbsem te2 tq1 te3 -> tbsem te1 (Queue tl1 tq1) te2.
+    (* see missing option cases form source *)
+    | B_Act : forall te1 te1' tl1 te2 te2' tq1 te3 ctx, tsem ctx te1 tl1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tbsem te2' tq1 te3 -> tbsem te1' (Queue tl1 tq1) te3.
 
   (* target single behaviour (fat leadsto)*)
-  Inductive tsingbeh : te -> tq -> Prop :=
+  Inductive tbeh : te -> tq -> Prop :=
     | B_Sing : forall te1 tq1 te2, tbsem te1 tq1 te2 -> tbeh te1 tq1.
-    (*is there a type mismatch because we have a forall se2? shoudl hte type include one more "se ->"?*)
 
   (*source calculation of all possible behaviours*)
   (*Inductive tbeh : te -> tq : Prop :=*)
@@ -237,24 +237,25 @@ Module Target.
 End Target.
 
 Module Compiler.
+  Module S := Source.
+  Module T := Target.
 
   (*given a source expression with a type, translate that into a target expression.*)
   (*TODO: problem, i need a concatenation, which i encoded as let. *)
-  Inductive gensend : se -> st -> te : Type :=
-    | Snd_N : forall sn tn, sn == tn -> wt (Num sn) Nat -> Target.Send (Num tn)
-    | Snd_P : forall se1 st1 se2 st2, (Target.Seq (gensend se1 st1) (gensend se2 st2)) .
+  Inductive gensend : S.se -> S.st -> T.te -> Prop :=
+    | Snd_N : forall sn tn, sn = tn -> gensend (S.Num sn) (S.Nat) (T.Send (T.Num tn))
+    | Snd_P : forall se1 st1 se2 st2 te1 te2, gensend se1 st1 te1 -> gensend se2 st2 te2-> gensend (S.Pair se1 se2) (S.Times st1 st2) (T.Seq te1 te2).
 
-  Inductive cmp : swt -> te -> Prop :=
-    | CMP_Nat : forall sn tn, swt (Num sn) Nat -> sn == tn -> Num tn
-    | CMP_Op : forall se1 se2, swt (Op se1 se2) Nat -> Op (cmp (swt se1 Nat)) (cmp (swt se2 Nat))
-    (*ok. no clue here. should the namespace be there? should the recursive call be done this way? many questions.*)
+  Inductive cmp : S.se -> S.st -> T.te -> Prop :=
+  | CMP_Nat : forall sn tn, sn = tn -> S.swt (S.Num sn) S.Nat -> cmp (S.Num sn) (S.Nat) (T.Num tn)
+  | CMP_Op : forall se1 se2 te1 te2, S.swt (S.Op se1 se2) S.Nat -> cmp se1 S.Nat te1 -> cmp se2 S.Nat te2 -> cmp (S.Op se1 se2) S.Nat (T.Op te1 te2)
     (*why bother with the well typed assumption below?*)
-    | CMP_Pair : forall se1 st1 te1 se2 st2 te2, S.swt (S.Pair se1 se2) (S.Times st1 st2) -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
-    | CMP_P1 : forall se1 st1 te1, S.swt (S.P1 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P1 se1) st1 (T.P1 te1)
-    | CMP_P2 : forall se1 st1 te1, S.swt (S.P2 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P2 se1) st1 (T.P2 te1)
-    | CMP_Ifz : forall seg se1 se2 st1 teg te1 te2, S.swt (S.Ifz seg se1 se2) st1 -> cmp seg S.Nat teg -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Ifz seg se1 se2) st1 (T.Ifz teg te1 te2)
-    | CMP_Send : forall se1 st1 te1 te2, S.swt (S.Send se1) S.Nat -> cmp se1 st1 te1 -> gensend se1 st1 te2 -> cmp (S.Send se1) S.Nat te2
-    | CMP_Seq : forall se1 se2 st1 st2 te1 te2, S.swt (S.Seq se1 se2) st2 -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Seq se1 se2) st2 (S.Seq te1 te2).
+  | CMP_Pair : forall se1 st1 te1 se2 st2 te2, S.swt (S.Pair se1 se2) (S.Times st1 st2) -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
+  | CMP_P1 : forall se1 st1 te1, S.swt (S.P1 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P1 se1) st1 (T.P1 te1)
+  | CMP_P2 : forall se1 st1 te1, S.swt (S.P2 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P2 se1) st1 (T.P2 te1)
+  | CMP_Ifz : forall seg se1 se2 st1 teg te1 te2, S.swt (S.Ifz seg se1 se2) st1 -> cmp seg S.Nat teg -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Ifz seg se1 se2) st1 (T.Ifz teg te1 te2)
+  | CMP_Send : forall se1 st1 te1 te2, S.swt (S.Send se1) S.Nat -> cmp se1 st1 te1 -> gensend se1 st1 te2 -> cmp (S.Send se1) S.Nat te2
+  | CMP_Seq : forall se1 se2 st1 st2 te1 te2, S.swt (S.Seq se1 se2) st2 -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Seq se1 se2) st2 (S.Seq te1 te2).
 
 End Compiler.
 
