@@ -35,7 +35,7 @@ Module Source.
     | T_P1 : forall se st1 st2, swt se (Times st1 st2) -> swt (P1 se) st1
     | T_P2 : forall se st1 st2, swt se (Times st1 st2) -> swt (P2 se) st2
     | T_Send : forall se st, swt se st -> swt (Send se) Nat
-    | T_Seq : forall se1 st1 se2 st2. swt se1 st1 -> swt se2 st2 -> swt (Seq se1 se2) st2.
+    | T_Seq : forall se1 st1 se2 st2, swt se1 st1 -> swt se2 st2 -> swt (Seq se1 se2) st2.
 
   (*source messages - meta definition for the top-level def below*)
   Inductive smv : Set :=
