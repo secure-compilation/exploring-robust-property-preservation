@@ -67,26 +67,34 @@ Module Source.
     | E_Send : sectx -> sectx
     | E_Seq : sectx -> se -> sectx.
 
+  Inductive sv_smv : se -> smv -> Prop :=
+  | Conv_Num : forall n,
+      sv_smv (Num n) (M_Num n)
+  | Conv_Pair : forall sv1 sv2 smv1 smv2,
+      sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> sv_smv (Pair sv1 sv2) (M_Pair smv1 smv2).
+
   (*source primitive reduction steps*)
-  Inductive ssem_p :  se -> sl -> se -> Prop :=
+  Inductive ssem_p : se -> sl -> se -> Prop :=
     (* possibly make parametric later *)
     | PR_Op : forall n1 n2 n, n = n1 + n2 -> ssem_p (Op (Num n1) (Num n2)) Empty_l (Num n)
     | PR_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P1 (Pair sv1 sv2)) Empty_l sv1
     | PR_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P2 (Pair sv1 sv2)) Empty_l sv2
     (*check these below*)
     | PR_Ift : forall n se1 se2, n=0-> ssem_p (Ifz (Num n) se1 se2) Empty_l se1
-    | PR_Iff : forall n se1 se2, n!=0-> ssem_p (Ifz (Num n) se1 se2) Empty_l se2
-    | PR_Send : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (Send (Pair sv1 sv2)) (Msg_l (M_Pair sv1 sv2)) 0
+    | PR_Iff : forall n se1 se2, n<>0-> ssem_p (Ifz (Num n) se1 se2) Empty_l se2
+    | PR_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssem_p (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
     | PR_Seq : forall sv1 se2, sv sv1 -> ssem_p (Seq sv1 se2) Empty_l se2.
 
+  (* Inductive splug : sectx -> se -> se -> Prop := . *)
+
   (*source nonprimitive reductions: the ctx rule*)
-  Inductive ssem : sectx -> se -> sl -> se -> Prop :=
-    | Ctx : forall ectx1 se1 sl1 se2, ssem_p se1 sl1 se2 -> ssem ectx1 se1 sl1 se2.
+  (* Inductive ssem : sectx -> se -> sl -> se -> Prop := *)
+  (*   | Ctx : forall ectx1 se1 sl1 se2, ssem_p se1 sl1 se2 -> ssem ectx1 se1 sl1 se2. *)
 
   (*source big step reduction that chains messages as queues*)
   Inductive sbsem : se -> sq -> se -> Prop :=
     | B_Refl : forall se1, sbsem se1 Empty_q se1
-    | B_Trans : forall se1 se2 se3 sq1 sq2, sbsem se1 sq1 se2 -> sbsem se2 sq2 se3 -> sbsem se1 ??
+    (* | B_Trans : forall se1 se2 se3 sq1 sq2, sbsem se1 sq1 se2 -> sbsem se2 sq2 se3 -> sbsem se1 ?? *)
     (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
     | B_Act : forall se1 sl1 se2, ssem se1 sl1 se2 -> sbsem se1 (Queue sl1 Empty_q) se2.
 
@@ -96,8 +104,8 @@ Module Source.
     (*is there a type mismatch because we have a forall se2? shoudl hte type include one more "se ->"?*)
 
   (*source calculation of all possible behaviours*)
-  Inductive sbeh : se -> sq : Prop :=
-    | B_Set : .
+  (* Inductive sbeh : se -> sq : Prop := *)
+  (*   | B_Set : . *)
 
 End Source.
 
