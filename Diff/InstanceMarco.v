@@ -85,7 +85,23 @@ Module Source.
     | PR_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssem_p (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
     | PR_Seq : forall sv1 se2, sv sv1 -> ssem_p (Seq sv1 se2) Empty_l se2.
 
-  (* Inductive splug : sectx -> se -> se -> Prop := . *)
+  Inductive splug : sectx -> se -> se -> Prop :=
+  | Plug_Hole : forall se,
+      splug Hole se se
+  | Plug_Op1 : forall se1 se1' se2 sctx,
+      splug sctx se1 se1' -> splug (E_Op1 sctx se2) se1 (Op se1' se2)
+  | Plug_Op2 : forall n1 se2 se2' sctx,
+      splug sctx se2 se2' -> splug (E_Op2 n1 sctx) se2 (Op (Num n1) se2')
+  | Plug_Ifz : forall se se' se1 se2 sctx,
+      splug sctx se se' -> splug (E_Ifz sctx se1 se2) se (Ifz se' se1 se2)
+  | Plug_P1 : forall se se' sctx,
+      splug sctx se se' -> splug (E_P1 sctx) se (P1 se')
+  | Plug_P2 : forall se se' sctx,
+      splug sctx se se' -> splug (E_P2 sctx) se (P2 se')
+  | Plug_Send : forall se se' sctx,
+      splug sctx se se' -> splug (E_Send sctx) se (Send se')
+  | Plug_Seq : forall se1 se1' se2 sctx,
+      splug sctx se1 se1' -> splug (E_Seq sctx se2) se1 (Seq se1' se2).
 
   (*source nonprimitive reductions: the ctx rule*)
   (* Inductive ssem : sectx -> se -> sl -> se -> Prop := *)
