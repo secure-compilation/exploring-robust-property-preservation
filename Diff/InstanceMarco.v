@@ -84,6 +84,23 @@ Module Source.
     | PR_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssem_p (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
     | PR_Seq : forall sv1 se2, sv sv1 -> ssem_p (Seq sv1 se2) Empty_l se2.
 
+  Inductive splug : sectx -> se -> se -> Prop :=
+  | Plug_Hole : forall se,
+      splug Hole se se
+  | Plug_Op1 : forall se1 se1' se2 sctx,
+      splug sctx se1 se1' -> splug (E_Op1 sctx se2) se1 (Op se1' se2)
+  | Plug_Op2 : forall n1 se2 se2' sctx,
+      splug sctx se2 se2' -> splug (E_Op2 n1 sctx) se2 (Op (Num n1) se2')
+  | Plug_Ifz : forall se se' se1 se2 sctx,
+      splug sctx se se' -> splug (E_Ifz sctx se1 se2) se (Ifz se' se1 se2)
+  | Plug_P1 : forall se se' sctx,
+      splug sctx se se' -> splug (E_P1 sctx) se (P1 se')
+  | Plug_P2 : forall se se' sctx,
+      splug sctx se se' -> splug (E_P2 sctx) se (P2 se')
+  | Plug_Send : forall se se' sctx,
+      splug sctx se se' -> splug (E_Send sctx) se (Send se')
+  | Plug_Seq : forall se1 se1' se2 sctx,
+      splug sctx se1 se1' -> splug (E_Seq sctx se2) se1 (Seq se1' se2).
   (*source nonprimitive reductions: the ctx rule*)
   Inductive ssem : sectx -> se -> sl -> se -> Prop :=
     | Ctx : forall ectx1 se1 sl1 se2, ssem_p se1 sl1 se2 -> ssem ectx1 se1 sl1 se2.
@@ -130,7 +147,7 @@ Module Target.
   Inductive te : Set :=
     | Num : nat -> te
     | Op : te -> te -> te
-    | Ifz : te -> te -> te
+    | Ifz : te -> te -> te -> te
     (* | Letin : ? -> te -> te *)
     | Pair : te -> te -> te
     | P1 : te -> te
@@ -152,7 +169,7 @@ Module Target.
   Inductive twt : te -> tt -> Prop :=
     | T_Num : forall n, twt (Num n) Nat
     | T_Op : forall te1 te2, twt te1 Nat -> twt te2 Nat -> twt (Op te1 te2) Nat
-    | T_If : forall teg te1 te2 tt, twt teg Nat -> twt te1 tt -> tt se2 tt -> twt (Ifz teg te1 te2) tt
+    | T_If : forall teg te1 te2 tt, twt teg Nat -> twt te1 tt -> twt te2 tt -> twt (Ifz teg te1 te2) tt
     | T_Pair : forall te1 te2 tt1 tt2, twt te1 tt1 -> twt te2 tt2 -> twt (Pair te1 te2) (Times tt1 tt2)
     | T_P1 : forall te tt1 tt2, twt te (Times tt1 tt2) -> twt (P1 te) tt1
     | T_P2 : forall te tt1 tt2, twt te (Times tt1 tt2) -> twt (P2 te) tt2
@@ -175,14 +192,14 @@ Module Target.
 
   (* target evaluation contexts*)
   Inductive tectx : Set :=
-    | Hole : ectx
-    | E_Op1 : ectx -> te -> ectx
-    | E_Op2 : nat -> ectx -> ectx
-    | E_Ifz : ectx -> te -> te -> ectx
-    | E_P1 : ectx -> tectx
+    | Hole : tectx
+    | E_Op1 : tectx -> te -> tectx
+    | E_Op2 : nat -> tectx -> tectx
+    | E_Ifz : tectx -> te -> te -> tectx
+    | E_P1 : tectx -> tectx
     | E_P2 : tectx -> tectx
     | E_Send : tectx -> tectx 
-    | E_Seq : textx -> te -> tectx.
+    | E_Seq : tectx -> te -> tectx.
 
   (* target primitive reduction steps*)
   Inductive tsem_p :  te -> tl -> te -> Prop :=
@@ -192,8 +209,8 @@ Module Target.
     | PR_P2 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsem_p (P2 (Pair tv1 tv2)) Empty_l tv2
     (*check these below*)
     | PR_Ift : forall n te1 te2, n=0-> tsem_p (Ifz (Num n) te1 te2) Empty_l te1
-    | PR_Iff : forall n te1 te2, n!=0-> tsem_p (Ifz (Num n) te1 te2) Empty_l te2
-    | PR_Send : forall n, tv n -> tsem_p (Send (Num n)) (Msg_l (M_Num n)) 0
+    | PR_Iff : forall n te1 te2, n<>0-> tsem_p (Ifz (Num n) te1 te2) Empty_l te2
+    | PR_Send : forall n, (*tv n ->*) tsem_p (Send (Num n)) (Msg_l (M_Num n)) (Num 0)
     | PR_Seq : forall tv1 te2, tv tv1 -> tsem_p (Seq tv1 te2) Empty_l te2.
 
   (* target nonprimitive reductions: the ctx rule*)
@@ -203,7 +220,7 @@ Module Target.
   (* target big step reduction that chains messages as queues*)
   Inductive tbsem : te -> tq -> te -> Prop :=
     | B_Refl : forall te1, tbsem te1 Empty_q te1
-    | B_Trans : forall te1 te2 te3 tq1 tq2, tbsem te1 tq1 te2 -> tbsem te2 tq2 te3 -> tbsem te1 ??
+    (* | B_Trans : forall te1 te2 te3 tq1 tq2, tbsem te1 tq1 te2 -> tbsem te2 tq2 te3 -> tbsem te1 ?? *)
     (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
     | B_Act : forall te1 tl1 te2, tsem te1 tl1 te2 -> tbsem te1 (Queue tl1 Empty_q) te2.
 
