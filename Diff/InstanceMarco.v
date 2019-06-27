@@ -4,8 +4,11 @@ Require Import ChainModel.
 
 Module Source.
 
+  (*TODO define sx (and tx below) *)
+
   (* source expressions *)
   Inductive se : Set :=
+    | Var : sx -> se
     | Num : nat -> se
     | Op : se -> se -> se
     | Ifz : se -> se -> se -> se
@@ -133,7 +136,7 @@ Module Source.
     (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
     (* | B_Act : forall se1 sl1 se2 sq1 se3, ssm_sem se1 sl1 se2 -> sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
   (* | B_Act : forall se1 ctx se10 se2 se20 sl1 sq1 se3, se1 = plug ctx se1o -> se2 = plug ctx se20 -> ssm se1 sl1 se2 ->   sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
-  | B_Act : forall ctx se1 se1' sl1 se2 se2' sq1 se3, ssem ctx se1 sl1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> sbsem se2' sq1 se3 -> sbsem se1' (Queue sl1 sq1) se3.
+    | B_Act : forall ctx se1 se1' sl1 se2 se2' sq1 se3, ssem ctx se1 sl1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> sbsem se2' sq1 se3 -> sbsem se1' (Queue sl1 sq1) se3.
 
   (*source single behaviour (fat leadsto)*)
   Inductive sbeh : se -> sq -> Prop :=
@@ -148,6 +151,7 @@ End Source.
 Module Target.
 
   Inductive te : Set :=
+    | Var : sx -> te
     | Num : nat -> te
     | Op : te -> te -> te
     | Ifz : te -> te -> te -> te
@@ -263,6 +267,7 @@ Module Compiler.
     | TCMP_P : forall st1 st2 tt1 tt2, tcmp st1 tt1 -> tcmp st2 tt2 -> tcmp (S.Times st1 st2) (T.Times tt1 tt2).
 
   Inductive cmp : S.se -> S.st -> T.te -> Prop :=
+    (*| CMP_Var : (* dang, how soes this work?*)*)
     | CMP_Nat : forall sn tn, sn = tn -> S.swt (S.Num sn) S.Nat -> cmp (S.Num sn) (S.Nat) (T.Num tn)
     | CMP_Op : forall se1 se2 te1 te2, S.swt (S.Op se1 se2) S.Nat -> cmp se1 S.Nat te1 -> cmp se2 S.Nat te2 -> cmp (S.Op se1 se2) S.Nat (T.Op te1 te2)
       (*why bother with the well typed assumption below?*)
