@@ -253,9 +253,9 @@ Module Compiler.
   | CMP_Pair : forall se1 st1 te1 se2 st2 te2, S.swt (S.Pair se1 se2) (S.Times st1 st2) -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
   | CMP_P1 : forall se1 st1 te1, S.swt (S.P1 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P1 se1) st1 (T.P1 te1)
   | CMP_P2 : forall se1 st1 te1, S.swt (S.P2 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P2 se1) st1 (T.P2 te1)
-  | CMP_Ifz : forall seg se1 se2 st1 teg te1 te2, S.swt (S.Ifz seg se1 se2) st1 -> cmp seg S.Nat teg -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Ifz seg se1 se2) st1 (T.Ifz teg te1 te2)
+  | CMP_Ifz : forall seg se1 se2 st1 st2 teg te1 te2, S.swt (S.Ifz seg se1 se2) st1 -> cmp seg S.Nat teg -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Ifz seg se1 se2) st1 (T.Ifz teg te1 te2)
   | CMP_Send : forall se1 st1 te1 te2, S.swt (S.Send se1) S.Nat -> cmp se1 st1 te1 -> gensend se1 st1 te2 -> cmp (S.Send se1) S.Nat te2
-  | CMP_Seq : forall se1 se2 st1 st2 te1 te2, S.swt (S.Seq se1 se2) st2 -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Seq se1 se2) st2 (S.Seq te1 te2).
+  | CMP_Seq : forall se1 se2 st1 st2 te1 te2, S.swt (S.Seq se1 se2) st2 -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Seq se1 se2) st2 (T.Seq te1 te2).
 
 End Compiler.
 
