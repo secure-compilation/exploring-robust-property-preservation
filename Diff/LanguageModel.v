@@ -201,3 +201,38 @@ Proof.
   - firstorder.
 Qed.
 
+Definition hsat2 {L : Language}
+                 {trace_set : Set}
+                 (S : Semantics L trace_set)
+                 (W1 W2 : prg L) (R : (prop trace_set) * (prop trace_set) -> Prop) : Prop :=
+  R ((beh S W1), (beh S W2)).
+
+Definition rhsat2 {L : Language}
+                  {trace_set : Set}
+                  (S : Semantics L trace_set)
+                  (P1 P2 : par L) (R : (prop trace_set) * (prop trace_set) -> Prop) : Prop :=
+  forall C, hsat2 S (plug L P1 C) (plug L P2 C) R.
+
+
+Lemma neg_rhsat2 {L : Language}
+                 {trace_set : Set}
+                 (S : Semantics L trace_set) :
+  forall P1 P2 R,  (~ rhsat2 S P1 P2 R <-> ( exists (C : ctx L),
+                                        ~ R ((beh S (plug L P1 C )),(beh S (plug L P2 C))))).
+Proof.
+  intros P1 P2 R.
+  split; unfold rhsat2; intro H0;
+    [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
+Qed.
+
+
+Lemma rhsat2_upper_closed {L : Language}
+                          {trace_set : Set}
+                          (S : Semantics L trace_set)
+                          (P1 P2 : par L ) (R1 R2 : (prop trace_set) * (prop trace_set) -> Prop) :
+  rhsat2 S P1 P2 R1 -> R1 ⊆ R2 -> rhsat2 S P1 P2 R2.  
+Proof.
+  intros rsat_one Hsuper C. 
+  apply Hsuper.
+  now apply (rsat_one C).
+Qed. 

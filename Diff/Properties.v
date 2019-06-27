@@ -344,3 +344,25 @@ Definition hsafe_uco {E : Events} {Es : Endstates} :
              hsCl_mono 
              hsCl_idmp
              hsCl_bigger.
+
+(*****************************************************************************)
+(** *2relSCH*)
+(*****************************************************************************)
+
+Definition SCH2 {trace_set : Set} (Π : (prop trace_set) * (prop trace_set) -> Prop) : Prop :=
+  forall β1 β2 β1' β2': prop trace_set,
+    Π (β1, β2) -> β1' ⊆ β1 -> β2' ⊆ β2 -> Π (β1', β2').
+
+Definition sCl2 {trace_set : Set}
+                (Π : (prop trace_set) * (prop trace_set) -> Prop) :
+                (prop  trace_set) * (prop trace_set) -> Prop  :=
+  fun b => exists b1 b2, Π (b1, b2) /\ (fst b) ⊆ b1 /\ (snd b) ⊆ b2.
+
+
+Lemma sCl2_SCH2 {trace_set : Set} (Π : (prop trace_set) * (prop trace_set) -> Prop) :
+  SCH2 (sCl2 Π).
+Proof.
+  move => β1 β2 β1' β2' [γ1 [γ2 [H_Π [Hsub1' Hbsu2']]]] H_sub1 H_sub2.
+  exists γ1, γ2. split; apply: subset_trans; eauto.
+  split; apply: subset_trans; eauto.
+Qed. 

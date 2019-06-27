@@ -31,4 +31,9 @@ Qed.
 
 Notation "f ∘ g" := (fun x => f ( g x )) (at level 50).
 
-Definition single {X : Type} (t : X) : X -> Prop := fun x => x = t. 
+Definition single {X : Type} (t : X) : X -> Prop := fun x => x = t.
+
+Definition prod_map {X Y : Type} (f : (X -> Prop) -> (Y -> Prop)) : ((X -> Prop) * (X -> Prop)) -> 
+                                                              ((Y -> Prop) * (Y -> Prop)) := 
+  fun x =>
+    (f (fst x), f (snd x)). 
