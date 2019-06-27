@@ -256,7 +256,7 @@ Module Compiler.
   (*TODO: typing needs an environment *)
   Inductive gensend : T.te -> S.st -> T.te -> Prop :=
     | Snd_N : forall tn tn, gensend (T.Num sn) (S.Nat) (T.Send (T.Num tn))
-    | Snd_P : forall te1 st1 te2 st2 te1' te2', gensend te1 st1 te1' -> gensend te2 st2 te2'-> gensend (T.Pair te1 te2) (S.Times st1 st2) (T.Seq te1' te2').
+    | Snd_P : forall te1 st1 st2 te1' te2', gensend (T.P1 te1) st1 te1' -> gensend (T.P2 te1) st2 te2'-> gensend te1 (S.Times st1 st2) (T.Seq te1' te2').
 
   Inductive tcmp : S.st -> T.tt -> Prop :=
     | TCMP_N : tcmp S.Nat T.Nat
