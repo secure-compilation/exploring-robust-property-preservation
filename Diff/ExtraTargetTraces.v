@@ -573,15 +573,38 @@ Module RTCtilde.
       rewrite Hclean in *. now constructor.
   Qed.
 
+  Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : Core.trace) :
+    Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
+    Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
+  Proof.
+    destruct par_s as [par_s].
+    unfold Source.sem_wrap, Source.link,
+           Source.prg_core, Source.par_core, Source.ctx_core,
+           Core.link, Core.link_funs;
+      simpl;
+      intros Hsem.
+    remember (Core.par_main par_s) as main eqn:Hmain.
+    revert par_s ctx_t t Hsem Hmain.
+    induction main;
+      intros par_s ctx_t t Hsem Hmain;
+      destruct par_s as [funs_s main_s];
+      destruct ctx_t as [funs_t];
+      simpl in *; subst.
+    - inversion Hsem as [? ? Heval]; subst.
+      inversion Heval as [m l ? Heval' Htrace]; subst. simpl in Heval'.
+      constructor. econstructor.
+      + now constructor.
+      + inversion Heval'; subst. inversion Htrace; subst. now constructor.
+  Admitted.
+
   (* Properties of context cleanup. *)
 
   (* Main theorem. *)
   Theorem extra_target_RTCt : rel_RTC Compiler.chain Source.sem Target.sem trel.
   Proof.
-    unfold rel_RTC. simpl. intros [par_s Houtless] ctx_t t Hsem.
-    exists (clean_ctx ctx_t), (clean_trace t). simpl in Hsem. split.
+    unfold rel_RTC. simpl. intros par_s ctx_t t Hsem.
+    exists (clean_ctx ctx_t), (clean_trace t). split.
     - now apply trel_clean_trace.
-    - unfold Source.sem_wrap.
-      unfold Compiler.comp_par in Hsem. simpl.
-  Admitted.
+    - now apply sem_clean.
+  Qed.
 End RTCtilde.
