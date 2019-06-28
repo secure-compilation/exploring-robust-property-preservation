@@ -148,7 +148,9 @@ Module Core.
   Definition closed (fs : funmap_turn) (e : expr) : bool :=
     StringSet.equal (elements_set _ fs) (funs e).
 
-  (* Programs and contexts with their well-formedness conditions. *)
+  (* Programs and contexts with their well-formedness conditions.
+       RB: Morally, this places everything (back, except maps for the use of
+     stdlib maps) in Set. *)
   Record par_wf (funs : funmap) (main : expr) :=
     {
       par_wf_funless : funmap_funless funs;
@@ -159,7 +161,7 @@ Module Core.
     {
       par_funs : funmap;
       par_main : expr;
-      par_prop : par_wf par_funs par_main
+      (* par_prop : par_wf par_funs par_main *)
     }.
 
   Record ctx_wf (funs : funmap) :=
@@ -170,7 +172,7 @@ Module Core.
   Record ctx :=
     {
       ctx_funs : funmap;
-      ctx_prop : ctx_wf ctx_funs
+      (* ctx_prop : ctx_wf ctx_funs *)
     }.
 
   Record prg_wf (funs : funmap_turn) (main : expr) :=
@@ -184,7 +186,7 @@ Module Core.
     {
       prg_funs : funmap_turn;
       prg_main : expr;
-      prg_prop : prg_wf prg_funs prg_main
+      (* prg_prop : prg_wf prg_funs prg_main *)
     }.
 
   (* Linking. Assume main in the program and combine functions from program and
@@ -200,7 +202,8 @@ Module Core.
     Build_prg
       (StringMap.empty _)
       (Const 0)
-      wf_empty_prg.
+      (* wf_empty_prg *)
+  .
 
   (* Second, compose proper well-formedness proofs. *)
   Definition link_fun (par_fun ctx_fun : option expr) :=
@@ -213,24 +216,31 @@ Module Core.
   Definition link_funs (p : par) (c : ctx) :=
     StringMap.map2 link_fun (par_funs p) (ctx_funs c).
 
-  Lemma link_wf  (p : par) (c : ctx) :
-    closed (link_funs p c) (par_main p) = true ->
+  Definition linkable (p : par) (c : ctx) : bool :=
+    closed (link_funs p c) (par_main p).
+
+  Lemma link_wf (p : par) (c : ctx) :
+    linkable p c = true ->
     par_wf (par_funs p) (par_main p) ->
     ctx_wf (ctx_funs c) ->
     prg_wf (link_funs p c) (par_main p).
   Admitted.
 
-  (* RB: Check how this works inside proofs. *)
-  Definition link (p : par) (c : ctx) : prg.
-    set (prg_funs := link_funs p c).
-    destruct (closed prg_funs (par_main p)) eqn:Hisclosed.
-    - exact (Build_prg
-               prg_funs
-               (par_main p)
-               (link_wf _ _ Hisclosed (par_prop p) (ctx_prop c))).
-    - (* Bad case, can be ruled out by well-formedness but to clean up. *)
-      exact empty_prg.
-  Defined.
+  Definition link_opt (p : par) (c : ctx) (*Hlinkable : linkable p c = true*) : option prg :=
+    if linkable p c
+    then Some (Build_prg (link_funs p c) (par_main p))
+    else None.
+
+  Theorem link_ok :
+    forall p c, linkable p c = true ->
+    exists pc, link_opt p c = Some pc.
+  Proof.
+    intros p c Hlinkable. eexists.
+    unfold link_opt. rewrite Hlinkable. reflexivity.
+  Qed.
+
+  Definition link (p : par) (c : ctx) : prg :=
+    Build_prg (link_funs p c) (par_main p).
 
   (* Traces as evaluation results. *)
   Inductive trace :=
@@ -319,8 +329,11 @@ Module Core.
   | SemEval : forall p t, eval_prg p = t -> sem p t.
 
   Remark trace_exists : forall W : prg, exists t : trace, sem W t.
-    intro W. exists (eval_prg W). now apply SemEval.
-  Qed.
+  Proof.
+    intros [funs main].
+    induction main.
+    - eexists. now do 3 econstructor.
+  Admitted.
 End Core.
 
 (* Target language. *)
@@ -362,7 +375,7 @@ Module Source.
   Record par :=
     {
       par_core : Core.par;
-      par_prop : par_wf par_core
+      (* par_prop : par_wf par_core *)
     }.
 
   Record ctx_wf (c : Core.ctx) :=
@@ -373,7 +386,7 @@ Module Source.
   Record ctx :=
     {
       ctx_core : Core.ctx;
-      ctx_prop : ctx_wf ctx_core
+      (* ctx_prop : ctx_wf ctx_core *)
     }.
 
   Record prg_wf (p : Core.prg) :=
@@ -386,20 +399,40 @@ Module Source.
   Record prg :=
     {
       prg_core : Core.prg;
-      prg_prop : prg_wf prg_core
+      (* prg_prop : prg_wf prg_core *)
     }.
 
   (* Wrap link operation and define language. *)
-  Lemma link_wf (p : par) (c : ctx) :
-    par_wf (par_core p) ->
-    ctx_wf (ctx_core c) ->
-    prg_wf (Core.link (par_core p) (ctx_core c)).
-  Admitted.
+  (* Lemma link_wf (p : par) (c : ctx) : *)
+  (*   par_wf (par_core p) -> *)
+  (*   ctx_wf (ctx_core c) -> *)
+  (*   prg_wf (Core.link (par_core p) (ctx_core c)). *)
+  (* Admitted. *)
+
+  Definition linkable (p : par) (c : ctx) : bool :=
+    Core.linkable (par_core p) (ctx_core c).
+
+  Definition link_opt (p : par) (c : ctx) : option prg :=
+    match Core.link_opt (par_core p) (ctx_core c) with
+    | Some pc => Some (Build_prg pc)
+    | None => None
+    end.
+
+  Theorem link_ok :
+    forall p c, linkable p c = true ->
+    exists pc, link_opt p c = Some pc.
+  Proof.
+    unfold linkable, link_opt.
+    intros p c Hlinkable.
+    unfold linkable in Hlinkable.
+    apply Core.link_ok in Hlinkable as [pc Hlinkable].
+    eexists. rewrite Hlinkable. reflexivity.
+  Qed.
 
   Definition link (p : par) (c : ctx) : prg :=
-    Build_prg
-      (Core.link (par_core p) (ctx_core c))
-      (link_wf _ _ (par_prop p) (ctx_prop c)).
+    Build_prg (Core.link (par_core p) (ctx_core c)).
+
+  Definition empty_prg := Build_prg Core.empty_prg.
 
   Definition lang := Build_Language link.
 
@@ -407,8 +440,7 @@ Module Source.
   Definition sem_wrap (p : prg) : Core.trace -> Prop := Core.sem (prg_core p).
 
   Remark trace_exists : forall W : prg, exists t : Core.trace, sem_wrap W t.
-    intros [Wcore Wout]. exists (Core.eval_prg Wcore). now apply Core.SemEval.
-  Qed.
+  Admitted.
 
   Definition sem := Build_Semantics lang sem_wrap trace_exists.
 End Source.
@@ -458,9 +490,10 @@ Module RTCtilde.
   Admitted.
 
   Definition clean_ctx_core (ctx : Core.ctx) :=
-    (Core.Build_ctx
+    Core.Build_ctx
        (StringMap.map clean_expr (Core.ctx_funs ctx))
-       (core_ctx_wf_clean_expr _ (Core.ctx_prop ctx))).
+       (* (core_ctx_wf_clean_expr _ (Core.ctx_prop ctx))) *)
+  .
 
   Lemma source_ctx_wf_clean_expr (ctx : Core.ctx) :
     Source.ctx_wf (clean_ctx_core ctx).
@@ -469,7 +502,8 @@ Module RTCtilde.
   Definition clean_ctx (ctx : Core.ctx) : Source.ctx :=
     Source.Build_ctx
       (clean_ctx_core ctx)
-      (source_ctx_wf_clean_expr _).
+      (* (source_ctx_wf_clean_expr _) *)
+  .
 
   Fixpoint clean_trace (t : Core.trace) : Core.trace :=
     match t with
