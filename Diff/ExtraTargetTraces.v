@@ -282,51 +282,97 @@ Module Core.
         end
     in eval e.
 
-  Definition eval_main (fs : funmap_turn) (e : expr) : (nat * list nat) :=
-    let fix eval e :=
-        match e with
-        | Const n => (n, [])
-        | Plus e1 e2 =>
-          match eval e1, eval e2 with
-          | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2)
-          end
-        | Times e1 e2 =>
-          match eval e1, eval e2 with
-          | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2)
-          end
-        | IfLe ecomp1 ecomp2 ethen eelse =>
-          match eval ecomp1, eval ecomp2 with
-          | (n1, t1), (n2, t2) =>
-            if n1 <=? n2
-            then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t)
-            else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t)
-          end
-        | Out eout e' =>
-          match eval eout, eval e' with
-          | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
-          end
-        | Fun id earg =>
-          let '(arg, targ) := eval earg in
-          match StringMap.find id fs with
-          | Some (_, e') =>
-            let '(n, t) := eval_fun arg e' in
-            (n, targ ++ t)
-          | None => (0, []) (* Bad case, rule out in closed programs. *)
-          end
-        | Arg => (0, []) (* Bad case, ruled out by main. *)
-        end
-    in eval e.
+  (* Definition eval_main (fs : funmap_turn) (e : expr) : (nat * list nat) := *)
+  (*   let fix eval e := *)
+  (*       match e with *)
+  (*       | Const n => (n, []) *)
+  (*       | Plus e1 e2 => *)
+  (*         match eval e1, eval e2 with *)
+  (*         | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2) *)
+  (*         end *)
+  (*       | Times e1 e2 => *)
+  (*         match eval e1, eval e2 with *)
+  (*         | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2) *)
+  (*         end *)
+  (*       | IfLe ecomp1 ecomp2 ethen eelse => *)
+  (*         match eval ecomp1, eval ecomp2 with *)
+  (*         | (n1, t1), (n2, t2) => *)
+  (*           if n1 <=? n2 *)
+  (*           then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t) *)
+  (*           else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t) *)
+  (*         end *)
+  (*       | Out eout e' => *)
+  (*         match eval eout, eval e' with *)
+  (*         | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t) *)
+  (*         end *)
+  (*       | Fun id earg => *)
+  (*         let '(arg, targ) := eval earg in *)
+  (*         match StringMap.find id fs with *)
+  (*         | Some (_, e') => *)
+  (*           let '(n, t) := eval_fun arg e' in *)
+  (*           (n, targ ++ t) *)
+  (*         | None => (0, []) (* Bad case, rule out in closed programs. *) *)
+  (*         end *)
+  (*       | Arg => (0, []) (* Bad case, ruled out by main. *) *)
+  (*       end *)
+  (*   in eval e. *)
 
-  Definition eval_prg (p : prg) : trace :=
-    let fix gen_trace (res: nat) (outs : list nat) : trace :=
-        match outs with
-        | [] => Result res
-        | out :: outs' => Output out (gen_trace res outs')
-        end
-    in let '(n, t) := eval_main (prg_funs p) (prg_main p) in gen_trace n t.
+  Inductive eval_main (fs : funmap_turn) : expr -> (nat * list nat) -> Prop :=
+  | Eval_Const : forall n,
+      eval_main fs (Const n) (n, [])
+  | Eval_Plus : forall e1 e2 n1 n2 t1 t2,
+      eval_main fs e1 (n1, t1) -> eval_main fs e2 (n2, t2) ->
+      eval_main fs (Plus e1 e2) (n1 + n2, t1 ++ t2)
+  | Eval_Times : forall e1 e2 n1 n2 t1 t2,
+      eval_main fs e1 (n1, t1) -> eval_main fs e2 (n2, t2) ->
+      eval_main fs (Times e1 e2) (n1 * n2, t1 ++ t2)
+  | Eval_IfThen : forall ecomp1 ecomp2 ethen eelse n1 n2 n t1 t2 t,
+      eval_main fs ecomp1 (n1, t1) -> eval_main fs ecomp2 (n2, t2) ->
+      n1 <= n2 -> eval_main fs ethen (n, t) ->
+      eval_main fs (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
+  | Eval_IfElse : forall ecomp1 ecomp2 ethen eelse n1 n2 n t1 t2 t,
+      eval_main fs ecomp1 (n1, t1) -> eval_main fs ecomp2 (n2, t2) ->
+      n1 > n2 -> eval_main fs eelse (n, t) ->
+      eval_main fs (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
+  | Eval_Out : forall eout e nout n tout t,
+      eval_main fs eout (nout, tout) -> eval_main fs e (n, t) ->
+      eval_main fs (Out eout e) (n, tout ++ [nout] ++ t)
+  | Eval_Fun : forall id turn earg e arg n targ t,
+      StringMap.find id fs = Some (turn, e) ->
+      eval_main fs earg (arg, targ) -> eval_fun arg e = (n, t) ->
+      eval_main fs (Fun id earg) (n, targ ++ t)
+  (* Two temporary hacks covering the bad cases. Without self-contained
+     well-formedness conditions in the programs, additional hypotheses are
+     required to discard them. *)
+  | Eval_BadFun : forall id earg,
+      StringMap.find id fs = None ->
+      eval_main fs (Fun id earg) (0, [])
+  | Eval_BadArg :
+      eval_main fs Arg (0, []).
+
+  (* Fixpoint gen_trace (res: nat) (outs : list nat) : trace := *)
+  (*   match outs with *)
+  (*   | [] => Result res *)
+  (*   | out :: outs' => Output out (gen_trace res outs') *)
+  (*   end. *)
+
+  Inductive gen_trace (res : nat) : list nat -> trace -> Prop :=
+  | Gen_Nil :
+      gen_trace res [] (Result res)
+  | Gen_Cons : forall out outs t,
+      gen_trace res outs t -> gen_trace res (out :: outs) (Output out t).
+
+  (* Definition eval_prg (p : prg) : trace := *)
+  (*   let '(n, t) := eval_main (prg_funs p) (prg_main p) in gen_trace n t. *)
+
+  Inductive eval_prg (p : prg) : trace -> Prop :=
+  | Eval_Prg : forall n l t,
+      eval_main (prg_funs p) (prg_main p) (n, l) ->
+      gen_trace n l t ->
+      eval_prg p t.
 
   Inductive sem : prg -> trace -> Prop :=
-  | SemEval : forall p t, eval_prg p = t -> sem p t.
+  | SemEval : forall p t, eval_prg p t -> sem p t.
 
   Remark trace_exists : forall W : prg, exists t : trace, sem W t.
   Proof.
