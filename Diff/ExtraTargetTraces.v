@@ -254,33 +254,59 @@ Module Core.
        RB: Currently no program-context switching information recorded.
        RB: Also currently, getting away with two simple but mostly redundant
      fixpoints. *)
-  Definition eval_fun (arg : nat) (e : expr) : (nat * list nat) :=
-    let fix eval e :=
-        match e with
-        | Const n => (n, [])
-        | Plus e1 e2 =>
-          match eval e1, eval e2 with
-          | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2)
-          end
-        | Times e1 e2 =>
-          match eval e1, eval e2 with
-          | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2)
-          end
-        | IfLe ecomp1 ecomp2 ethen eelse =>
-          match eval ecomp1, eval ecomp2 with
-          | (n1, t1), (n2, t2) =>
-            if n1 <=? n2
-            then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t)
-            else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t)
-          end
-        | Out eout e' =>
-          match eval eout, eval e' with
-          | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t)
-          end
-        | Fun id earg => (0, []) (* Bad case, rule out in closed programs. *)
-        | Arg => (arg, [])
-        end
-    in eval e.
+  (* Definition eval_fun (arg : nat) (e : expr) : (nat * list nat) := *)
+  (*   let fix eval e := *)
+  (*       match e with *)
+  (*       | Const n => (n, []) *)
+  (*       | Plus e1 e2 => *)
+  (*         match eval e1, eval e2 with *)
+  (*         | (n1, t1), (n2, t2) => (n1 + n2, t1 ++ t2) *)
+  (*         end *)
+  (*       | Times e1 e2 => *)
+  (*         match eval e1, eval e2 with *)
+  (*         | (n1, t1), (n2, t2) => (n1 * n2, t1 ++ t2) *)
+  (*         end *)
+  (*       | IfLe ecomp1 ecomp2 ethen eelse => *)
+  (*         match eval ecomp1, eval ecomp2 with *)
+  (*         | (n1, t1), (n2, t2) => *)
+  (*           if n1 <=? n2 *)
+  (*           then let '(n, t) := eval ethen in (n, t1 ++ t2 ++ t) *)
+  (*           else let '(n, t) := eval eelse in (n, t1 ++ t2 ++ t) *)
+  (*         end *)
+  (*       | Out eout e' => *)
+  (*         match eval eout, eval e' with *)
+  (*         | (nout, tout), (n, t) => (n, tout ++ [nout] ++ t) *)
+  (*         end *)
+  (*       | Fun id earg => (0, []) (* Bad case, rule out in closed programs. *) *)
+  (*       | Arg => (arg, []) *)
+  (*       end *)
+  (*   in eval e. *)
+
+  Inductive eval_fun (arg : nat) : expr -> (nat * list nat) -> Prop :=
+  | FEval_Const : forall n,
+      eval_fun arg (Const n) (n, [])
+  | FEval_Plus : forall e1 e2 n1 n2 t1 t2,
+      eval_fun arg e1 (n1, t1) -> eval_fun arg e2 (n2, t2) ->
+      eval_fun arg (Plus e1 e2) (n1 + n2, t1 ++ t2)
+  | FEval_Times : forall e1 e2 n1 n2 t1 t2,
+      eval_fun arg e1 (n1, t1) -> eval_fun arg e2 (n2, t2) ->
+      eval_fun arg (Times e1 e2) (n1 * n2, t1 ++ t2)
+  | FEval_IfThen : forall ecomp1 ecomp2 ethen eelse n1 n2 n t1 t2 t,
+      eval_fun arg ecomp1 (n1, t1) -> eval_fun arg ecomp2 (n2, t2) ->
+      n1 <= n2 -> eval_fun arg ethen (n, t) ->
+      eval_fun arg (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
+  | FEval_IfElse : forall ecomp1 ecomp2 ethen eelse n1 n2 n t1 t2 t,
+      eval_fun arg ecomp1 (n1, t1) -> eval_fun arg ecomp2 (n2, t2) ->
+      n1 > n2 -> eval_fun arg eelse (n, t) ->
+      eval_fun arg (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
+  | FEval_Out : forall eout e nout n tout t,
+      eval_fun arg eout (nout, tout) -> eval_fun arg e (n, t) ->
+      eval_fun arg (Out eout e) (n, tout ++ [nout] ++ t)
+  | FEval_Arg :
+      eval_fun arg Arg (arg, [])
+  (* A temporary hack covering the bad case. *)
+  | FEval_BadFun : forall id earg,
+      eval_fun arg (Fun id earg) (0, []).
 
   (* Definition eval_main (fs : funmap_turn) (e : expr) : (nat * list nat) := *)
   (*   let fix eval e := *)
@@ -339,7 +365,7 @@ Module Core.
       eval_main fs (Out eout e) (n, tout ++ [nout] ++ t)
   | Eval_Fun : forall id turn earg e arg n targ t,
       StringMap.find id fs = Some (turn, e) ->
-      eval_main fs earg (arg, targ) -> eval_fun arg e = (n, t) ->
+      eval_main fs earg (arg, targ) -> eval_fun arg e (n, t) ->
       eval_main fs (Fun id earg) (n, targ ++ t)
   (* Two temporary hacks covering the bad cases. Without self-contained
      well-formedness conditions in the programs, additional hypotheses are
