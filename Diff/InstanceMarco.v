@@ -4,20 +4,20 @@ Require Import ChainModel.
 
 Module Source.
 
-  (*TODO define sx (and tx below) *)
-
   (* source expressions *)
   Inductive se : Set :=
-    | Var : sx -> se
     | Num : nat -> se
     | Op : se -> se -> se
-    | Ifz : se -> se -> se -> se
-    | Letin : sx -> st -> se -> se -> se
     | Pair : se -> se -> se
     | P1 : se -> se
-    | P2 : se -> se
-    | Send : se -> se
-    | Seq: se -> se -> se.
+    | P2 : se -> se.
+
+  (*source statements*)
+  Inductive ss : Set :=
+    | Skip : ss
+    | Seq: ss -> ss -> ss
+    | Ifz : se -> ss -> ss-> ss
+    | Send : se -> ss.
 
   (* source values *)
   Inductive sv : se -> Prop :=
@@ -29,33 +29,34 @@ Module Source.
     | Nat : st
     | Times : st -> st -> st.
 
-  (*source typing env*)
-  Inductive sg : Set :=
-    | Empty_g : sq
-    | Elem_g : sx -> st -> sq -> sq.
+  (* source typing for expressions *)
+  Inductive swte : se -> st -> Prop :=
+    | T_Num : forall n, swte (Num n) Nat
+    | T_Op : forall se1 se2, swte se1 Nat -> swte se2 Nat -> swte (Op se1 se2) Nat
+    | T_Pair : forall se1 se2 st1 st2, swte se1 st1 -> swte se2 st2 -> swte (Pair se1 se2) (Times st1 st2)
+    | T_P1 : forall se st1 st2, swte se (Times st1 st2) -> swte (P1 se) st1
+    | T_P2 : forall se st1 st2, swte se (Times st1 st2) -> swte (P2 se) st2.
 
-  (* source typing *)
-  (*TODO add Gamma to signature and to all swt *)
-  Inductive swt : sg -> se -> st -> Prop :=
-    (*| T_Var : TODO do with ?*)
-    | T_Num : forall n sg1, swt sg1 (Num n) Nat
-    | T_Op : forall se1 se2 sg1, swt sg1 se1 Nat -> swt sg1 se2 Nat -> swt sg1 (Op se1 se2) Nat
-    | T_If : forall seg se1 se2 st sg1, swt sg1 seg Nat -> swt sg1 se1 st -> swt sg1 se2 st -> swt sg1 (Ifz seg se1 se2) st
-    | T_Pair : forall se1 se2 st1 st2 sg1, swt sg1 se1 st1 -> swt sg1 se2 st2 -> swt sg1 (Pair se1 se2) (Times st1 st2)
-    | T_P1 : forall se st1 st2 sg1, swt sg1 se (Times st1 st2) -> swt sg1 (P1 se) st1
-    | T_P2 : forall se st1 st2 sg1, swt sg1 se (Times st1 st2) -> swt sg1 (P2 se) st2
-    | T_Send : forall se st sg1, swt sg1 se st -> swt sg1 (Send se) Nat
-    | T_Letin : forall sg1 sx1 st1 se1 se2 st2, swt sg1 se1 st1 -> swt (Elem_g sx1 st1 sg1) se2 st2 -> swt sg1 (Letin sx1 st1 se1 se2) st2
-    | T_Seq : forall se1 st1 se2 st2 sg1, swt sg1 se1 st1 -> swt sg1 se2 st2 -> swt sg1 (Seq se1 se2) st2.
+  (*source typing for statements*)
+  Inductive swts : ss -> Prop :=
+    | T_Skip : swts Skip
+    | T_If : forall seg ss1 ss2, swte seg Nat -> swte ss1 -> swte ss2 -> swte (Ifz seg ss1 ss2)
+    | T_Send : forall se st, swte se st -> swts (Send se)
+    | T_Seq : forall ss1 ss2, swts ss1 -> swts ss2 -> swts (Seq ss1 ss2).
 
-  (*source messages - meta definition for the top-level def below*)
-  Inductive smv : Set :=
-    | M_Num : nat -> smv
-    | M_Pair : smv -> smv -> smv.
-
-  (* source messages *)
+  (*source messages*)
   Inductive sm : Set :=
-    | Msg : smv -> smv -> sm.
+    | Msg_base : nat -> sm
+    | Msg_ind : sm -> sm -> sm.
+
+  (*how to relate values and messages*)
+  Inductive sv_sm : se -> sm -> Prop :=
+    | Conv_base : forall n1, 
+      sv_sm (Num n1) (Msg_base n1)
+    | Conv_ind : forall se1 se2 sm1 sm2,
+      sv_sm se1 sm1 ->
+      sv_sm se2 sm2 ->
+      sv_sm (Pair se1 se2) (Msg_ind sm1 sm2).
 
   (*source labels*)
   Inductive sl : Set :=
@@ -65,51 +66,46 @@ Module Source.
   (*source queues*)
   Inductive sq : Set :=
     | Empty_q : sq
-    | Queue : sl -> sq -> sq.
+    | Sing_q : sl -> sq -> sq
+    | Queue : sq -> sq -> sq.
 
   (*source evaluation contexts*)
   Inductive sectx : Set :=
     | Hole : sectx
     | E_Op1 : sectx -> se -> sectx
     | E_Op2 : nat -> sectx -> sectx
-    | E_Ifz : sectx -> se -> se -> sectx
     | E_P1 : sectx -> sectx
     | E_P2 : sectx -> sectx
-    | E_Send : sectx -> sectx
-    | E_Seq : sectx -> se -> sectx.
-
-  Inductive sv_smv : se -> smv -> Prop :=
-    | Conv_Num : forall n, sv_smv (Num n) (M_Num n)
-    | Conv_Pair : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> sv_smv (Pair sv1 sv2) (M_Pair smv1 smv2).
+    | E_Pair1 : sectx -> se -> sectx
+    | E_Pair2 : sv -> sectx -> sectx.
 
   (*source primitive reduction steps*)
-  Inductive ssem_p :  se -> sl -> se -> Prop :=
-    (* possibly make parametric later *)
-    | PR_Op : forall n1 n2 n, n = n1 + n2 -> ssem_p (Op (Num n1) (Num n2)) Empty_l (Num n)
-    (*| PR_Let : forall sx1 sv1 se1 st1, sv sv1 -> ssem_p (Letin sx1 st1 sv1 se1) Empty_l se1  (* TODO with subs *)*)
-    | PR_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P1 (Pair sv1 sv2)) Empty_l sv1
-    | PR_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P2 (Pair sv1 sv2)) Empty_l sv2
-    | PR_Ift : forall n se1 se2, n=0 -> ssem_p (Ifz (Num n) se1 se2) Empty_l se1
-    | PR_Iff : forall n se1 se2, n<>0 -> ssem_p (Ifz (Num n) se1 se2) Empty_l se2
-    | PR_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssem_p (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
-    | PR_Seq : forall sv1 se2, sv sv1 -> ssem_p (Seq sv1 se2) Empty_l se2.
+  Inductive ssem_p :  se -> se -> Prop :=
+    (* TODO possibly make parametric later *)
+    | PR_Op : forall n1 n2 n, n = n1 + n2 -> ssem_p (Op (Num n1) (Num n2)) (Num n)
+    | PR_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P1 (Pair sv1 sv2)) sv1
+    | PR_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssem_p (P2 (Pair sv1 sv2)) sv2.
 
   Inductive splug : sectx -> se -> se -> Prop :=
     | Plug_Hole : forall se, splug Hole se se
     | Plug_Op1 : forall se1 se1' se2 sctx, splug sctx se1 se1' -> splug (E_Op1 sctx se2) se1 (Op se1' se2)
     | Plug_Op2 : forall n1 se2 se2' sctx, splug sctx se2 se2' -> splug (E_Op2 n1 sctx) se2 (Op (Num n1) se2')
-    | Plug_Ifz : forall se se' se1 se2 sctx, splug sctx se se' -> splug (E_Ifz sctx se1 se2) se (Ifz se' se1 se2)
     | Plug_P1 : forall se se' sctx, splug sctx se se' -> splug (E_P1 sctx) se (P1 se')
     | Plug_P2 : forall se se' sctx, splug sctx se se' -> splug (E_P2 sctx) se (P2 se')
-    | Plug_Send : forall se se' sctx, splug sctx se se' -> splug (E_Send sctx) se (Send se')
-    | Plug_Seq : forall se1 se1' se2 sctx, splug sctx se1 se1' -> splug (E_Seq sctx se2) se1 (Seq se1' se2).
+    | Plug_Pair1 : forall se1 se se' sctx, splug sctx se se' -> splug (E_Pair1 se1 sctx) se (Pair se1 se')
+    | Plug_Pair2 : forall sv1 se se' sctx, splug sctx se se' -> splug (E_Pair2 sv1 sctx) se (Pair sv1 se').
 
   (*source nonprimitive reductions: the ctx rule*)
-  Inductive ssem : sectx -> se -> sl -> se -> Prop :=
-    | Ctx : forall ectx1 se1 sl1 se2, ssem_p se1 sl1 se2 -> ssem ectx1 se1 sl1 se2.
+  Inductive ssem : sectx -> se -> se -> Prop :=
+    | Ctx : forall ectx1 se1 se2, ssem_p se1 se2 -> ssem ectx1 se1 se2.
+
+  (*reflexive transitive closure of the single semantic step*)
+  Inductive ssemrt : se -> se -> Prop :=
+    | Refl : forall se1, ssemrt se1 se1
+    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.
 
   (*source small step structural semantics*)
-  Inductive ssm_sem : se -> sl -> se -> Prop :=
+  (*Inductive ssm_sem : se -> sl -> se -> Prop :=
     | SM_OP1 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Op se1 se3) sl1 (Op se2 se3)
     | SM_OP2 : forall se1 se2 n sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Op (Num n) se1) sl1 (Op (Num n) se2)
     | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) Empty_l (Num n)
@@ -125,42 +121,38 @@ Module Source.
     | SM_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P1 (Pair sv1 sv2)) Empty_l sv1
     | SM_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P2 (Pair sv1 sv2)) Empty_l sv2
     | SM_Send1 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Send se1) sl1 (Send se2)
-    | SM_Send : forall sv1 sv2 smv1 smv2, sv_smv sv1 smv1 -> sv_smv sv2 smv2 -> ssm_sem (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
+    | SM_Send : forall sv1 sv2 smv1 smv2, sv_sm sv1 smv1 -> sv_sm sv2 smv2 -> ssm_sem (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
     | SM_Seq1 : forall se1 se2 sl1 se3, ssm_sem se1 sl1 se2 -> ssm_sem (Seq se1 se3) sl1 (Seq se2 se3)
-    | SM_Seq : forall sv1 se2, sv sv1 -> ssm_sem (Seq sv1 se2) Empty_l se2.
+    | SM_Seq : forall sv1 se2, sv sv1 -> ssm_sem (Seq sv1 se2) Empty_l se2.*)
 
   (*source big step reduction that chains messages as queues*)
-  Inductive sbsem : se -> sq -> se -> Prop :=
-    | B_Refl : forall se1, sbsem se1 Empty_q se1
-    (*| B_Trans : forall se1 se2 se3 sq1 sq2, sbsem se1 sq1 se2 -> sbsem se2 sq2 se3 -> sbsem se1 ??*)
-    (*case above is not ok. should it be removed? or shuld we add another case in the sq def for joining queues?*)
-    (* | B_Act : forall se1 sl1 se2 sq1 se3, ssm_sem se1 sl1 se2 -> sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
-  (* | B_Act : forall se1 ctx se10 se2 se20 sl1 sq1 se3, se1 = plug ctx se1o -> se2 = plug ctx se20 -> ssm se1 sl1 se2 ->   sbsem se2 sq1 se3 -> sbsem se1 (Queue sl1 sq1) se3. *)
-    | B_Act : forall ctx se1 se1' sl1 se2 se2' sq1 se3, ssem ctx se1 sl1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> sbsem se2' sq1 se3 -> sbsem se1' (Queue sl1 sq1) se3.
+  Inductive sbsem : ss -> sq -> ss -> Prop :=
+    | B_Skip : sbsem Skip Empty_l Skip
+    | B_Seq : forall ss1 ss2 sq1 sq2, sbsem ss1 sq1 Skip -> sbsem ss2 sq2 Skip -> sbsem (Seq ss1 ss2) (Queue sq1 sq2) Skip
+    | B_Ift : forall se1 ss1 ss2 sq1 n, n= 0 -> ssemrt se1 (Nat n) -> sbsem ss1 sq1 Skip -> sbsem (Ifz se1 ss1 ss2) sq1 Skip
+    | B_iff : forall se1 ss1 ss2 sq1 n, n<>0 -> ssemrt se1 (Nat n) -> sbsem ss2 sq1 Skip -> sbsem (Ifz se1 ss1 ss2) sq1 Skip
+    | B_Send : forall se1 ss1 ss2 sv1 sv2 smv1 smv2, sv_sm sv1 smv1 -> sv_sm sv2 smv2 -> ssemrt se1 (Pair sv1 sv2) -> sbsem (Send se1) (Msg_l (Msg_ind smv1 smv2)) Skip.
 
   (*source single behaviour (fat leadsto)*)
-  Inductive sbeh : se -> sq -> Prop :=
-    | B_Sing : forall se1 sq1 se2, sbsem se1 sq1 se2 -> sbeh se1 sq1.
-
-  (*source calculation of all possible behaviours*)
-  (*Inductive sbeh : se -> sq : Prop :=*)
-    (*| B_Set : .*)
+  Inductive sbeh : ss -> sq -> Prop :=
+    | B_Sing : forall ss1 sq1 , sbsem ss1 sq1 Skip -> sbeh ss1 sq1.
 
 End Source.
 
 Module Target.
 
   Inductive te : Set :=
-    | Var : sx -> te
     | Num : nat -> te
     | Op : te -> te -> te
-    | Ifz : te -> te -> te -> te
-    | Letin : tx -> te -> te -> te 
     | Pair : te -> te -> te
     | P1 : te -> te
-    | P2 : te -> te
-    | Send : te -> te
-    | Seq : te -> te -> te.
+    | P2 : te -> te.
+
+  Inductive ts : Set :=
+    | Skip : ts
+    | Seq: ts -> ts -> ts
+    | Ifz : te -> ts -> ts-> ts
+    | Send : te -> ts.
 
   (* target values *)
   Inductive tv : te -> Prop :=
@@ -173,17 +165,19 @@ Module Target.
     | Times : tt -> tt -> tt.
 
   (* target typing *)
-  (*TODO add Gamma to signature and to all swt *)
-  Inductive twt : te -> tt -> Prop :=
-    (*| T_Var : TODO do with ?*)
-    | T_Num : forall n, twt (Num n) Nat
-    | T_Op : forall te1 te2, twt te1 Nat -> twt te2 Nat -> twt (Op te1 te2) Nat
-    | T_If : forall teg te1 te2 tt, twt teg Nat -> twt te1 tt -> twt te2 tt -> twt (Ifz teg te1 te2) tt
-    | T_Pair : forall te1 te2 tt1 tt2, twt te1 tt1 -> twt te2 tt2 -> twt (Pair te1 te2) (Times tt1 tt2)
-    | T_P1 : forall te tt1 tt2, twt te (Times tt1 tt2) -> twt (P1 te) tt1
-    | T_P2 : forall te tt1 tt2, twt te (Times tt1 tt2) -> twt (P2 te) tt2
-    | T_Send : forall te, twt te Nat -> twt (Send te) Nat
-    | T_Seq : forall te1 tt1 te2 tt2, twt te1 tt1 -> twt te2 tt2 -> twt (Seq te1 te2) tt2.
+  Inductive twte : te -> tt -> Prop :=
+    | T_Num : forall n, twte (Num n) Nat
+    | T_Op : forall te1 te2, twte te1 Nat -> twte te2 Nat -> twte (Op te1 te2) Nat
+    | T_Pair : forall te1 te2 tt1 tt2, twte te1 tt1 -> twte te2 tt2 -> twte (Pair te1 te2) (Times tt1 tt2)
+    | T_P1 : forall te tt1 tt2, twte te (Times tt1 tt2) -> twte (P1 te) tt1
+    | T_P2 : forall te tt1 tt2, twte te (Times tt1 tt2) -> twte (P2 te) tt2.
+
+  (*target statement typing*)
+  Inductive twts : ts -> Prop :=
+    | T_Skip : twts Skip
+    | T_If : forall ts1 ts2, twte teg Nat -> twte ts1 -> twte ts2 -> twte (Ifz teg ts1 ts2)
+    | T_Send : forall te tt, twte te tt -> twts (Send te)
+    | T_Seq : forall ts1 ts2, twts ts1 -> twts ts2 -> twts (Seq ts1 ts2).
 
   (* target messages *)
   Inductive tm : Set :=
@@ -197,58 +191,56 @@ Module Target.
   (* target queues*)
   Inductive tq : Set :=
     | Empty_q : tq
-    | Queue : tl -> tq -> tq.
+    | Sing_q : tl -> tq -> tq
+    | Queue : tq -> tq -> tq.
 
   (* target evaluation contexts*)
   Inductive tectx : Set :=
     | Hole : tectx
     | E_Op1 : tectx -> te -> tectx
     | E_Op2 : nat -> tectx -> tectx
-    | E_Ifz : tectx -> te -> te -> tectx
     | E_P1 : tectx -> tectx
     | E_P2 : tectx -> tectx
-    | E_Send : tectx -> tectx 
-    | E_Seq : tectx -> te -> tectx.
+    | E_Pair1 : tectx -> te -> tectx
+    | E_Pair2 : tv -> tectx -> tectx.
 
   (* target primitive reduction steps*)
-  Inductive tsem_p :  te -> tl -> te -> Prop :=
+  Inductive tsem_p :  te -> -> te -> Prop :=
     (* possibly make parametric later *)
-    | PR_Op : forall n1 n2 n, n = n1 + n2 -> tsem_p (Op (Num n1) (Num n2)) Empty_l (Num n)
-    (*| PR_Let : forall sx1 sv1 se1 st1, sv sv1 -> ssem_p (Letin sx1 st1 sv1 se1) Empty_l se1  (* TODO with subs *)*)
-    | PR_P1 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsem_p (P1 (Pair tv1 tv2)) Empty_l tv1
-    | PR_P2 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsem_p (P2 (Pair tv1 tv2)) Empty_l tv2
-    | PR_Ift : forall n te1 te2, n=0 -> tsem_p (Ifz (Num n) te1 te2) Empty_l te1
-    | PR_Iff : forall n te1 te2, n<>0 -> tsem_p (Ifz (Num n) te1 te2) Empty_l te2
-    | PR_Send : forall n, (*tv n ->*) tsem_p (Send (Num n)) (Msg_l (M_Num n)) (Num 0) (* this ok? *)
-    | PR_Seq : forall tv1 te2, tv tv1 -> tsem_p (Seq tv1 te2) Empty_l te2.
+    | PR_Op : forall n1 n2 n, n = n1 + n2 -> tsem_p (Op (Num n1) (Num n2)) (Num n)
+    | PR_P1 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsem_p (P1 (Pair tv1 tv2)) tv1
+    | PR_P2 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsem_p (P2 (Pair tv1 tv2)) tv2.
 
+  (*plug target contexts and expressions*)
   Inductive tplug : tectx -> te -> te -> Prop :=
     | Plug_Hole : forall te, tplug Hole te te
     | Plug_Op1 : forall te1 te1' te2 tctx, tplug tctx te1 te1' -> tplug (E_Op1 tctx te2) te1 (Op te1' te2)
     | Plug_Op2 : forall n1 te2 te2' tctx, tplug tctx te2 te2' -> tplug (E_Op2 n1 tctx) te2 (Op (Num n1) te2')
-    | Plug_Ifz : forall te te' te1 te2 tctx, tplug tctx te te' -> tplug (E_Ifz tctx te1 te2) te (Ifz te' te1 te2)
     | Plug_P1 : forall te te' tctx, tplug tctx te te' -> tplug (E_P1 tctx) te (P1 te')
     | Plug_P2 : forall te te' tctx, tplug tctx te te' -> tplug (E_P2 tctx) te (P2 te')
-    | Plug_tend : forall te te' tctx, tplug tctx te te' -> tplug (E_Send tctx) te (Send te')
-    | Plug_teq : forall te1 te1' te2 tctx, tplug tctx te1 te1' -> tplug (E_Seq tctx te2) te1 (Seq te1' te2).
+    | Plug_Pair1 : forall te te' tctx te1, tplug tctx te te' -> tplug (E_Pair1 tctx te1) te (Pair te' te1)
+    | Plug_Pair2 : forall te te' tctx tv1, tplug tctx te te' -> tplug (E_Pair2 tv1 tctx) te (Pair tv1 te').
 
   (* target nonprimitive reductions: the ctx rule*)
-  Inductive tsem : tectx -> te -> tl -> te -> Prop :=
-    | Ctx : forall ectx1 te1 tl1 te2, tsem_p te1 tl1 te2 -> tsem ectx1 te1 tl1 te2.
+  Inductive tsem : tectx -> te -> te -> Prop :=
+    | Ctx : forall ectx1 te1 te2, tsem_p te1 te2 -> tsem ectx1 te1 te2.
 
-  (* target big step reduction that chains messages as queues*)
-  Inductive tbsem : te -> tq -> te -> Prop :=
-    | B_Refl : forall te1, tbsem te1 Empty_q te1
-    (* see missing option cases form source *)
-    | B_Act : forall te1 te1' tl1 te2 te2' tq1 te3 ctx, tsem ctx te1 tl1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tbsem te2' tq1 te3 -> tbsem te1' (Queue tl1 tq1) te3.
+  (*reflexive transitive closure of the single semantic step*)
+  Inductive tsemrt : te -> te -> Prop :=
+    | Refl : forall te1, tsemrt te1 te1
+    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.
 
-  (* target single behaviour (fat leadsto)*)
-  Inductive tbeh : te -> tq -> Prop :=
-    | B_Sing : forall te1 tq1 te2, tbsem te1 tq1 te2 -> tbeh te1 tq1.
+(*target big step reduction that chains messages as queues*)
+  Inductive sbsem : ts -> tq -> ts -> Prop :=
+    | B_Skip : sbsem Skip Empty_l Skip
+    | B_Seq : forall ts1 ts2 tq1 tq2, tbsem ts1 tq1 Skip -> tbsem ts2 tq2 Skip -> tbsem (Seq ts1 ts2) (Queue tq1 tq2) Skip
+    | B_Ift : forall te1 ts1 ts2 tq1 n, n= 0 -> tsemrt te1 (Nat n) -> tbsem ts1 tq1 Skip -> tbsem (Ifz te1 ts1 ts2) tq1 Skip
+    | B_iff : forall te1 ts1 ts2 tq1 n, n<>0 -> tsemrt te1 (Nat n) -> tbsem ts2 tq1 Skip -> tbsem (Ifz te1 ts1 ts2) tq1 Skip
+    | B_Send : forall te1 ts1 ts2, tsemrt te1 (Num n) -> tbsem (Send te1) (Msg_l (M_Num n)) Skip.
 
-  (*source calculation of all possible behaviours*)
-  (*Inductive tbeh : te -> tq : Prop :=
-    | B_Set : .*)
+  (*target single behaviour (fat leadsto)*)
+  Inductive tbeh : ts -> tq -> Prop :=
+    | B_Sing : forall ts1 tq1 , tbsem ts1 tq1 Skip -> tbeh ts1 sq1.
 
 End Target.
 
@@ -256,29 +248,33 @@ Module Compiler.
   Module S := Source.
   Module T := Target.
 
-  (*given a source expression with a type, translate that into a target expression.*)
-  (*TODO: typing needs an environment *)
-  Inductive gensend : T.te -> S.st -> T.te -> Prop :=
-    | Snd_N : forall tn tn, gensend (T.Num sn) (S.Nat) (T.Send (T.Num tn))
-    | Snd_P : forall te1 st1 st2 te1' te2', gensend (T.P1 te1) st1 te1' -> gensend (T.P2 te1) st2 te2'-> gensend te1 (S.Times st1 st2) (T.Seq te1' te2').
+  (*TODO: why bother with the well typed assumption below?*)
+  (*compile expressions*)
+  Inductive cmpe : S.se -> S.st -> T.te :=
+    | CMPE_Nat : forall sn tn, sn = tn -> S.swte (S.Num sn) S.Nat -> cmpe (S.Num sn) (S.Nat) (T.Num tn)
+    | CMPE_Op : forall se1 se2 te1 te2, S.swte (S.Op se1 se2) S.Nat -> cmpe se1 S.Nat te1 -> cmpe se2 S.Nat te2 -> cmpe (S.Op se1 se2) S.Nat (T.Op te1 te2)
+    | CMPE_Pair : forall se1 st1 te1 se2 st2 te2, S.swte (S.Pair se1 se2) (S.Times st1 st2) -> cmpe se1 st1 te1 -> cmpe se2 st2 te2 -> cmpe (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
+    | CMPE_P1 : forall se1 st1 te1, S.swte (S.P1 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P1 se1) st1 (T.P1 te1)
+    | CMPE_P2 : forall se1 st1 te1, S.swte (S.P2 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P2 se1) st1 (T.P2 te1).
 
-  Inductive tcmp : S.st -> T.tt -> Prop :=
-    | TCMP_N : tcmp S.Nat T.Nat
-    | TCMP_P : forall st1 st2 tt1 tt2, tcmp st1 tt1 -> tcmp st2 tt2 -> tcmp (S.Times st1 st2) (T.Times tt1 tt2).
+  (*given a source expression with a type, translate that into a target sequence.*)
+  Inductive gensend : S.se -> S.st -> T.ts -> Prop :=
+    | Snd_Base : forall tn tn, 
+      S.swte (S.Pair (S.Num n1) (S.Num n2)) (S.Times S.Nat S.Nat) -> 
+      tcmpe (S.Num n1) (S.Nat) (T.Num n1') -> 
+      tcmpe (S.Num n2) (S.Nat) (T.Num n2') -> 
+      gensend (S.Pair (S.Num n1) (S.Num n2)) (S.Times S.Nat S.Nat) (T.Seq (T.Send (T.Num n1') (T.Num n2') ))
+    | Snd_Ind : forall se1 st1 ts1 ts2, 
+      gensend (S.P1 se1) (st1) (ts1) ->
+      gensend (S.P2 se1) (st1) (ts2) ->
+      gensend (se1) (S.Times st1 st2) (T.Seq ts1 ts2).
 
-  Inductive cmp : S.se -> S.st -> T.te -> Prop :=
-    (*| CMP_Var : (* dang, how soes this work?*)*)
-    | CMP_Nat : forall sn tn, sn = tn -> S.swt (S.Num sn) S.Nat -> cmp (S.Num sn) (S.Nat) (T.Num tn)
-    | CMP_Op : forall se1 se2 te1 te2, S.swt (S.Op se1 se2) S.Nat -> cmp se1 S.Nat te1 -> cmp se2 S.Nat te2 -> cmp (S.Op se1 se2) S.Nat (T.Op te1 te2)
-      (*why bother with the well typed assumption below?*)
-    | CMP_Pair : forall se1 st1 te1 se2 st2 te2, S.swt (S.Pair se1 se2) (S.Times st1 st2) -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
-    | CMP_P1 : forall se1 st1 te1, S.swt (S.P1 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P1 se1) st1 (T.P1 te1)
-    | CMP_P2 : forall se1 st1 te1, S.swt (S.P2 se1) st1 -> cmp se1 st1 te1 -> cmp (S.P2 se1) st1 (T.P2 te1)
-    | CMP_Ifz : forall seg se1 se2 st1 teg te1 te2, S.swt (S.Ifz seg se1 se2) st1 -> cmp seg S.Nat teg -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Ifz seg se1 se2) st1 (T.Ifz teg te1 te2)
-    | CMP_Letin : forall sx1 tx1 st1 tt1 se1 se2 te1 te2 st2, S.swt (S.Letin sx1 st1 se1 se2) st2 -> cmp sx1 tx1 -> tcmp st1 tt1 -> cmp se1 te1 -> cmp se2 te2 -> cmp (S.Letin sx1 st1 se1 se2) st2 (T.Letin tx1 tt1 te1 te2)
-    | CMP_Send : forall se1 st1 te1 te2, S.swt (S.Send se1) S.Nat -> cmp se1 st1 te1 -> gensend tx1 st1 te2 -> cmp (S.Send se1) S.Nat (T.Letin tx1 tt1 te1 te2)
-    (*TODO above: add that the new target variable is fresh*)
-    | CMP_Seq : forall se1 se2 st1 st2 te1 te2, S.swt (S.Seq se1 se2) st2 -> cmp se1 st1 te1 -> cmp se2 st2 te2 -> cmp (S.Seq se1 se2) st2 (S.Seq te1 te2).
+  (*compile statements*)
+  Inductive cmp : S.ss -> T.ts -> Prop :=
+    | CMP_Skip : cmp S.Skip T.Skip
+    | CMP_Ifz : forall seg ss1 ss2 teg ts1 ts2, S.swts (S.Ifz seg ss1 ss2)-> cmpe seg S.Nat teg -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Ifz seg ss1 ss2) (T.Ifz teg ts1 ts2)
+    | CMP_Send : forall se1 st1 te1, S.swt (S.Send se1) -> cmpe se1 st1 te1 -> gensend se1 st1 ts1 -> cmp (S.Send se1) ts1
+    | CMP_Seq : forall ss1 ss2 ts1 ts2, S.swt (S.Seq ss1 ss2) -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Seq ss1 ss2) (T.Seq ts1 ts2).
 
 End Compiler.
 
@@ -286,15 +282,45 @@ Module TraceRelation.
   Module S := Source.
   Module T := Target.
 
-  Inductive trel_msg : sm -> tm -> Prop :=
-    | TR_NN
-    | TR_NM
-    | TR_NM
-    | TR_MM.
+  (*relate a source message to a target queue of msgs*)
+  Inductive trel_msg : sm -> tq -> Prop :=
+    | TR_NN : forall sn1 sn2 tn1 tn2, 
+      sn1=tn1 -> 
+      sn2=tn2 -> 
+      trel_msg  (S.Msg_ind (S.Msg_base sn1) (S.Msg_base sn2))
+                (T.Queue 
+                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q) 
+                    (T.Sing_q (T.Msg_l (T.M_Num tn2)) T.Empty_q))
+    | TR_NM : forall sn1 tn1 sm1 tq1,
+      sn1=tn1 ->
+      trel_msg  sm1
+                tq1  ->
+      trel_msg  (S.Msg_ind (S.Msg_base sn1) sm1 ) 
+                (T.Queue 
+                  (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q)
+                  (tq1))
+    | TR_NM : forall sn2 tn2 sm1 tq1,
+      sn1=tn1 ->
+      trel_msg sm1 tq1 ->
+      trel_msg  (S.Msg_ind sm1 (S.Msg_base sn1))
+                (T.Queue 
+                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q) 
+                    (T.Sing_q (T.Msg_l (T.M_Num tn2)) T.Empty_q))
+    | TR_MM : forall ,
+      trel_msg sm1 tq1 ->
+      trel_msg sm2 tq2 ->
+      trel_msg  (S.Msg sm1 sm2)
+                (T.Queue tq1 tq2).
 
+  (*relate a source queue to a target queue*)
   Inductive trel_q : sq -> tq -> Prop :=
-    | TRQ_e
-    | TRQ_m.
+    | TRQ_e : trel_q S.Empty_q T.Empty_q
+    | TRQ_m : 
+      trel_q sq1 tq1 ->
+      trel_msg sm1 tq2 ->
+      trel_q 
+        (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q)) 
+        (T.Queue tq1 tq2).
 
 End TraceRelation.
 
