@@ -32,6 +32,9 @@ RobustHyperSafetyPreservation.v
 RobustHyperSafetyCriterion.v
 
 Robust2relTraceProperty.v
+Robust2relTraceCriterion.v
+Robust2relSSCHPreservation.v
+Robust2relSSCHCriterion.v
 
 ResourceExhaustion.v
 
