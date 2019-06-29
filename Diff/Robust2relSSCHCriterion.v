@@ -72,14 +72,6 @@ Section Robust2relCrit.
   Local Definition σ : (prop__T * prop__T -> Prop) -> (prop__S * prop__S -> Prop) := prod_σ σ__π.
   Local Definition τ : (prop__S * prop__S -> Prop) -> (prop__T * prop__T -> Prop) := prod_τ τ__π.
   
-  (* Local Definition sCl_σ :  ((trace__T -> Prop) * (trace__T -> Prop) -> Prop) -> *)
-  (*                           ((trace__S -> Prop) * (trace__S -> Prop) -> Prop) := *)
-  (*   sCl_σ σ__π. *)
-  
-  (* Definition sCl_τ : ((trace__S -> Prop) * (trace__S -> Prop) -> Prop) -> *)
-  (*                    ((trace__T -> Prop) * (trace__T -> Prop) -> Prop) := *)
-  (*   sCl_τ τ__π. *)
-  
 
   Local Definition sCl_σR2rhP := sCl_σR2rhP compilation_chain
                                            Source_Semantics Target_Semantics
@@ -107,8 +99,20 @@ Section Robust2relCrit.
                      sem__S (plug__S P2 C__S) s2 ) <->
     (beh__T (plug__T (P1 ↓) C__T)) ⊆ τ__π (beh__S (plug__S P1 C__S)) /\
     (beh__T (plug__T (P2 ↓) C__T)) ⊆ τ__π (beh__S (plug__S P2 C__S)).
-  Admitted. 
-    
+  Proof.
+    split.
+    + move => lhs. split.
+         move => t1 Hsem1. destruct (non_empty_sem Target_Semantics (plug__T (P2 ↓) C__T)) as [t2 Hsem2].
+         destruct (lhs t1 t2 Hsem1 Hsem2) as [s1 [s2 [rel1 [rel2 [Hsem1' Hsem2']]]]].
+         now exists s1. 
+       move => t2 Hsem2. destruct (non_empty_sem Target_Semantics (plug__T (P1 ↓) C__T)) as [t1 Hsem1].
+       destruct (lhs t1 t2 Hsem1 Hsem2) as [s1 [s2 [rel1 [rel2 [Hsem1' Hsem2']]]]].
+       now exists s2.
+    + move => [H1 H2] t1 t2 Hsem1 Hsem2.
+      move: (H1 t1 Hsem1) (H2 t2 Hsem2). rewrite /τ__π /α /induced_connection /low_rel /=.
+        by firstorder.
+   Qed.      
+      
   Theorem rel_R2rSCHC_sCl_τR2rSCHP :
     rel_R2rSCHC <->
     (forall (P1 P2 : par__S) S, SCH2 S -> sCl_τR2rhP P1 P2 S).
