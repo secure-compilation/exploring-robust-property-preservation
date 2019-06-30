@@ -243,9 +243,11 @@ Module Core.
     Build_prg (link_funs p c) (par_main p).
 
   (* Traces as evaluation results. *)
-  Inductive trace :=
-  | Result : nat -> trace
-  | Output : nat -> trace -> trace.
+  Inductive event : Set :=
+  | Result : nat -> event
+  | Output : nat -> event.
+
+  Definition trace := list event.
 
   (* Evaluation-based semantics, returns both trace and result.
        RB: An Out expression can itself produce traces, which is nonstandard.
@@ -282,7 +284,7 @@ Module Core.
   (*       end *)
   (*   in eval e. *)
 
-  Inductive eval_fun (arg : nat) : expr -> (nat * list nat) -> Prop :=
+  Inductive eval_fun (arg : nat) : expr -> (nat * trace) -> Prop :=
   | FEval_Const : forall n,
       eval_fun arg (Const n) (n, [])
   | FEval_Plus : forall e1 e2 n1 n2 t1 t2,
@@ -301,7 +303,7 @@ Module Core.
       eval_fun arg (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
   | FEval_Out : forall eout e nout n tout t,
       eval_fun arg eout (nout, tout) -> eval_fun arg e (n, t) ->
-      eval_fun arg (Out eout e) (n, tout ++ [nout] ++ t)
+      eval_fun arg (Out eout e) (n, tout ++ [Output nout] ++ t)
   | FEval_Arg :
       eval_fun arg Arg (arg, [])
   (* A temporary hack covering the bad case. *)
@@ -343,7 +345,7 @@ Module Core.
   (*       end *)
   (*   in eval e. *)
 
-  Inductive eval_main (fs : funmap_turn) : expr -> (nat * list nat) -> Prop :=
+  Inductive eval_main (fs : funmap_turn) : expr -> (nat * trace) -> Prop :=
   | Eval_Const : forall n,
       eval_main fs (Const n) (n, [])
   | Eval_Plus : forall e1 e2 n1 n2 t1 t2,
@@ -362,7 +364,7 @@ Module Core.
       eval_main fs (IfLe ecomp1 ecomp2 ethen eelse) (n, t1 ++ t2 ++ t)
   | Eval_Out : forall eout e nout n tout t,
       eval_main fs eout (nout, tout) -> eval_main fs e (n, t) ->
-      eval_main fs (Out eout e) (n, tout ++ [nout] ++ t)
+      eval_main fs (Out eout e) (n, tout ++ [Output nout] ++ t)
   | Eval_Fun : forall id turn earg e arg n targ t,
       StringMap.find id fs = Some (turn, e) ->
       eval_main fs earg (arg, targ) -> eval_fun arg e (n, t) ->
@@ -376,26 +378,10 @@ Module Core.
   | Eval_BadArg :
       eval_main fs Arg (0, []).
 
-  (* Fixpoint gen_trace (res: nat) (outs : list nat) : trace := *)
-  (*   match outs with *)
-  (*   | [] => Result res *)
-  (*   | out :: outs' => Output out (gen_trace res outs') *)
-  (*   end. *)
-
-  Inductive gen_trace (res : nat) : list nat -> trace -> Prop :=
-  | Gen_Nil :
-      gen_trace res [] (Result res)
-  | Gen_Cons : forall out outs t,
-      gen_trace res outs t -> gen_trace res (out :: outs) (Output out t).
-
-  (* Definition eval_prg (p : prg) : trace := *)
-  (*   let '(n, t) := eval_main (prg_funs p) (prg_main p) in gen_trace n t. *)
-
   Inductive eval_prg (p : prg) : trace -> Prop :=
-  | Eval_Prg : forall n l t,
-      eval_main (prg_funs p) (prg_main p) (n, l) ->
-      gen_trace n l t ->
-      eval_prg p t.
+  | Eval_Prg : forall n t,
+      eval_main (prg_funs p) (prg_main p) (n, t) ->
+      eval_prg p (t ++ [Result n]).
 
   Inductive sem : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p t -> sem p t.
@@ -537,10 +523,10 @@ Module RTCtilde.
      will say less about the target in the source, but also be a bit easier to
      prove. *)
   Inductive trel : Core.trace -> Core.trace -> Prop :=
-  | RelResult : forall ns nt,
-      trel (Core.Result ns) (Core.Result nt)
+  | RelResult : forall n,
+      trel [Core.Result n] [Core.Result n]
   | RelOutput : forall ns nt t,
-      trel (Core.Result ns) t -> trel (Core.Result ns) (Core.Output nt t).
+      trel [Core.Result ns] t -> trel [Core.Result ns] (Core.Output nt :: t).
 
   (* Clean up contexts and traces.
        RB: Better names to avoid Core vs. Target and Source confusion. *)
@@ -577,27 +563,38 @@ Module RTCtilde.
       (* (source_ctx_wf_clean_expr _) *)
   .
 
-  Fixpoint clean_trace (t : Core.trace) : Core.trace :=
-    match t with
-    | Core.Result n => t
-    | Core.Output n t' => clean_trace t'
-    end.
+  (* Fixpoint clean_trace (t : Core.trace) : Core.trace := *)
+  (*   match t with *)
+  (*   | Core.Result n => t *)
+  (*   | Core.Output n t' => clean_trace t' *)
+  (*   end. *)
+  Definition clean_trace (t : Core.trace) : Core.trace :=
+    [last t (Core.Result 0)]. (* Ensure default is never used. *)
 
   (* Properties of trace cleanup. *)
-  Lemma clean_trace_result : forall t, exists n, clean_trace t = Core.Result n.
+  Remark last_cons_singleton : forall A (l : list A) a d, last (l ++ [a]) d = a.
+  Admitted.
+
+  Lemma clean_trace_result :
+    forall p t, Core.sem p t ->
+    exists n, clean_trace t = [Core.Result n].
   Proof.
-    intros t. induction t as [n | n t [n' IHt]].
-    - now exists n.
-    - now exists n'.
+    intros p t Hsem.
+    inversion Hsem as [? ? Heval]; subst.
+    inversion Heval as [n t' Heval']; subst.
+    exists n. unfold clean_trace.
+    destruct t' as [n' | n' t'].
+    - reflexivity.
+    - now rewrite last_cons_singleton.
   Qed.
 
-  Lemma trel_clean_trace : forall t, trel (clean_trace t) t.
-  Proof.
-    intros t. induction t as [| n t IHt].
-    - now constructor.
-    - simpl. destruct (clean_trace_result t) as [n' Hclean].
-      rewrite Hclean in *. now constructor.
-  Qed.
+  (* Lemma trel_clean_trace : forall t, trel (clean_trace t) t. *)
+  (* Proof. *)
+  (*   intros t. induction t as [| n t IHt]. *)
+  (*   - now constructor. *)
+  (*   - simpl. destruct (clean_trace_result t) as [n' Hclean]. *)
+  (*     rewrite Hclean in *. now constructor. *)
+  (* Qed. *)
 
   Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : Core.trace) :
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
@@ -617,10 +614,11 @@ Module RTCtilde.
       destruct ctx_t as [funs_t];
       simpl in *; subst.
     - inversion Hsem as [? ? Heval]; subst.
-      inversion Heval as [m l ? Heval' Htrace]; subst. simpl in Heval'.
-      constructor. econstructor.
-      + now constructor.
-      + inversion Heval'; subst. inversion Htrace; subst. now constructor.
+      inversion Heval as [m l Heval']; subst. simpl in Heval'.
+      constructor. unfold clean_trace. rewrite last_cons_singleton.
+      inversion Heval'; subst.
+      change [Core.Result m] with (nil ++ [Core.Result m]). constructor. simpl.
+      now constructor.
   Admitted.
 
   (* Properties of context cleanup. *)
