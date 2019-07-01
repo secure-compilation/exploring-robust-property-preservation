@@ -619,6 +619,14 @@ Module RTCtilde.
     - now rewrite last_cons_singleton.
   Qed.
 
+  Remark clean_trace_last_result : forall p t n,
+    sem p (t ++ [Result n]) ->
+    clean_trace (t ++ [Result n]) = [Result n].
+  Proof.
+    intros p t n Hsem.
+    unfold clean_trace. now rewrite last_cons_singleton.
+  Qed.
+
   (* Lemma trel_clean_trace : forall t, trel (clean_trace t) t. *)
   (* Proof. *)
   (*   intros t. induction t as [| n t IHt]. *)
@@ -637,7 +645,9 @@ Module RTCtilde.
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
     Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
   Proof.
-    (* Initial well-formedness conditions. *)
+    (* Initial well-formedness conditions -- because of the simple setting and
+       the various harmonies, these are not currently as necessary as they would
+       generally be. *)
     (* pose proof wf_par_s (Source.par_core par_s) as Hwf_par_s. *)
     (* pose proof wf_ctx_t ctx_t as Hwf_ctx_t. *)
     (* Some syntactic manipulations. *)
@@ -677,10 +687,13 @@ Module RTCtilde.
         assert (Hsem1' : sem (link (Build_par funs_s main1) (Build_ctx funs_t)) (t1 ++ [Result n1]))
           by admit.
         specialize (IHmain1 _ _ _ Hsem1' (eq_refl _)).
+        unfold clean_trace in IHmain1. rewrite last_cons_singleton in IHmain1.
         inversion IHmain1 as [? ? Heval1']; subst.
-        inversion Heval1 as [? ? Heval1'' Htrace]; subst.
+        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
+        unfold Core.link in Heval1''. simpl in Heval1''.
+        change [Result n1] with ([] ++ [Result n1]) in Htrace.
         apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
-        simpl in *. admit. (* Use well-formedness to complete proof. *)
+        assumption.
       + (* Symmetric case *)
         admit.
     - (* Times *)
