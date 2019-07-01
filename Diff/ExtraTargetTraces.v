@@ -3,6 +3,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.FSets.FMapInterface.
+Require Import Coq.FSets.FMapFacts.
 Require Import Coq.FSets.FMapWeakList.
 Require Import Coq.FSets.FSetWeakList.
 Require Import TraceModel.
@@ -29,6 +30,8 @@ End DecidableString.
 
 Module StringMap : WS with Module E := DecidableString :=
   FMapWeakList.Make DecidableString.
+
+Module StringMapFacts := WFacts_fun DecidableString StringMap.
 
 (* And function name sets, for interfacing purposes. *)
 Module StringSet := FSetWeakList.Make DecidableString.
