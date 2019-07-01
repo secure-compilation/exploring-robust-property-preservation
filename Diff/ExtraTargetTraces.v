@@ -537,6 +537,9 @@ End Compiler.
 
 (* Compiler proofs. *)
 Module RTCtilde.
+  (* Work takes place in the core language, so make this implicit. *)
+  Import Core.
+
   (* Well-formedness of programs as assumptions. This works around some
      imperfections in the common definitions but is potentially inconsistent,
      and must be applied judiciously. *)
@@ -550,62 +553,62 @@ Module RTCtilde.
   (* A simple trace relation that does not track program-context changes. It
      will say less about the target in the source, but also be a bit easier to
      prove. *)
-  Inductive trel : Core.trace -> Core.trace -> Prop :=
+  Inductive trel : trace -> trace -> Prop :=
   | RelResult : forall n,
-      trel [Core.Result n] [Core.Result n]
+      trel [Result n] [Result n]
   | RelOutput : forall ns nt t,
-      trel [Core.Result ns] t -> trel [Core.Result ns] (Core.Output nt :: t).
+      trel [Result ns] t -> trel [Result ns] (Output nt :: t).
 
   (* Clean up contexts and traces.
        RB: Better names to avoid Core vs. Target and Source confusion. *)
-  Fixpoint clean_expr (e : Core.expr) : Core.expr :=
+  Fixpoint clean_expr (e : expr) : expr :=
     match e with
-    | Core.Const _ | Core.Arg => e
-    | Core.Plus e1 e2 => Core.Plus (clean_expr e1) (clean_expr e2)
-    | Core.Times e1 e2 => Core.Times (clean_expr e1) (clean_expr e2)
-    | Core.Out _ e' => clean_expr e'
-    | Core.IfLe econd1 econd2 ethen eelse =>
-      Core.IfLe (clean_expr econd1) (clean_expr econd2)
+    | Const _ | Arg => e
+    | Plus e1 e2 => Plus (clean_expr e1) (clean_expr e2)
+    | Times e1 e2 => Times (clean_expr e1) (clean_expr e2)
+    | Out _ e' => clean_expr e'
+    | IfLe econd1 econd2 ethen eelse =>
+      IfLe (clean_expr econd1) (clean_expr econd2)
                 (clean_expr ethen) (clean_expr eelse)
-    | Core.Fun f e' => Core.Fun f (clean_expr e')
+    | Fun f e' => Fun f (clean_expr e')
     end.
 
-  Lemma core_ctx_wf_clean_expr (ctx : Core.ctx) :
-    Core.ctx_wf (Core.ctx_funs ctx) ->
-    Core.ctx_wf (StringMap.map clean_expr (Core.ctx_funs ctx)).
+  Lemma core_ctx_wf_clean_expr (ctx : ctx) :
+    ctx_wf (ctx_funs ctx) ->
+    ctx_wf (StringMap.map clean_expr (ctx_funs ctx)).
   Admitted.
 
-  Definition clean_ctx_core (ctx : Core.ctx) :=
-    Core.Build_ctx
-       (StringMap.map clean_expr (Core.ctx_funs ctx))
-       (* (core_ctx_wf_clean_expr _ (Core.ctx_prop ctx))) *)
+  Definition clean_ctx_core (ctx : ctx) :=
+    Build_ctx
+       (StringMap.map clean_expr (ctx_funs ctx))
+       (* (core_ctx_wf_clean_expr _ (ctx_prop ctx))) *)
   .
 
-  Lemma source_ctx_wf_clean_expr (ctx : Core.ctx) :
+  Lemma source_ctx_wf_clean_expr (ctx : ctx) :
     Source.ctx_wf (clean_ctx_core ctx).
   Admitted.
 
-  Definition clean_ctx (ctx : Core.ctx) : Source.ctx :=
+  Definition clean_ctx (ctx : ctx) : Source.ctx :=
     Source.Build_ctx
       (clean_ctx_core ctx)
       (* (source_ctx_wf_clean_expr _) *)
   .
 
-  (* Fixpoint clean_trace (t : Core.trace) : Core.trace := *)
+  (* Fixpoint clean_trace (t : trace) : trace := *)
   (*   match t with *)
-  (*   | Core.Result n => t *)
-  (*   | Core.Output n t' => clean_trace t' *)
+  (*   | Result n => t *)
+  (*   | Output n t' => clean_trace t' *)
   (*   end. *)
-  Definition clean_trace (t : Core.trace) : Core.trace :=
-    [last t (Core.Result 0)]. (* Ensure default is never used. *)
+  Definition clean_trace (t : trace) : trace :=
+    [last t (Result 0)]. (* Ensure default is never used. *)
 
   (* Properties of trace cleanup. *)
   Remark last_cons_singleton : forall A (l : list A) a d, last (l ++ [a]) d = a.
   Admitted.
 
-  Lemma clean_trace_result :
-    forall p t, Core.sem p t ->
-    exists n, clean_trace t = [Core.Result n].
+  Remark clean_trace_some_result :
+    forall p t, sem p t ->
+    exists n, clean_trace t = [Result n].
   Proof.
     intros p t Hsem.
     inversion Hsem as [? ? Heval]; subst.
@@ -630,7 +633,7 @@ Module RTCtilde.
   Admitted.
 
   (* Main auxiliary result. *)
-  Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : Core.trace) :
+  Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : trace) :
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
     Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
   Proof.
