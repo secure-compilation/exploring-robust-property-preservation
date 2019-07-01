@@ -596,32 +596,66 @@ Module RTCtilde.
   (*     rewrite Hclean in *. now constructor. *)
   (* Qed. *)
 
+  (* Properties of context cleanup. *)
   Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : Core.trace) :
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
     Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
   Proof.
+    (* Some syntactic manipulations. *)
     destruct par_s as [par_s].
     unfold Source.sem_wrap, Source.link,
-           Source.prg_core, Source.par_core, Source.ctx_core,
-           Core.link, Core.link_funs;
+           Source.prg_core, Source.par_core, Source.ctx_core;
+           (* Core.link, Core.link_funs; *)
       simpl;
       intros Hsem.
+    set (Hpar_s := par_s).
+    set (Hctx_t := ctx_t).
     remember (Core.par_main par_s) as main eqn:Hmain.
-    revert par_s ctx_t t Hsem Hmain.
+    (* Induction on the main expression. *)
+    revert par_s Hpar_s ctx_t Hctx_t t Hsem Hmain.
     induction main;
-      intros par_s ctx_t t Hsem Hmain;
+      intros par_s Hpar_s ctx_t Hctx_t t Hsem Hmain;
       destruct par_s as [funs_s main_s];
       destruct ctx_t as [funs_t];
       simpl in *; subst.
-    - inversion Hsem as [? ? Heval]; subst.
+    - (* Const *)
+      inversion Hsem as [? ? Heval]; subst.
       inversion Heval as [m l Heval']; subst. simpl in Heval'.
       constructor. unfold clean_trace. rewrite last_cons_singleton.
       inversion Heval'; subst.
       change [Core.Result m] with (nil ++ [Core.Result m]). constructor. simpl.
       now constructor.
+    - (* Plus *)
+      inversion Hsem as [? ? Heval]; subst.
+      inversion Heval as [m l Heval']; subst. simpl in Heval'.
+      constructor. unfold clean_trace. rewrite last_cons_singleton.
+      inversion Heval'; subst.
+      change [Core.Result (n1 + n2)] with (nil ++ [Core.Result (n1 + n2)]). constructor. simpl.
+      change [] with (@nil Core.event ++ []). constructor.
+      + apply eval_main_link_prg in H2.
+        pose proof Core.Eval_Prg _ _ _ H2 as Heval1.
+        pose proof Core.SemEval _ _ Heval1 as Hsem1.
+        assert (Hsem1' : sem (link (Build_par funs_s main1) (Build_ctx funs_t)) (t1 ++ [Result n1]))
+          by admit.
+        specialize (IHmain1 _ _ _ Hsem1' (eq_refl _)).
+        inversion IHmain1 as [? ? Heval1']; subst.
+        inversion Heval1 as [? ? Heval1'' Htrace]; subst.
+        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
+        simpl in *. admit. (* Use well-formedness to complete proof. *)
+      + (* Symmetric case *)
+        admit.
+    - (* Times *)
+      admit.
+    - (* IfLe *)
+      admit.
+    - (* Out *)
+      admit.
+    - (* Fun *)
+      admit.
+    - (* Arg - ruled out by well-formedness conditions *)
+      admit.
   Admitted.
 
-  (* Properties of context cleanup. *)
 
   (* Main theorem. *)
   Theorem extra_target_RTCt : rel_RTC Compiler.chain Source.sem Target.sem trel.
