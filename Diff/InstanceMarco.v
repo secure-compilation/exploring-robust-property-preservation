@@ -1,3 +1,5 @@
+(* MARCO: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
+
 (* Require Import TraceModel.
 Require Import LanguageModel.
 Require Import ChainModel. *)
@@ -111,7 +113,7 @@ Module Source.
     | SM_OP2 : forall se1 se2 n sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Op (Num n) se1) sl1 (Op (Num n) se2)
     | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) Empty_l (Num n)
     | SM_Let1 : forall sx1 st1 se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Letin sx1 st1 se1 se3) sl1 (Letin sx1 st1 se2 se3)
-    (*| SM_Let : forall sx1 sv1 se1 st1, sv sv1 -> ssem_p (Letin sx1 st1 sv1 se1) Empty_l se1  (* TODO with subs *)*)
+    | SM_Let : forall sx1 sv1 se1 st1, sv sv1 -> ssem_p (Letin sx1 st1 sv1 se1) Empty_l se1   TODO with subs 
     | SM_Ifg : forall se1 se2 sl1 se3 se4, ssm_sem se1 sl1 se2 -> ssm_sem (Ifz se1 se3 se4) sl1 (Ifz se2 se3 se4)
     | SM_Ift : forall n se1 se2, n=0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se1 
     | SM_Iff : forall n se1 se2, n<>0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se2
