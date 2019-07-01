@@ -657,12 +657,12 @@ Module RTCtilde.
     destruct par_s as [par_s].
     unfold Source.sem_wrap, Source.link,
            Source.prg_core, Source.par_core, Source.ctx_core;
-           (* Core.link, Core.link_funs; *)
+           (* link, link_funs; *)
       simpl;
       intros Hsem.
     set (Hpar_s := par_s).
     set (Hctx_t := ctx_t).
-    remember (Core.par_main par_s) as main eqn:Hmain.
+    remember (par_main par_s) as main eqn:Hmain.
     (* Induction on the main expression. *)
     revert par_s Hpar_s ctx_t Hctx_t t Hsem Hmain.
     induction main;
@@ -675,25 +675,25 @@ Module RTCtilde.
       inversion Heval as [m l Heval']; subst. simpl in Heval'.
       constructor. unfold clean_trace. rewrite last_cons_singleton.
       inversion Heval'; subst.
-      change [Core.Result m] with (nil ++ [Core.Result m]). constructor. simpl.
+      change [Result m] with (nil ++ [Result m]). constructor. simpl.
       now constructor.
     - (* Plus *)
       inversion Hsem as [? ? Heval]; subst.
       inversion Heval as [m l Heval']; subst. simpl in Heval'.
       constructor. unfold clean_trace. rewrite last_cons_singleton.
       inversion Heval'; subst.
-      change [Core.Result (n1 + n2)] with (nil ++ [Core.Result (n1 + n2)]). constructor. simpl.
-      change [] with (@nil Core.event ++ []). constructor.
+      change [Result (n1 + n2)] with (nil ++ [Result (n1 + n2)]). constructor. simpl.
+      change [] with (@nil event ++ []). constructor.
       + apply eval_main_link_prg in H2.
-        pose proof Core.Eval_Prg _ _ _ H2 as Heval1.
-        pose proof Core.SemEval _ _ Heval1 as Hsem1.
+        pose proof Eval_Prg _ _ _ H2 as Heval1.
+        pose proof SemEval _ _ Heval1 as Hsem1.
         assert (Hsem1' : sem (link (Build_par funs_s main1) (Build_ctx funs_t)) (t1 ++ [Result n1]))
           by admit.
         specialize (IHmain1 _ _ _ Hsem1' (eq_refl _)).
         unfold clean_trace in IHmain1. rewrite last_cons_singleton in IHmain1.
         inversion IHmain1 as [? ? Heval1']; subst.
         inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-        unfold Core.link in Heval1''. simpl in Heval1''.
+        unfold link in Heval1''. simpl in Heval1''.
         change [Result n1] with ([] ++ [Result n1]) in Htrace.
         apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
         assumption.
@@ -720,9 +720,9 @@ Module RTCtilde.
       + (* Found *)
         admit.
       + (* Not found: contradiction based on linkability and well-formedness. *)
-        destruct (wf_prg_c (Core.link Hpar_s Hctx_t)) as [_ _ Hcontra].
+        destruct (wf_prg_c (link Hpar_s Hctx_t)) as [_ _ Hcontra].
         inversion Hcontra as [| | | | | ? ? Hcontra' |]; subst.
-        unfold Core.link, Hpar_s, Hctx_t in Hcontra'. simpl in Hcontra'.
+        unfold link, Hpar_s, Hctx_t in Hcontra'. simpl in Hcontra'.
         apply StringMap.mem_2 in Hcontra'.
         apply StringMapFacts.not_find_in_iff in H0.
         contradiction.
