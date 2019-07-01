@@ -213,8 +213,18 @@ Module Core.
     | _, _ => None
     end.
 
-  Definition link_funs (p : par) (c : ctx) :=
-    StringMap.map2 link_fun (par_funs p) (ctx_funs c).
+  Definition link_funmaps (funs_p funs_c : funmap) : funmap_turn :=
+    StringMap.map2 link_fun funs_p funs_c.
+
+  Definition link_funs (p : par) (c : ctx) : funmap_turn :=
+    link_funmaps  (par_funs p) (ctx_funs c).
+
+  Remark link_funs_main : forall funs_p funs_c main_p main_p',
+      link_funs (Build_par funs_p main_p ) (Build_ctx funs_c) =
+      link_funs (Build_par funs_p main_p') (Build_ctx funs_c).
+  Proof.
+    unfold link_funs. reflexivity.
+  Qed.
 
   Definition linkable (p : par) (c : ctx) : bool :=
     closed (link_funs p c) (par_main p).
@@ -392,6 +402,14 @@ Module Core.
     induction main.
     - eexists. now do 3 econstructor.
   Admitted.
+
+  Remark eval_main_link_prg funs_p main_p funs_c main res :
+    eval_main (link_funs (Build_par funs_p main_p) (Build_ctx funs_c)) main res ->
+    let pc := Build_prg (link_funmaps funs_p funs_c) main in
+    eval_main (prg_funs pc) (prg_main pc) res.
+  Proof.
+    unfold link_funs. intros Heval. assumption.
+  Qed.
 End Core.
 
 (* Target language. *)
@@ -519,6 +537,16 @@ End Compiler.
 
 (* Compiler proofs. *)
 Module RTCtilde.
+  (* Well-formedness of programs as assumptions. This works around some
+     imperfections in the common definitions but is potentially inconsistent,
+     and must be applied judiciously. *)
+  Parameter wf_par_c : forall p, Core.par_wf (Core.par_funs p) (Core.par_main p).
+  Parameter wf_ctx_c : forall c, Core.ctx_wf (Core.ctx_funs c).
+  Parameter wf_prg_c : forall p, Core.prg_wf (Core.prg_funs p) (Core.prg_main p).
+  Parameter wf_par_s : forall p, Source.par_wf p.
+  Parameter wf_ctx_s : forall c, Source.ctx_wf c.
+  Parameter wf_prg_s : forall p, Source.prg_wf p.
+
   (* A simple trace relation that does not track program-context changes. It
      will say less about the target in the source, but also be a bit easier to
      prove. *)
@@ -597,10 +625,18 @@ Module RTCtilde.
   (* Qed. *)
 
   (* Properties of context cleanup. *)
+  Lemma wf_clean_ctx :
+    forall ctx, Source.ctx_wf (Source.ctx_core (clean_ctx ctx)).
+  Admitted.
+
+  (* Main auxiliary result. *)
   Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : Core.trace) :
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
     Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
   Proof.
+    (* Initial well-formedness conditions. *)
+    (* pose proof wf_par_s (Source.par_core par_s) as Hwf_par_s. *)
+    (* pose proof wf_ctx_t ctx_t as Hwf_ctx_t. *)
     (* Some syntactic manipulations. *)
     destruct par_s as [par_s].
     unfold Source.sem_wrap, Source.link,
@@ -647,13 +683,33 @@ Module RTCtilde.
     - (* Times *)
       admit.
     - (* IfLe *)
-      admit.
+      inversion Hsem as [? ? Heval]; subst.
+      inversion Heval as [m l Heval']; subst. simpl in Heval'.
+      constructor. unfold clean_trace. rewrite last_cons_singleton.
+      inversion Heval'; subst.
+      + (* Then *)
+        admit.
+      + (* Else *)
+        admit.
     - (* Out *)
       admit.
     - (* Fun *)
-      admit.
-    - (* Arg - ruled out by well-formedness conditions *)
-      admit.
+      inversion Hsem as [? ? Heval]; subst.
+      inversion Heval as [m l Heval']; subst. simpl in Heval'.
+      constructor. unfold clean_trace. rewrite last_cons_singleton.
+      inversion Heval'; subst.
+      + (* Found *)
+        admit.
+      + (* Not found: contradiction based on linkability and well-formedness. *)
+        destruct (wf_prg_c (Core.link Hpar_s Hctx_t)) as [_ _ Hcontra].
+        inversion Hcontra as [| | | | | ? ? Hcontra' |]; subst.
+        unfold Core.link, Hpar_s, Hctx_t in Hcontra'. simpl in Hcontra'.
+        apply StringMap.mem_2 in Hcontra'.
+        apply StringMapFacts.not_find_in_iff in H0.
+        contradiction.
+    - (* Arg: contradiction based on simple well-formedness. *)
+      destruct (wf_par_c Hpar_s) as [_ Hcontra]. unfold Hpar_s in Hcontra.
+      now inversion Hcontra.
   Admitted.
 
 
