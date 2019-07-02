@@ -1,8 +1,11 @@
 (* MARCO: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
 
-(* Require Import TraceModel.
+Require Import TraceModel.
 Require Import LanguageModel.
-Require Import ChainModel. *)
+Require Import ChainModel.
+Require Import NonRobustTraceCriterion.
+
+Set Bullet Behavior "Strict Subproofs".
 
 Module Source.
 
@@ -140,6 +143,15 @@ Module Source.
   Inductive sbeh : ss -> sq -> Prop :=
     | B_Sing : forall ss1 sq1 , sbsem ss1 sq1 Skip -> sbeh ss1 sq1.
 
+  (* source language with vacuous context linking *)
+  Definition slang := Build_Language (fun (par : ss) (_ : unit) => par).
+
+  (* source semantics *)
+  Theorem exists_trace : forall s, exists q, sbeh s q.
+  Admitted.
+
+  Definition ssemt := Build_Semantics slang sbeh exists_trace.
+
 End Source.
 
 Module Target.
@@ -245,6 +257,15 @@ Module Target.
   Inductive tbeh : ts -> tq -> Prop :=
     | B_Sing : forall ts1 tq1 , tbsem ts1 tq1 Skip -> tbeh ts1 tq1.
 
+  (* source language with vacuous context linking *)
+  Definition tlang := Build_Language (fun (par : ts) (_ : unit) => par).
+
+  (* source semantics *)
+  Theorem exists_trace : forall s, exists q, tbeh s q.
+  Admitted.
+
+  Definition tsemt := Build_Semantics tlang tbeh exists_trace.
+
 End Target.
 
 Module Compiler.
@@ -260,6 +281,15 @@ Module Compiler.
     | CMPE_P1 : forall se1 st1 te1, S.swte (S.P1 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P1 se1) st1 (T.P1 te1)
     | CMPE_P2 : forall se1 st1 te1, S.swte (S.P2 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P2 se1) st1 (T.P2 te1).
 
+  Fixpoint cmpe' (se : S.se) : T.te :=
+    match se with
+    | S.Num n => T.Num n
+    | S.Op se1 se2 => T.Op (cmpe' se1) (cmpe' se2)
+    | S.Pair se1 se2 => T.Pair (cmpe' se1) (cmpe' se2)
+    | S.P1 se1 => T.P1 (cmpe' se1)
+    | S.P2 se2 => T.P2 (cmpe' se2)
+    end.
+
   (*given a source expression with a type, translate that into a target sequence.*)
   Inductive gensend : S.se -> S.st -> T.ts -> Prop :=
     | Snd_Base : forall n1 n2 n1' n2', 
@@ -272,12 +302,30 @@ Module Compiler.
       gensend (S.P2 se1) (st1) (ts2) ->
       gensend (se1) (S.Times st1 st2) (T.Seq ts1 ts2).
 
+  Fixpoint gensend' (se : S.se) : T.ts :=
+    match se with
+    | S.Pair (S.Num n1) (S.Num n2) => T.Seq (T.Send (T.Num n1)) (T.Send (T.Num n2))
+    | S.Pair se1 se2 => T.Seq (gensend' se1) (gensend' se2)
+    | _ => T.Skip (* bad case *)
+    end.
+
   (*compile statements*)
   Inductive cmp : S.ss -> T.ts -> Prop :=
     | CMP_Skip : cmp S.Skip T.Skip
     | CMP_Ifz : forall seg ss1 ss2 teg ts1 ts2, S.swts (S.Ifz seg ss1 ss2)-> cmpe seg S.Nat teg -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Ifz seg ss1 ss2) (T.Ifz teg ts1 ts2)
+    (* RB: What information is te1 giving us here? *)
     | CMP_Send : forall se1 st1 te1 ts1, S.swts (S.Send se1) -> cmpe se1 st1 te1 -> gensend se1 st1 ts1 -> cmp (S.Send se1) ts1
     | CMP_Seq : forall ss1 ss2 ts1 ts2, S.swts (S.Seq ss1 ss2) -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Seq ss1 ss2) (T.Seq ts1 ts2).
+
+  Fixpoint cmp' (ss : S.ss) : T.ts :=
+    match ss with
+    | S.Skip => T.Skip
+    | S.Ifz seg ss1 ss2 => T.Ifz (cmpe' seg) (cmp' ss1) (cmp' ss2)
+    | S.Send se1 => gensend' se1
+    | S.Seq ss1 ss2 => T.Seq (cmp' ss1) (cmp' ss2)
+    end.
+
+  Definition chain := Build_CompilationChain S.slang T.tlang cmp' cmp' id.
 
 End Compiler.
 
@@ -333,4 +381,7 @@ Module RTC.
   Module C := Compiler.
   Module R := TraceRelation.
 
+  Theorem RTC :
+    rel_TC Compiler.chain Source.ssemt Target.tsemt TraceRelation.trel_q.
+  Admitted.
 End RTC.
