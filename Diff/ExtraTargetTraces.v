@@ -643,7 +643,44 @@ Module RTCtilde.
     forall ctx, Source.ctx_wf (Source.ctx_core (clean_ctx ctx)).
   Admitted.
 
-  (* Main auxiliary result. *)
+  Lemma find_clean_ctx : forall k par_s ctx_t tag e,
+    StringMap.find k (link_funs par_s ctx_t) = Some (tag, e) ->
+    StringMap.find k (link_funs par_s (clean_ctx_core ctx_t)) = Some (tag, clean_expr e).
+  Admitted.
+
+  (* Main auxiliary results. *)
+  Lemma eval_fun_clean (arg res : nat) (e : expr) (t : trace) :
+    funless e ->
+    eval_fun arg e (res, t) ->
+    eval_fun arg (clean_expr e) (res, []).
+  Proof.
+    revert arg res t.
+    induction e; subst;
+      intros arg res t Hwf Heval;
+      inversion Hwf; subst;
+      inversion Heval; subst;
+      simpl.
+    - assumption.
+    - change [] with (@nil event ++ []). constructor.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+    - change [] with (@nil event ++ []). constructor.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+    - change [] with (@nil event ++ [] ++ []). econstructor.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+      + assumption.
+      + eapply IHe3; eassumption.
+    - change [] with (@nil event ++ [] ++ []). eapply FEval_IfElse.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+      + assumption.
+      + eapply IHe4; eassumption.
+    - eapply IHe2; eassumption.
+    - assumption.
+  Qed.
+
   Lemma sem_clean (par_s : Source.par) (ctx_t : Core.ctx) (t : trace) :
     Core.sem (Core.link (Compiler.comp_par par_s) ctx_t) t ->
     Source.sem_wrap (Source.link par_s (clean_ctx ctx_t)) (clean_trace t).
@@ -710,7 +747,7 @@ Module RTCtilde.
         admit.
       + (* Else *)
         admit.
-    - (* Out *)
+    - (* Out: contradiction based on simple well-formedness. *)
       admit.
     - (* Fun *)
       inversion Hsem as [? ? Heval]; subst.
@@ -718,7 +755,26 @@ Module RTCtilde.
       constructor. unfold clean_trace. rewrite last_cons_singleton.
       inversion Heval'; subst.
       + (* Found *)
-        admit.
+        change [Result ?X] with (nil ++ [Result X]). constructor. simpl.
+        change [] with (@nil event ++ []). econstructor.
+        * apply find_clean_ctx in H3. eassumption.
+        * (* Standard inductive case (on an existential and other names). *)
+          apply eval_main_link_prg in H4.
+          pose proof Eval_Prg _ _ _ H4 as Heval1.
+          pose proof SemEval _ _ Heval1 as Hsem1.
+          assert (Hsem1' : sem (link (Build_par funs_s main) (Build_ctx funs_t)) (targ ++ [Result arg]))
+            by admit.
+          specialize (IHmain _ _ _ Hsem1' (eq_refl _)).
+          unfold clean_trace in IHmain. rewrite last_cons_singleton in IHmain.
+          inversion IHmain as [? ? Heval1']; subst.
+          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
+          unfold link in Heval1''. simpl in Heval1''.
+          change [Result ?X] with ([] ++ [Result X]) in Htrace.
+          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
+          eassumption.
+        * eapply eval_fun_clean; last eassumption.
+          destruct (core_ctx_wf_clean_expr Hctx_t (wf_ctx_c Hctx_t)) as [Hwf].
+          admit. (* By case analysis on the provenance of the function body. *)
       + (* Not found: contradiction based on linkability and well-formedness. *)
         destruct (wf_prg_c (link Hpar_s Hctx_t)) as [_ _ Hcontra].
         inversion Hcontra as [| | | | | ? ? Hcontra' |]; subst.
