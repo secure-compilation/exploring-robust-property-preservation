@@ -381,7 +381,19 @@ Module RTC.
   Module C := Compiler.
   Module R := TraceRelation.
 
+  Theorem cc_expr : forall se1 se2, T.tv (C.cmpe' se2) -> T.tsemrt (C.cmpe' se1) (C.cmpe' se2) -> S.ssemrt se1 se2 /\ S.sv se2.
+  Proof.
+  Admitted.
+
   Theorem RTC :
     rel_TC Compiler.chain Source.ssemt Target.tsemt TraceRelation.trel_q.
   Admitted.
 End RTC.
+
+
+
+
+
+
+
+
