@@ -1,8 +1,8 @@
 (* MARCO: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
 
-(* Require Import TraceModel.
+Require Import TraceModel.
 Require Import LanguageModel.
-Require Import ChainModel. *)
+Require Import ChainModel. 
 
 Module Source.
 
