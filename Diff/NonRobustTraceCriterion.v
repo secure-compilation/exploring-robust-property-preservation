@@ -96,5 +96,32 @@ Section TracePropertiesCriterion.
   Proof. by rewrite σTP_τTP rel_TC_τTP. Qed.
 
 
+  (* rel version of forward compiler correctness *)
+  Definition rel_FC1 : Prop :=
+    forall W s, sem__S W s -> exists t, rel s t /\ sem__T (W ↓) t.
+
+  Definition σ_fwd : prop__T -> prop__S :=
+    fun π__T : prop__T =>
+      (fun s => exists t, rel s t /\ π__T t). 
+
+  Lemma rel_FC1' : rel_FC1 <-> forall W, beh__S W ⊆ σ_fwd (beh__T (W ↓)). 
+  Proof.
+    split.
+    - rewrite /σ_fwd => Hrel W s behWs.
+      exact (Hrel W s behWs).
+    - move => Hrel' W s behWs. exact (Hrel' W s behWs).       
+  Qed.
+
+  (* another rel version of forward compiler correctness
+     CA: this ensures rel_TC + rel_FC2 -> rel_HC
+   *)
+
+  Definition rel_FC2 : Prop :=
+    forall W s, sem__S W s -> (forall t, rel s t -> sem__T (W ↓) t).
+
+  Lemma rel_FC2' : rel_FC2 <-> (forall W, beh__S W ⊆ σ' (beh__T (W ↓))).
+  Proof. firstorder. Qed. 
+    
+      
 End TracePropertiesCriterion.
 
