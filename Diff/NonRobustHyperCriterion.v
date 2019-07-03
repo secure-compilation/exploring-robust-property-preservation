@@ -139,6 +139,6 @@ Section HyperCriterion.
     apply: mutual_inclusion.
     + exact (bcc W).
     + rewrite rel_adjunction_law. exact (fcc W).
-  Qed.   
+  Qed.
 
 End HyperCriterion.
