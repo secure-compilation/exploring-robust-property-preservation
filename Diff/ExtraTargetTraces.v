@@ -399,12 +399,81 @@ Module Core.
   Inductive sem : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p t -> sem p t.
 
+  Remark trace_exists_fun : forall arg e, exists res t, eval_fun arg e (res, t).
+  Proof.
+    intros arg e. induction e.
+    - do 2 eexists. now econstructor.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe1 as [n1 [? Hfun1]].
+      destruct IHe2 as [n2 [? Hfun2]].
+      destruct IHe3 as [n3 [? Hfun3]].
+      destruct IHe4 as [n4 [? Hfun4]].
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + do 2 eexists. econstructor; eassumption.
+      + do 2 eexists. eapply FEval_IfElse; eassumption.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe as [? [? Hfun]].
+      do 2 eexists. econstructor; eassumption.
+    - do 2 eexists. econstructor; eassumption.
+  Qed.
+
   Remark trace_exists : forall W : prg, exists t : trace, sem W t.
   Proof.
     intros [funs main].
     induction main.
-    - eexists. now do 3 econstructor.
-  Admitted.
+    - eexists. now do 3 constructor.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain1 as [? Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [n1 t1 Hmain1]; subst.
+      destruct IHmain2 as [? Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [n2 t2 Hmain2]; subst.
+      destruct IHmain3 as [? Hsem3];
+        inversion Hsem3 as [? ? Hprg3];
+        inversion Hprg3 as [n3 t3 Hmain3]; subst.
+      destruct IHmain4 as [? Hsem4];
+        inversion Hsem4 as [? ? Hprg4];
+        inversion Hprg4 as [n4 t4 Hmain4]; subst.
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + eexists. do 3 econstructor; eassumption.
+      + eexists. do 2 constructor. eapply Eval_IfElse; eassumption.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain as [? Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [n t' Hmain]; subst.
+      destruct (StringMap.find k funs) as [[turn e] |] eqn:Hcase.
+      + destruct (trace_exists_fun n e) as [? [? Hfun]].
+        eexists. do 2 constructor. eapply Eval_Fun; try eassumption.
+      + eexists. do 3 constructor; eassumption.
+    - eexists. do 3 constructor; eassumption.
+  Qed.
 
   Remark eval_main_link_prg funs_p main_p funs_c main res :
     eval_main (link_funs (Build_par funs_p main_p) (Build_ctx funs_c)) main res ->
@@ -519,7 +588,10 @@ Module Source.
   Definition sem_wrap (p : prg) : Core.trace -> Prop := Core.sem (prg_core p).
 
   Remark trace_exists : forall W : prg, exists t : Core.trace, sem_wrap W t.
-  Admitted.
+  Proof.
+    intros [W]. unfold sem_wrap. simpl.
+    now apply Core.trace_exists.
+  Qed.
 
   Definition sem := Build_Semantics lang sem_wrap trace_exists.
 End Source.
