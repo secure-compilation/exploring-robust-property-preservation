@@ -260,6 +260,9 @@ Module Core.
   | Result : nat -> event
   | Output : nat -> event.
 
+  Inductive reg_event : event -> Prop :=
+    RE_Output : forall n, reg_event (Output n).
+
   Definition trace := list event.
 
   (* Evaluation-based semantics, returns both trace and result.
@@ -482,6 +485,11 @@ Module Core.
   Proof.
     unfold link_funs. intros Heval. assumption.
   Qed.
+
+  Theorem sem_trace :
+    forall p t, sem p t ->
+    exists t' res, t = t' ++ [Result res] /\ Forall reg_event t'.
+  Admitted.
 End Core.
 
 (* Target language. *)
@@ -702,13 +710,20 @@ Module RTCtilde.
     unfold clean_trace. now rewrite last_cons_singleton.
   Qed.
 
-  (* Lemma trel_clean_trace : forall t, trel (clean_trace t) t. *)
-  (* Proof. *)
-  (*   intros t. induction t as [| n t IHt]. *)
-  (*   - now constructor. *)
-  (*   - simpl. destruct (clean_trace_result t) as [n' Hclean]. *)
-  (*     rewrite Hclean in *. now constructor. *)
-  (* Qed. *)
+  Theorem trel_clean_trace : forall p t,
+    sem p t ->
+    trel (clean_trace t) t.
+  Proof.
+    intros p t Hsem.
+    apply sem_trace in Hsem as [t' [res [Ht Ht']]]; subst.
+    induction t' as [| n' t' IHt'].
+    - now constructor.
+    - unfold clean_trace in *. rewrite last_cons_singleton in *.
+      simpl. inversion Ht' as [| ? ? Ht'hd Ht'tl]; subst.
+      specialize (IHt' Ht'tl).
+      inversion Ht'hd; subst.
+      now constructor.
+  Qed.
 
   (* Properties of context cleanup. *)
   Lemma wf_clean_ctx :
@@ -859,13 +874,12 @@ Module RTCtilde.
       now inversion Hcontra.
   Admitted.
 
-
   (* Main theorem. *)
-  Theorem extra_target_RTCt : rel_RTC Compiler.chain Source.sem Target.sem trel.
+  Corollary extra_target_RTCt : rel_RTC Compiler.chain Source.sem Target.sem trel.
   Proof.
     unfold rel_RTC. simpl. intros par_s ctx_t t Hsem.
     exists (clean_ctx ctx_t), (clean_trace t). split.
-    - now apply trel_clean_trace.
+    - eapply trel_clean_trace; eassumption.
     - now apply sem_clean.
   Qed.
 End RTCtilde.
