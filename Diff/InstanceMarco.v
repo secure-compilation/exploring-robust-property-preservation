@@ -381,8 +381,66 @@ Module RTC.
   Module C := Compiler.
   Module R := TraceRelation.
 
-  Theorem cc_expr : forall se1 se2, T.tv (C.cmpe' se2) -> T.tsemrt (C.cmpe' se1) (C.cmpe' se2) -> S.ssemrt se1 se2 /\ S.sv se2.
+  Theorem cc_expr : forall se1 se2,
+    T.tv (C.cmpe' se2) ->
+    T.tsemrt (C.cmpe' se1) (C.cmpe' se2) ->
+    S.ssemrt se1 se2 /\ S.sv se2.
   Proof.
+
+    (* A not very promising start. *)
+
+    (* induction se1; *)
+    (*   intros se2 Hval Hsem; *)
+    (*   simpl in *. *)
+    (* - inversion Hsem; subst. split. *)
+    (*   + econstructor. *)
+    (* Restart. *)
+
+    (* The intuitive starting point is promising. *)
+
+    intros se1 se2 Hval Hsem.
+    remember (C.cmpe' se1) as se1_comp eqn:Hse1.
+    remember (C.cmpe' se2) as se2_comp eqn:Hse2.
+    revert se1 se2 Hse1 Hse2 Hval.
+    induction Hsem;
+      intros se1 se2 Hse1 Hse2 Hval;
+      subst.
+    - assert (se1 = se2) by admit; subst se2.
+      split.
+      + constructor.
+      + admit. (* Theorem out. *)
+    - apply IHHsem.
+      + (* After applying the IH, hopefully at the proper time, only this
+           sub-goal is interesting. *)
+
+        (* This sequence of inversions seems natural, but the equality seems
+           too strong to prove. *)
+
+        (* inversion H; subst. *)
+        (* inversion H2; subst. *)
+        (* * inversion H0; subst; *)
+        (*     inversion H1; subst. *)
+        (*   -- Print Target.Op. *)
+
+        (* This variant leads to similar sub-goals. *)
+
+        (* inversion H0; subst. *)
+        (* * inversion H; subst. *)
+        (*   inversion H2; subst. *)
+        (*   -- inversion H1; subst. *)
+        (*      rewrite <- H3 in H2. *)
+        (*      (* Check T.PR_Op. *) *)
+        (*      admit. *)
+        (*   -- inversion H1; subst. *)
+        (*      rewrite <- H3 in H2. *)
+        (*      (* Check T.PR_P1. *) *)
+        (*      admit. *)
+        (*   -- admit. *)
+
+        admit.
+
+      + reflexivity.
+      + assumption.
   Admitted.
 
   Theorem RTC :
