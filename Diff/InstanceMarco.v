@@ -403,8 +403,8 @@ Module RTCprop.
     intros ss.
     induction ss; intros ts tq Hcmp Htbeh.
     - (* Skip. *)
-      exists S.Empty_q.
-      inversion Hcmp; subst.
+      exists S.Empty_q.       (*instantiate existential*) 
+      inversion Hcmp; subst.  (*  *)
       inversion Htbeh; subst.
       inversion H; subst.
       split.
