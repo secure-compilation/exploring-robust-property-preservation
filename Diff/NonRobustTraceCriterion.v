@@ -120,8 +120,24 @@ Section TracePropertiesCriterion.
     forall W s, sem__S W s -> (forall t, rel s t -> sem__T (W ↓) t).
 
   Lemma rel_FC2' : rel_FC2 <-> (forall W, beh__S W ⊆ σ' (beh__T (W ↓))).
-  Proof. firstorder. Qed. 
+  Proof. firstorder. Qed.
+
+
+  (* if the Target semantics is deterministic than 
+     forward compiler correctness implies target compiler correctness
+  *)
+  Theorem trg_determinism_relFC1_relTC :
+    (forall W__T : prg__T, exists! t__W, sem__T W__T t__W) ->
+    rel_FC1 -> rel_TC.
+  Proof.
+    move => trg_det fcc W t semWt.
+    destruct (trg_det (W ↓)) as [t__w [semWt__W Heq]].
+    destruct (non_empty_sem  Source_Semantics W) as [s semWs].
+    exists s. split; auto.
+    destruct (fcc W s semWs) as [t' [rel_s_t' semWt']]. 
+    move: (Heq t semWt) (Heq t' semWt'). move => H1 H2.  
+      by rewrite -H1 H2.
+  Qed.     
     
-      
 End TracePropertiesCriterion.
 
