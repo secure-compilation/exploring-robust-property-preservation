@@ -289,15 +289,6 @@ Module Compiler.
     | CMPE_P1 : forall se1 st1 te1, S.swte (S.P1 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P1 se1) st1 (T.P1 te1)
     | CMPE_P2 : forall se1 st1 te1, S.swte (S.P2 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P2 se1) st1 (T.P2 te1).
 
-  Fixpoint cmpe' (se : S.se) : T.te :=
-    match se with
-    | S.Num n => T.Num n
-    | S.Op se1 se2 => T.Op (cmpe' se1) (cmpe' se2)
-    | S.Pair se1 se2 => T.Pair (cmpe' se1) (cmpe' se2)
-    | S.P1 se1 => T.P1 (cmpe' se1)
-    | S.P2 se2 => T.P2 (cmpe' se2)
-    end.
-
   (*given a source expression with a type, translate that into a target sequence.*)
   Inductive gensend : S.se -> S.st -> T.ts -> Prop :=
     | Snd_Base : forall n1 n2 n1' n2', 
@@ -310,13 +301,6 @@ Module Compiler.
       gensend (S.P2 se1) (st1) (ts2) ->
       gensend (se1) (S.Times st1 st2) (T.Seq ts1 ts2).
 
-  Fixpoint gensend' (se : S.se) : T.ts :=
-    match se with
-    | S.Pair (S.Num n1) (S.Num n2) => T.Seq (T.Send (T.Num n1)) (T.Send (T.Num n2))
-    | S.Pair se1 se2 => T.Seq (gensend' se1) (gensend' se2)
-    | _ => T.Skip (* bad case *)
-    end.
-
   (*compile statements*)
   Inductive cmp : S.ss -> T.ts -> Prop :=
     | CMP_Skip : cmp S.Skip T.Skip
@@ -324,22 +308,6 @@ Module Compiler.
     (* RB: What information is te1 giving us here? *)
     | CMP_Send : forall se1 st1 te1 ts1, S.swts (S.Send se1) -> cmpe se1 st1 te1 -> gensend se1 st1 ts1 -> cmp (S.Send se1) ts1
     | CMP_Seq : forall ss1 ss2 ts1 ts2, S.swts (S.Seq ss1 ss2) -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Seq ss1 ss2) (T.Seq ts1 ts2).
-
-  Fixpoint cmp' (ss : S.ss) : T.ts :=
-    match ss with
-    | S.Skip => T.Skip
-    | S.Ifz seg ss1 ss2 => T.Ifz (cmpe' seg) (cmp' ss1) (cmp' ss2)
-    | S.Send se1 => gensend' se1
-    | S.Seq ss1 ss2 => T.Seq (cmp' ss1) (cmp' ss2)
-    end.
-
-  Definition chain := Build_CompilationChain S.slang T.tlang cmp' cmp' id.
-
-  Fixpoint tcmp (st : S.st) : T.tt :=
-    match st with
-    | S.Nat => T.Nat
-    | S.Times st1 st2 => T.Times (tcmp st1) (tcmp st2)
-    end.
 
 End Compiler.
 
@@ -405,6 +373,17 @@ Module RTCprop.
     S.ssemrt se1 se2 /\ S.sv se2.
   Admitted.
 
+(*gensend is correct*)
+  Theorem gensend_correct : forall se1 st1 ts1 tq1 se2 sm1,
+    C.gensend se1 st1 ts1 ->
+    T.tbsem ts1 tq1 T.Skip ->
+    S.ssemrt se1 se2 ->
+    S.sv se2 ->
+    S.sv_sm se2 sm1 ->
+    R.trel_msg sm1 tq1.
+  Proof.
+    Admitted.
+
 (*the statements compiler is correct with respect to tctilde*)
   Theorem rel_TC :
     forall ss ts tq,
@@ -419,7 +398,7 @@ Module RTCprop.
     - (* Skip. *)
       exists S.Empty_q.       (*instantiate existential*) 
       inversion Hcmp; subst.  (* obtain what the compiled statement is by applying the definition of compilation to the current statment: skip  *)
-      inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*)
+      inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*) 
       inversion H; subst. (* apply definition of tbsem and obtain the only queue produced by skip: the empty queue*)
       split. (* split the AND conjuncts *)
       + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*) 
@@ -445,6 +424,7 @@ Module RTCprop.
         * inversion Hsbeh2; subst.
           assumption. (* same as above for s2*)
     - (* Ifz. *)
+      (*most of the rules follow the same intuition above, so nothing is commented there*)
       inversion Hcmp; subst. (*a*)
       inversion Htbeh; subst. (*a*)
       inversion H; subst. (*a*)
@@ -456,19 +436,21 @@ Module RTCprop.
         * assumption. (*a*)
         * constructor.  (*a*)
           inversion H2; subst. (*a*)
+          (* the next asserts build what is required to call teh auxiliary lemma to proceed *)
           assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)).
             (*proof of the assert*) constructor. reflexivity. apply S.T_Num. (*a*)
           assert (Htv : T.tv (T.Num 0)) by apply T.V_Num. (*a*)
           pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*) 
-          inversion Hsbeh1; subst. (*a*)
-          apply S.B_Ift with 0.
+          inversion Hsbeh1; subst. (* obtain the sbsem step for the then branch *)
+          apply S.B_Ift with 0. (* the sbsem of the if now holds by the related reduction, supply 0 as the value the guard reduces to (coq can't figure it out alone)*)
+          (* these 3 below are the assumptions needed to call the b_ift rule above, they are all trivial*)
           reflexivity.
           assumption.
           assumption. (*a*)
           (* REMARK: instead of inversion 5 lines above, we had the following:
-          econstructor. (*a*)
-          -- reflexivity. (*a*)
-          -- assumption. (*a*)
+          econstructor. 
+          -- reflexivity. 
+          -- assumption. 
           then here we had the inversion followed by assumption. This way seems cleaneer *)
       + (* Else case. *)
         apply T.B_Sing in H10.
@@ -478,16 +460,43 @@ Module RTCprop.
         * assumption.
         * constructor.
           inversion H2; subst.
-          assert (Hcomp2 : C.cmpe (S.Num n) S.Nat (T.Num n)) by admit.
+          assert (Hcomp2 : C.cmpe (S.Num n) S.Nat (T.Num n)).
+            (* prove the assert *) constructor. reflexivity. apply S.T_Num.
           assert (Htv : T.tv (T.Num n)) by apply T.V_Num.
           pose proof cc_expr _ _ _ _ _ H3 Hcomp2 Htv H9 as [ Hssemrt Hsv].
           inversion Hsbe2; subst.
           apply S.B_iff with n; assumption.
     - (* Send. *)
+      inversion Hcmp; subst.
+      inversion Htbeh; subst.
+      inversion H; subst.
+      + 
       admit.
   Admitted.
 
 End RTCprop.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 (*tctilde proven in the general framework. equivalent to ours but more convoluted*)
 Module RTC.
@@ -495,6 +504,38 @@ Module RTC.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.
+
+  (* moved these here, this section is hopefully going to the dumpster*)
+  Fixpoint cmpe' (se : S.se) : T.te :=
+    match se with
+    | S.Num n => T.Num n
+    | S.Op se1 se2 => T.Op (cmpe' se1) (cmpe' se2)
+    | S.Pair se1 se2 => T.Pair (cmpe' se1) (cmpe' se2)
+    | S.P1 se1 => T.P1 (cmpe' se1)
+    | S.P2 se2 => T.P2 (cmpe' se2)
+    end.
+  Fixpoint gensend' (se : S.se) : T.ts :=
+    match se with
+    | S.Pair (S.Num n1) (S.Num n2) => T.Seq (T.Send (T.Num n1)) (T.Send (T.Num n2))
+    | S.Pair se1 se2 => T.Seq (gensend' se1) (gensend' se2)
+    | _ => T.Skip (* bad case *)
+    end.
+
+  Fixpoint cmp' (ss : S.ss) : T.ts :=
+    match ss with
+    | S.Skip => T.Skip
+    | S.Ifz seg ss1 ss2 => T.Ifz (cmpe' seg) (cmp' ss1) (cmp' ss2)
+    | S.Send se1 => gensend' se1
+    | S.Seq ss1 ss2 => T.Seq (cmp' ss1) (cmp' ss2)
+    end.
+
+  Definition chain := Build_CompilationChain S.slang T.tlang cmp' cmp' id.
+
+  Fixpoint tcmp (st : S.st) : T.tt :=
+    match st with
+    | S.Nat => T.Nat
+    | S.Times st1 st2 => T.Times (tcmp st1) (tcmp st2)
+    end.
 
   Theorem cc_expr_val : forall se1, T.tv (C.cmpe' se1) -> S.sv se1.
   Proof.
