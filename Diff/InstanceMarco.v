@@ -392,6 +392,14 @@ Module RTCprop.
   Module C := Compiler.
   Module R := TraceRelation.
 
+  Theorem cc_expr : forall se1 se2 st te1 te2,
+    C.cmpe se1 st te1 ->
+    C.cmpe se2 st te2 ->
+    T.tv te2 ->
+    T.tsemrt te1 te2 ->
+    S.ssemrt se1 se2 /\ S.sv se2.
+  Admitted.
+
   Theorem rel_TC :
     forall ss ts tq,
       C.cmp ss ts ->
@@ -429,9 +437,23 @@ Module RTCprop.
       inversion Htbeh; subst.
       inversion H; subst.
       + (* Then case. *)
-        admit.
+        apply T.B_Sing in H10.
+        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]].
+        exists sq1. split.
+        * assumption.
+        * constructor.
+          inversion H2; subst.
+          assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)) by admit.
+          assert (Htv : T.tv (T.Num 0)) by admit.
+          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv].
+          econstructor.
+          -- reflexivity.
+          -- assumption.
+          -- inversion Hsbeh1; subst. assumption.
       + (* Else case. *)
         admit.
+    - (* Send. *)
+      admit.
   Admitted.
 
 End RTCprop.
