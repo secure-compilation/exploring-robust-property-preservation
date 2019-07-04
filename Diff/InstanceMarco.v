@@ -386,6 +386,56 @@ Module TraceRelation.
 
 End TraceRelation.
 
+Module RTCprop.
+  Module S := Source.
+  Module T := Target.
+  Module C := Compiler.
+  Module R := TraceRelation.
+
+  Theorem rel_TC :
+    forall ss ts tq,
+      C.cmp ss ts ->
+      T.tbeh ts tq ->
+    exists sq,
+      R.trel_q sq tq /\ S.sbeh ss sq.
+  Proof.
+    (* Induction on source statements. *)
+    intros ss.
+    induction ss; intros ts tq Hcmp Htbeh.
+    - (* Skip. *)
+      exists S.Empty_q.
+      inversion Hcmp; subst.
+      inversion Htbeh; subst.
+      inversion H; subst.
+      split.
+      + constructor.
+      + constructor. constructor.
+    - (* Seq. *)
+      inversion Hcmp; subst.
+      inversion Htbeh; subst.
+      inversion H; subst.
+      apply T.B_Sing in H5.
+      apply T.B_Sing in H7.
+      specialize (IHss1 ts1 tq1 H2 H5) as [sq1 [Htrel1 Hsbeh1]].
+      specialize (IHss2 ts2 tq2 H4 H7) as [sq2 [Htrel2 Hsbeh2]].
+      exists (S.Queue sq1 sq2). split.
+      + (* Either nested induction on queues or revised cases? *)
+        admit.
+      + constructor. constructor.
+        * inversion Hsbeh1; subst. assumption.
+        * inversion Hsbeh2; subst. assumption.
+    - (* Ifz. *)
+      inversion Hcmp; subst.
+      inversion Htbeh; subst.
+      inversion H; subst.
+      + (* Then case. *)
+        admit.
+      + (* Else case. *)
+        admit.
+  Admitted.
+
+End RTCprop.
+
 Module RTC.
   Module S := Source.
   Module T := Target.
