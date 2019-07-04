@@ -1,4 +1,7 @@
 (* MARCO: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
+(*inversion -> pattern match on stuff in the HP*)
+(*constructor -> pattern match on stuff in the conclusion*)
+(*personal TODO: annotate proof steps to indicate wtf were we doing and why*)
 
 Require Import TraceModel.
 Require Import LanguageModel.
@@ -386,12 +389,14 @@ Module TraceRelation.
 
 End TraceRelation.
 
+(*proving RTCtilde for our instance with our definition*)
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.
 
+(*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
     C.cmpe se2 st te2 ->
@@ -400,6 +405,7 @@ Module RTCprop.
     S.ssemrt se1 se2 /\ S.sv se2.
   Admitted.
 
+(*the statements compiler is correct with respect to tctilde*)
   Theorem rel_TC :
     forall ss ts tq,
       C.cmp ss ts ->
@@ -412,44 +418,52 @@ Module RTCprop.
     induction ss; intros ts tq Hcmp Htbeh.
     - (* Skip. *)
       exists S.Empty_q.       (*instantiate existential*) 
-      inversion Hcmp; subst.  (*  *)
-      inversion Htbeh; subst.
-      inversion H; subst.
+      inversion Hcmp; subst.  (* obtain what the compiled statement is by applying the definition of compilation to the current statment: skip  *)
+      inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*)
+      inversion H; subst. (* apply definition of tbsem and obtain the only queue produced by skip: the empty queue*)
+      split. (* split the AND conjuncts *)
+      + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*)
+      + constructor. (* apply definition of sbeh to say that skip produces empty queue *)
+        constructor. (* by definition of sbeh that amounts to proving sbsem step for skip, which we have in the S_Skip case, so this holds*)
+    - (* inductive cases: seq, if and send *)
+      (* Seq. *) 
+      inversion Hcmp; subst. (* by definition of the compiler we obtain a compiled target seq, we know the source is well typed and each subpart of the seq is compiled to target statements *)
+      inversion Htbeh; subst. (* apply definition of tbeh and obtain a tbsem step for the target seq *)
+      inversion H; subst. (* apply definition of tbsem for seq to know taht each substatement reduces with its own quque*)
+      apply T.B_Sing in H5. (* apply the definition of tbsem in the B_sing case with the tbsem assumption to obtain the related tbeh -- we need this to apply the IH  *)
+      apply T.B_Sing in H7. (* same as above *)
+      specialize (IHss1 ts1 tq1 H2 H5) as [sq1 [Htrel1 Hsbeh1]]. (* instantiate the IH with the required things . . . (H5 is now rewritten to mathc the tbeh) and give the right names to the obtained HPs *)
+      specialize (IHss2 ts2 tq2 H4 H7) as [sq2 [Htrel2 Hsbeh2]]. (* same *)
+      exists (S.Queue sq1 sq2). (* we now have the two queues, which we join. *)
       split.
-      + constructor.
-      + constructor. constructor.
-    - (* Seq. *)
-      inversion Hcmp; subst.
-      inversion Htbeh; subst.
-      inversion H; subst.
-      apply T.B_Sing in H5.
-      apply T.B_Sing in H7.
-      specialize (IHss1 ts1 tq1 H2 H5) as [sq1 [Htrel1 Hsbeh1]].
-      specialize (IHss2 ts2 tq2 H4 H7) as [sq2 [Htrel2 Hsbeh2]].
-      exists (S.Queue sq1 sq2). split.
       + (* Either nested induction on queues or revised cases? *)
         admit.
-      + constructor. constructor.
-        * inversion Hsbeh1; subst. assumption.
-        * inversion Hsbeh2; subst. assumption.
+      + constructor. (* apply definition of sbeh*)
+        constructor. (* apply definition of sbsem, we need to prove that each substatement steps to skip, which we have in the sbeh format so we need to extract the sbsem out of each IH *)
+        * inversion Hsbeh1; subst. (* extract the sbsem for the first statement *)
+          assumption. (* we have it by IH*)
+        * inversion Hsbeh2; subst.
+          assumption. (* same as above for s2*)
     - (* Ifz. *)
-      inversion Hcmp; subst.
-      inversion Htbeh; subst.
-      inversion H; subst.
+      inversion Hcmp; subst. (*a*)
+      inversion Htbeh; subst. (*a*)
+      inversion H; subst. (*a*)
       + (* Then case. *)
-        apply T.B_Sing in H10.
-        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]].
-        exists sq1. split.
-        * assumption.
-        * constructor.
-          inversion H2; subst.
-          assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)) by admit.
-          assert (Htv : T.tv (T.Num 0)) by admit.
-          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv].
-          econstructor.
-          -- reflexivity.
-          -- assumption.
-          -- inversion Hsbeh1; subst. assumption.
+        apply T.B_Sing in H10. (*a*)
+        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*)
+        exists sq1. (*a*)
+        split. (*a*)
+        * assumption. (*a*)
+        * constructor. (*a*)
+          inversion H2; subst. (*a*)
+          assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)) by admit. (*a*)
+          assert (Htv : T.tv (T.Num 0)) by admit. (*a*)
+          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*)
+          econstructor. (*a*)
+          -- reflexivity. (*a*)
+          -- assumption. (*a*)
+          -- inversion Hsbeh1; subst. (*a*)
+            assumption. (*a*)
       + (* Else case. *)
         admit.
     - (* Send. *)
@@ -458,6 +472,7 @@ Module RTCprop.
 
 End RTCprop.
 
+(*tctilde proven in the general framework. equivalent to ours but more convoluted*)
 Module RTC.
   Module S := Source.
   Module T := Target.
