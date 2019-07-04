@@ -422,7 +422,7 @@ Module RTCprop.
       inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*)
       inversion H; subst. (* apply definition of tbsem and obtain the only queue produced by skip: the empty queue*)
       split. (* split the AND conjuncts *)
-      + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*)
+      + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*) 
       + constructor. (* apply definition of sbeh to say that skip produces empty queue *)
         constructor. (* by definition of sbeh that amounts to proving sbsem step for skip, which we have in the S_Skip case, so this holds*)
     - (* inductive cases: seq, if and send *)
@@ -448,24 +448,41 @@ Module RTCprop.
       inversion Hcmp; subst. (*a*)
       inversion Htbeh; subst. (*a*)
       inversion H; subst. (*a*)
-      + (* Then case. *)
+      + (* Then case. *) 
         apply T.B_Sing in H10. (*a*)
-        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*)
+        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*) 
         exists sq1. (*a*)
         split. (*a*)
         * assumption. (*a*)
-        * constructor. (*a*)
+        * constructor.  (*a*)
           inversion H2; subst. (*a*)
-          assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)) by admit. (*a*)
-          assert (Htv : T.tv (T.Num 0)) by admit. (*a*)
-          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*)
+          assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)).
+            (*proof of the assert*) constructor. reflexivity. apply S.T_Num. (*a*)
+          assert (Htv : T.tv (T.Num 0)) by apply T.V_Num. (*a*)
+          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*) 
+          inversion Hsbeh1; subst. (*a*)
+          apply S.B_Ift with 0.
+          reflexivity.
+          assumption.
+          assumption. (*a*)
+          (* REMARK: instead of inversion 5 lines above, we had the following:
           econstructor. (*a*)
           -- reflexivity. (*a*)
           -- assumption. (*a*)
-          -- inversion Hsbeh1; subst. (*a*)
-            assumption. (*a*)
+          then here we had the inversion followed by assumption. This way seems cleaneer *)
       + (* Else case. *)
-        admit.
+        apply T.B_Sing in H10.
+        specialize (IHss2 ts2 tq H6 H10) as [sq2 [Htrel2 Hsbe2]].
+        exists sq2.
+        split.
+        * assumption.
+        * constructor.
+          inversion H2; subst.
+          assert (Hcomp2 : C.cmpe (S.Num n) S.Nat (T.Num n)) by admit.
+          assert (Htv : T.tv (T.Num n)) by apply T.V_Num.
+          pose proof cc_expr _ _ _ _ _ H3 Hcomp2 Htv H9 as [ Hssemrt Hsv].
+          inversion Hsbe2; subst.
+          apply S.B_iff with n; assumption.
     - (* Send. *)
       admit.
   Admitted.
