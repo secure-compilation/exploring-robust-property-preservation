@@ -105,31 +105,23 @@ Module Source.
   Inductive ssem : sectx -> se -> se -> Prop :=
     | Ctx : forall ectx1 se1 se2, ssem_p se1 se2 -> ssem ectx1 se1 se2.
 
+  (* source small step structural semantics *)
+  Inductive ssm_sem : se -> se -> Prop :=
+    | SM_OP1 : forall se1 se2 se3, ssm_sem se1 se2 -> ssm_sem (Op se1 se3) (Op se2 se3)
+    | SM_OP2 : forall se1 se2 n, ssm_sem se1 se2 -> ssm_sem (Op (Num n) se1) (Op (Num n) se2)
+    | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) (Num n)
+    | SM_Pair1 : forall se1 se2 se3, ssm_sem se1 se2 -> ssm_sem (Pair se1 se3) (Pair se2 se3) 
+    | SM_Pair2 : forall se1 se2 sv1, ssm_sem se1 se2 -> ssm_sem (Pair sv1 se1) (Pair sv1 se2)
+    | SM_P11 : forall se1 se2, ssm_sem se1 se2 -> ssm_sem (P1 se1) (P1 se2)
+    | SM_P21 : forall se1 se2, ssm_sem se1 se2 -> ssm_sem (P2 se1) (P2 se2)
+    | SM_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P1 (Pair sv1 sv2)) sv1
+    | SM_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P2 (Pair sv1 sv2)) sv2.
+
   (*reflexive transitive closure of the single semantic step*)
   Inductive ssemrt : se -> se -> Prop :=
     | Refl : forall se1, ssemrt se1 se1
-    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.
-
-  (*source small step structural semantics*)
-  (*Inductive ssm_sem : se -> sl -> se -> Prop :=
-    | SM_OP1 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Op se1 se3) sl1 (Op se2 se3)
-    | SM_OP2 : forall se1 se2 n sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Op (Num n) se1) sl1 (Op (Num n) se2)
-    | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) Empty_l (Num n)
-    | SM_Let1 : forall sx1 st1 se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Letin sx1 st1 se1 se3) sl1 (Letin sx1 st1 se2 se3)
-    | SM_Let : forall sx1 sv1 se1 st1, sv sv1 -> ssem_p (Letin sx1 st1 sv1 se1) Empty_l se1   TODO with subs 
-    | SM_Ifg : forall se1 se2 sl1 se3 se4, ssm_sem se1 sl1 se2 -> ssm_sem (Ifz se1 se3 se4) sl1 (Ifz se2 se3 se4)
-    | SM_Ift : forall n se1 se2, n=0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se1 
-    | SM_Iff : forall n se1 se2, n<>0-> ssm_sem (Ifz (Num n) se1 se2) Empty_l se2
-    | SM_Pair1 : forall se1 se2 se3 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Pair se1 se3) sl1 (Pair se2 se3) 
-    | SM_Pair2 : forall se1 se2 sv1 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Pair sv1 se1) sl1 (Pair sv1 se2)
-    | SM_P11 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P1 se1) sl1 (P1 se2)
-    | SM_P21 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (P2 se1) sl1 (P2 se2)
-    | SM_P1 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P1 (Pair sv1 sv2)) Empty_l sv1
-    | SM_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P2 (Pair sv1 sv2)) Empty_l sv2
-    | SM_Send1 : forall se1 se2 sl1, ssm_sem se1 sl1 se2 -> ssm_sem (Send se1) sl1 (Send se2)
-    | SM_Send : forall sv1 sv2 smv1 smv2, sv_sm sv1 smv1 -> sv_sm sv2 smv2 -> ssm_sem (Send (Pair sv1 sv2)) (Msg_l (Msg smv1 smv2)) (Num 0)
-    | SM_Seq1 : forall se1 se2 sl1 se3, ssm_sem se1 sl1 se2 -> ssm_sem (Seq se1 se3) sl1 (Seq se2 se3)
-    | SM_Seq : forall sv1 se2, sv sv1 -> ssm_sem (Seq sv1 se2) Empty_l se2.*)
+    (* | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3. *)
+    | Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.
 
   (*source big step reduction that chains messages as queues*)
   Inductive sbsem : ss -> sq -> ss -> Prop :=
@@ -240,10 +232,23 @@ Module Target.
   Inductive tsem : tectx -> te -> te -> Prop :=
     | Ctx : forall ectx1 te1 te2, tsem_p te1 te2 -> tsem ectx1 te1 te2.
 
+  (* source small step structural semantics *)
+  Inductive tsm_sem : te -> te -> Prop :=
+    | SM_OP1 : forall te1 te2 te3, tsm_sem te1 te2 -> tsm_sem (Op te1 te3) (Op te2 te3)
+    | SM_OP2 : forall te1 te2 n, tsm_sem te1 te2 -> tsm_sem (Op (Num n) te1) (Op (Num n) te2)
+    | SM_OP : forall n1 n2 n, n = n1 + n2 -> tsm_sem (Op (Num n1) (Num n2)) (Num n)
+    | SM_Pair1 : forall te1 te2 te3, tsm_sem te1 te2 -> tsm_sem (Pair te1 te3) (Pair te2 te3) 
+    | SM_Pair2 : forall te1 te2 tv1, tsm_sem te1 te2 -> tsm_sem (Pair tv1 te1) (Pair tv1 te2)
+    | SM_P11 : forall te1 te2, tsm_sem te1 te2 -> tsm_sem (P1 te1) (P1 te2)
+    | SM_P21 : forall te1 te2, tsm_sem te1 te2 -> tsm_sem (P2 te1) (P2 te2)
+    | SM_P1 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsm_sem (P1 (Pair tv1 tv2)) tv1
+    | SM_P2 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsm_sem (P2 (Pair tv1 tv2)) tv2.
+
   (*reflexive transitive closure of the single semantic step*)
   Inductive tsemrt : te -> te -> Prop :=
     | Refl : forall te1, tsemrt te1 te1
-    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.
+    (* | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3. *)
+    | Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.
 
 (*target big step reduction that chains messages as queues*)
   Inductive tbsem : ts -> tq -> ts -> Prop :=
@@ -327,6 +332,12 @@ Module Compiler.
 
   Definition chain := Build_CompilationChain S.slang T.tlang cmp' cmp' id.
 
+  Fixpoint tcmp (st : S.st) : T.tt :=
+    match st with
+    | S.Nat => T.Nat
+    | S.Times st1 st2 => T.Times (tcmp st1) (tcmp st2)
+    end.
+
 End Compiler.
 
 Module TraceRelation.
@@ -381,10 +392,15 @@ Module RTC.
   Module C := Compiler.
   Module R := TraceRelation.
 
-  Theorem cc_expr_val : forall se1. T.tv (C.cmpe' se1) -> S.sv se1.
+  Theorem cc_expr_val : forall se1, T.tv (C.cmpe' se1) -> S.sv se1.
   Proof.
   Admitted.
 
+  Theorem cc_eq : forall se1 se2, C.cmpe' se1 = C.cmpe' se2 -> se1 = se2.
+  Admitted.
+
+  (* Compilation is well-typed (if the input is well-typed). *)
+  (* Theorem cc_wf : forall se st, S.swte se st -> T.twte (C.cmpe' se) (... st). *)
   Theorem cc_expr : forall se1 se2,
     T.tv (C.cmpe' se2) ->
     T.tsemrt (C.cmpe' se1) (C.cmpe' se2) ->
@@ -393,12 +409,15 @@ Module RTC.
 
     (* A not very promising start. *)
 
-    (* induction se1; *)
-    (*   intros se2 Hval Hsem; *)
-    (*   simpl in *. *)
-    (* - inversion Hsem; subst. split. *)
-    (*   + econstructor. *)
-    (* Restart. *)
+    induction se1;
+      intros se2 Hval Hsem;
+      simpl in *.
+    - split.
+      + 
+
+      inversion Hsem; subst. split.
+      + econstructor.
+    Restart.
 
     (* The intuitive starting point is promising. *)
 
@@ -420,11 +439,11 @@ Module RTC.
         (* This sequence of inversions seems natural, but the equality seems
            too strong to prove. *)
 
-        (* inversion H; subst. *)
-        (* inversion H2; subst. *)
-        (* * inversion H0; subst; *)
-        (*     inversion H1; subst. *)
-        (*   -- Print Target.Op. *)
+        inversion H; subst.
+        inversion H2; subst.
+        * inversion H0; subst;
+            inversion H1; subst.
+          -- Print Target.Op.
 
         (* This variant leads to similar sub-goals. *)
 
