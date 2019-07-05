@@ -49,7 +49,7 @@ Module Source.
   Inductive swts : ss -> Prop :=
     | T_Skip : swts Skip
     | T_If : forall seg ss1 ss2, swte seg Nat -> swts ss1 -> swts ss2 -> swts (Ifz seg ss1 ss2)
-    | T_Send : forall se st, swte se st -> swts (Send se)
+    | T_Send : forall se st1 st2, swte se (Times st1 st2) -> swts (Send se)
     | T_Seq : forall ss1 ss2, swts ss1 -> swts ss2 -> swts (Seq ss1 ss2).
 
   (*source messages*)
@@ -374,16 +374,18 @@ Module RTCprop.
   Admitted.
 
 (*gensend is correct*)
-  Theorem gensend_correct : forall se1 st1 ts1 tq1 se2 sm1,
-    C.gensend se1 st1 ts1 ->
-    T.tbsem ts1 tq1 T.Skip ->
-    S.ssemrt se1 se2 ->
-    S.sv se2 ->
-    S.sv_sm se2 sm1 ->
-    R.trel_msg sm1 tq1.
+  Theorem gensend_correct :
+    forall se1 st1 st2 ts1 tq1,
+      C.gensend se1 (S.Times st1 st2) ts1 -> 
+      T.tbsem ts1 tq1 T.Skip ->
+    exists se2 sm1,
+      S.ssemrt se1 se2 /\
+      S.sv se2 /\
+      S.sv_sm se2 sm1 /\
+      R.trel_msg sm1 tq1.
   Proof.
-    Admitted.
-
+  Admitted.
+  
 (*the statements compiler is correct with respect to tctilde*)
   Theorem rel_TC :
     forall ss ts tq,
@@ -455,9 +457,9 @@ Module RTCprop.
       + (* Else case. *)
         apply T.B_Sing in H10.
         specialize (IHss2 ts2 tq H6 H10) as [sq2 [Htrel2 Hsbe2]].
-        exists sq2.
+        exists sq2. 
         split.
-        * assumption.
+        * assumption. 
         * constructor.
           inversion H2; subst.
           assert (Hcomp2 : C.cmpe (S.Num n) S.Nat (T.Num n)).
@@ -469,8 +471,17 @@ Module RTCprop.
     - (* Send. *)
       inversion Hcmp; subst.
       inversion Htbeh; subst.
-      inversion H; subst.
-      + 
+      inversion H0; subst.
+      Print gensend_correct.
+      inversion H1; subst.
+      inversion H4; subst.
+      -- inversion H2; subst. (* op *)
+      -- inversion H; subst ; try inversion H2. (* we analyse what gensend gives back. most are contradictions, only seq is valid *)
+         pose proof gensend_correct _ _ _ _ _ H2 H.
+         (* 2 cases: a flat pair of nums or a nested pair of pairs*)
+         ** exists (S.Sing_q (S.Msg_l (S.Msg_ind (S.Msg_base n1) (S.Msg_base n2) )) S.Empty_q).
+            destruct (H18) as [sexpr [smess [ Hssemrt [Hsv [Hsm_sv Htrelmsg] ] ] ] ].
+         subst.
       admit.
   Admitted.
 
