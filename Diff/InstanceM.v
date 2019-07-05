@@ -1,7 +1,6 @@
-(* MARCO: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
+(* M: personal note: on sublimetext, use sublimecoq-run and the menu-noted *)
 (*inversion -> pattern match on stuff in the HP*)
 (*constructor -> pattern match on stuff in the conclusion*)
-(*personal TODO: annotate proof steps to indicate wtf were we doing and why*)
 
 Require Import TraceModel.
 Require Import LanguageModel.
