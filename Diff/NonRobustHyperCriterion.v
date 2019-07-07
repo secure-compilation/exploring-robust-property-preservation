@@ -98,7 +98,23 @@ Section HyperCriterion.
       destruct (H_τHP Hfoo) as [bs [Heq H]]. subst. exact H.
   Qed.
 
-  (*CA's TODO : relation between tilde_HC and σHP*)
+  (*CA: if τ ⇆ σ is an insertion then
+        tilde_HC =>  σHP 
+        but not able to prove the vicerversa holds  
+        (quite convinced it is not true)
+  *)
+
+  Lemma rel_HC_σHP : (Insertion_snd τ' σ') ->
+    rel_HC -> σHP.
+  Proof.
+    rewrite rel_HC' => HIns Hrel W H__T [b__T [bt_HT Heq]].
+    move: (Hrel W). rewrite /beh__T /beh__S Heq HIns. 
+    move => Heq__T. now subst.        
+  Qed. 
+
+  (****************************************************************)
+
+  (* rel_TC /\ rel_TC_fwd -> rel_HC ? *)
 
   Local Definition rel_TC := rel_TC compilation_chain
                                     Source_Semantics Target_Semantics
