@@ -18,6 +18,7 @@ NonRobustSafetyCriterion.v
 NonRobustHyperDef.v
 NonRobustHyperCriterion.v
 Relation4Correctness.v
+NoTrgGuarantees.v
 ANI.v
 
 RobustTraceProperty.v

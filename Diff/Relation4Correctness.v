@@ -1,11 +1,3 @@
-(*" given a compiler ↓: Source → Target, (and a semantics for the two languages)
-
-    is there a relation ~ ⊆ Trace_S × Trace_T
-
-    such that ↓ is TC̃ and ~ is minimal with this property? "
-
- *)
-
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
@@ -53,7 +45,7 @@ Section Relation.
 
   Local Notation "W ↓" := (cmp W) (at level 50).
 
-  (* Not very interesting... *)
+  (* Cheating relation *)
   Definition rel : trace__S -> trace__T -> Prop :=
     fun t__S t__T => exists W, sem__S W t__S /\ sem__T (W ↓) t__T.
 
@@ -90,5 +82,6 @@ Section Relation.
 
   Corollary cmp_is_σTP : σTP.
   Proof. setoid_rewrite <- rel_TC_σTP. exact cmp_is_rel_TC. Qed.
+   
 
 End Relation.
