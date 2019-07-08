@@ -1,4 +1,3 @@
-
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
