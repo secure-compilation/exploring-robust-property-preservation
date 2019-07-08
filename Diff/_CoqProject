@@ -17,6 +17,8 @@ NonRobustSafetyDef.v
 NonRobustSafetyCriterion.v
 NonRobustHyperDef.v
 NonRobustHyperCriterion.v
+NonRobustSSCHPreservation.v
+NonRobustSSCHCriterion.v
 Relation4Correctness.v
 NoTrgGuarantees.v
 ANI.v
