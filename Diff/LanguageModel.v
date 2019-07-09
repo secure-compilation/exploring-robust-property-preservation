@@ -63,7 +63,7 @@ Lemma hsat_upper_closed  {L : Language}
 Proof.
   intros Hsat1 Hsuper.
   apply Hsuper.
-  now apply Hsat1. 
+  now apply Hsat1.
 Qed.
 
 
@@ -135,12 +135,12 @@ Lemma rhsat_upper_closed {L : Language}
                          {trace_set : Type}
                          (S : Semantics L trace_set)
                          (P : par L ) (H1 H2 : hprop trace_set) :
-  rhsat S P H1 -> H1 ⊆ H2 -> rhsat S P H2.  
+  rhsat S P H1 -> H1 ⊆ H2 -> rhsat S P H2.
 Proof.
-  intros rsat1 Hsuper C. 
+  intros rsat1 Hsuper C.
   apply Hsuper.
   now apply (rsat1 C).
-Qed. 
+Qed.
 
 
 Definition sat2 {L : Language}
@@ -188,7 +188,7 @@ Proof.
   split.
   + intros [t1 H]. rewrite not_forall_ex_not in H.
     destruct H as [t2 H]. rewrite not_imp in H. destruct H as [H1 H].
-    rewrite not_imp in H. destruct H as [H2 H]. 
+    rewrite not_imp in H. destruct H as [H2 H].
     now exists t1, t2.
   + intros [t1 [t2 [H1 [H2 H]]]].
     exists t1. rewrite not_forall_ex_not. exists t2. firstorder.
@@ -208,7 +208,7 @@ Proof.
     unfold sat2 in H; rewrite not_forall_ex_not in H.
     destruct H as [t1 H]; exists t1.
     rewrite not_forall_ex_not in H.
-    destruct H as [t2 H]; exists t2. 
+    destruct H as [t2 H]; exists t2.
     now rewrite !not_imp in H.
   - firstorder.
 Qed.
@@ -242,9 +242,9 @@ Lemma rhsat2_upper_closed {L : Language}
                           {trace_set : Type}
                           (S : Semantics L trace_set)
                           (P1 P2 : par L ) (R1 R2 : (prop trace_set) * (prop trace_set) -> Prop) :
-  rhsat2 S P1 P2 R1 -> R1 ⊆ R2 -> rhsat2 S P1 P2 R2.  
+  rhsat2 S P1 P2 R1 -> R1 ⊆ R2 -> rhsat2 S P1 P2 R2.
 Proof.
-  intros rsat_one Hsuper C. 
+  intros rsat_one Hsuper C.
   apply Hsuper.
   now apply (rsat_one C).
-Qed. 
+Qed.

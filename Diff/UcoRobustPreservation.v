@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect. 
+From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
 Unset Printing Implicit Defensive.
@@ -12,7 +12,7 @@ Require Import Galois.
 Require Import LanguageModel.
 Require Import TraceModel.
 Require Import Properties.
-Require Import ChainModel. 
+Require Import ChainModel.
 Require Import RobustTraceProperty.
 
 (* Every time we can express a Class Ξ via an upper closed operator ξ
@@ -44,26 +44,26 @@ Section Closure_Operators_RobustPreservation.
   Local Definition par__S := par Source.
   Local Definition par__T := par Target.
   Local Definition ctx__S := ctx Source.
-  Local Definition ctx__T := ctx Target. 
+  Local Definition ctx__T := ctx Target.
   Local Definition rsat__S := rsat Source_Semantics.
   Local Definition rsat__T := rsat Target_Semantics.
-  
+
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
- (* CA: don't understand why this does not work 
+ (* CA: don't understand why this does not work
 
    Local Notation " C [ P ] " := (plug _  P C) (at level 50).
   *)
   Local Definition plug__S:= plug Source.
   Local Definition plug__T := plug Target.
-  
+
   Variable σ : prop__T -> prop__S.
   Variable τ : prop__S -> prop__T.
 
   Definition σRP := σRP compilation_chain
                         Source_Semantics Target_Semantics
-                        σ. 
+                        σ.
 
   Variable ϕ_op : (@Uco trace__T).
 
@@ -118,5 +118,5 @@ Section Closure_Operators_RobustPreservation.
   move => H_adj. rewrite -uco_adjuncts'.
     by rewrite -uco_aux. assumption.
 Qed.
- 
+
 End Closure_Operators_RobustPreservation.

@@ -37,25 +37,25 @@ Section Robust2relPreservation.
   Local Definition par__S := par Source.
   Local Definition par__T := par Target.
   Local Definition ctx__S := ctx Source.
-  Local Definition ctx__T := ctx Target. 
+  Local Definition ctx__T := ctx Target.
   Local Definition rsat__S := rsat2 Source_Semantics.
   Local Definition rsat__T := rsat2 Target_Semantics.
-  
+
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
- (* CA: don't understand why this does not work 
+ (* CA: don't understand why this does not work
 
    Local Notation " C [ P ] " := (plug _  P C) (at level 50).
   *)
   Local Definition plug__S:= plug Source.
   Local Definition plug__T := plug Target.
-  
+
   Variable σ : (trace__T * trace__T -> Prop) -> (trace__S * trace__S -> Prop).
   Variable τ : (trace__S * trace__S -> Prop) -> (trace__T * trace__T -> Prop).
 
   Definition σR2rP (P1 P2 : par__S) (T : trace__T * trace__T -> Prop) :=
-    rsat__S P1 P2 (σ T) -> rsat__T (P1 ↓) (P2 ↓) T.   
+    rsat__S P1 P2 (σ T) -> rsat__T (P1 ↓) (P2 ↓) T.
 
   Definition σR2rTP := forall P1 P2 T, σR2rP P1 P2 T.
 
@@ -63,7 +63,7 @@ Section Robust2relPreservation.
     (σR2rP P1 P2 T) <->  ((exists C__T t1 t2, sem__T ( plug__T (P1 ↓) C__T) t1 /\
                                       sem__T ( plug__T (P2 ↓) C__T) t2 /\  ~ (T (t1,t2))) ->
                         (exists C__S s1 s2, sem__S (plug__S P1 C__S) s1 /\
-                                      sem__S (plug__S P2 C__S) s2 /\  
+                                      sem__S (plug__S P2 C__S) s2 /\
                                     ~ (σ T) (s1, s2))).
   Proof.
     rewrite /σR2rP. by rewrite [_ -> _] contra !neg_rsat2.

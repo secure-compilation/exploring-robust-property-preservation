@@ -149,7 +149,7 @@ Inductive ssem : SExp -> STrace -> Prop :=
       ssem se1 (sl1, SRNat n1) ->
       ssem se2 (sl2, SRError) ->
       ssem (STimes se1 se2) (app sl1 sl2, SRError)
-(* if-then-else *)           
+(* if-then-else *)
 | SSIteLeft : forall se1 se2 se3 sl1 sl2 r2,
     ssem se1 (sl1, SRBool true) ->
     ssem se2 (sl2, r2) ->
@@ -460,7 +460,7 @@ Proof.
     exists n. reflexivity.
   - inversion H.
 Qed.
- 
+
 Lemma type_correct_nat :
   forall se : SExp,
     typing se TyNat ->
@@ -469,7 +469,7 @@ Lemma type_correct_nat :
       exists n, sr = SRNat n.
 Proof.
   intros.
-  assert (Hn : 
+  assert (Hn :
             ssem se (sl, sr) ->
             (TyNat = TyNat -> exists n, sr = SRNat n) /\
             (TyNat = TyBool -> exists b, sr = SRBool b)).
@@ -637,7 +637,7 @@ Proof.
       * assumption.
       * assumption.
   - (* SPlus error *)
-    exfalso. 
+    exfalso.
     assert (Hcontra : exists n, SRError = SRNat n).
     { apply (type_correct_nat (SPlus se1 se2) (type_plus se1 se2 H1 H3) sl).
       assumption. }
@@ -671,7 +671,7 @@ Proof.
       * assumption.
       * assumption.
   - (* STimes error *)
-    exfalso. 
+    exfalso.
     assert (Hcontra : exists n, SRError = SRNat n).
     { apply (type_correct_nat (STimes se1 se2) (type_times se1 se2 H1 H3) sl).
       assumption. }
@@ -698,7 +698,7 @@ Proof.
     destruct IHse2 as [ IHse2tilde IHse2tsem ].
     clear IHse3.
     split.
-    + rewrite tilde_translate. 
+    + rewrite tilde_translate.
       reflexivity.
       eapply type_soundness.
       apply Ht.
@@ -708,7 +708,7 @@ Proof.
       replace sl2 with (nil ++ sl2).
       rewrite translateInputs_distr.
       remember (translateResult sr) as tsr.
-      destruct tsr. 
+      destruct tsr.
       eapply TSIteRight.
       * apply IHse1tsem.
       * constructor.
@@ -722,7 +722,7 @@ Proof.
     destruct IHse3 as [ IHse3tilde IHse3tsem ].
     clear IHse2.
     split.
-    + rewrite tilde_translate. 
+    + rewrite tilde_translate.
       reflexivity.
       eapply type_soundness.
       apply Ht.
@@ -732,7 +732,7 @@ Proof.
       replace sl3 with (nil ++ sl3).
       rewrite translateInputs_distr.
       remember (translateResult sr) as tsr.
-      destruct tsr. 
+      destruct tsr.
       eapply TSIteLeft.
       * apply IHse1tsem.
       * constructor.
@@ -910,7 +910,7 @@ Proof.
     left.
     reflexivity.
 Qed.
-   
+
 Theorem type_soundness_bool :
   forall se sl sr,
     typing se TyBool ->
@@ -960,7 +960,7 @@ Proof.
     intros b Hcontra.
     inversion Hcontra.
 Qed.
-  
+
 Theorem at_least_one_trace:
   forall se ty,
     typing se ty ->
@@ -1411,7 +1411,7 @@ Proof.
     inversion H.
   }
 Qed.
-  
+
 Lemma tilde_tildeResult :
   forall sl1 sr1 ll1 lr1,
     tilde (sl1, sr1) (ll1, lr1) = true ->
@@ -1458,7 +1458,7 @@ Proof.
     inversion H.
   }
 Qed.
-  
+
 Lemma ti_tr_tilde :
   forall sl1 sr1 ll1 lr1,
     tildeInputs sl1 ll1 = true ->
@@ -1482,7 +1482,7 @@ Proof.
   rewrite H1.
   reflexivity.
 Qed.
-  
+
 Lemma andb_proj2 :
   forall b1 b2,
     andb b1 b2 = true ->
@@ -1546,12 +1546,12 @@ Proof.
     + inversion Htsem; subst.
       exists ([], SRBool true).
       split.
-      * simpl. reflexivity. 
+      * simpl. reflexivity.
       * simpl. constructor.
     + inversion Htsem; subst.
       exists ([], SRBool false).
       split.
-      * simpl. reflexivity. 
+      * simpl. reflexivity.
       * simpl. constructor.
   - (* SPlus *)
     intros ty.
@@ -1847,7 +1847,7 @@ Proof.
                eapply tilde_tildeInputs.
                apply IHse2tilde.
            *** unfold tildeResult. apply PeanoNat.Nat.eqb_refl.
-        ** 
+        **
            apply SSIteLeft.
 
            {

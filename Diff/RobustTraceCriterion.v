@@ -39,17 +39,17 @@ Section RobustTPCriterion.
   Local Definition par__S := par Source.
   Local Definition par__T := par Target.
   Local Definition ctx__S := ctx Source.
-  Local Definition ctx__T := ctx Target. 
+  Local Definition ctx__T := ctx Target.
   Local Definition rsat__S := rsat Source_Semantics.
   Local Definition rsat__T := rsat Target_Semantics.
-  
+
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
 
   Local Definition plug__S:= plug Source.
   Local Definition plug__T := plug Target.
-  
+
   Variable rel : trace__S -> trace__T -> Prop.
 
   Local Definition adjunction :=  induced_connection rel.
@@ -61,7 +61,7 @@ Section RobustTPCriterion.
 
   Definition rel_RTC := forall P C__T t, sem__T (plug__T (P ↓) C__T) t -> exists C__S s, rel s t /\ sem__S (plug__S P C__S) s.
 
-  
+
   Local Definition τRTP := τRTP compilation_chain
                                 Source_Semantics Target_Semantics
                                 τ'.

@@ -51,7 +51,7 @@ Section RobustSafetyCriterion.
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
- (* CA: don't understand why this does not work 
+ (* CA: don't understand why this does not work
 
    Local Notation " C [ P ] " := (plug _  P C) (at level 50).
   *)

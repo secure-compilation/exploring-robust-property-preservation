@@ -68,13 +68,13 @@ Section Relation.
                                     Source_Semantics Target_Semantics
                                     rel.
 
-  
+
 
   Theorem cmp_is_rel_TC : rel_TC.
-  Proof. 
-    move => W t__T W_t. 
+  Proof.
+    move => W t__T W_t.
     destruct (non_empty_sem Source_Semantics W) as [s W_s].
-    exists s. split; auto. now exists W. 
+    exists s. split; auto. now exists W.
   Qed.
 
   Corollary cmp_is_τTP: τTP.
@@ -82,6 +82,6 @@ Section Relation.
 
   Corollary cmp_is_σTP : σTP.
   Proof. setoid_rewrite <- rel_TC_σTP. exact cmp_is_rel_TC. Qed.
-   
+
 
 End Relation.

@@ -22,7 +22,7 @@ Variable Es : Endstates.
 Definition prop (trace_set : Type)  := trace_set -> Prop.
 Definition hprop (trace_set : Type) := (prop trace_set) -> Prop.
 Definition h_true (trace_set : Type) : hprop (trace_set) := fun (b : prop (trace_set)) => True.
-Definition hh_true (trace_set : Type) : (@hprop trace_set) -> Prop :=  fun _ => True. 
+Definition hh_true (trace_set : Type) : (@hprop trace_set) -> Prop :=  fun _ => True.
 
 
 Definition fprop {E : Events} {Es: Endstates} :=
@@ -238,12 +238,12 @@ Proof. by firstorder. Qed.
 
 Lemma sCl_idmp {trace_set : Type} (H : hprop trace_set) :
   sCl (sCl H) = sCl H.
-Proof. apply: sCl_id_on_SSC. apply: sCl_SCH. Qed.  
+Proof. apply: sCl_id_on_SSC. apply: sCl_SCH. Qed.
 
 Definition ssch_uco {trace_set : Type} : @Uco (trace_set -> Prop) :=
   @Build_Uco (prop trace_set)
              sCl
-             sCl_mono 
+             sCl_mono
              sCl_idmp
              sCl_bigger.
 
@@ -297,7 +297,7 @@ Lemma hsCl_id_on_HSafe {E : Events} {Es : Endstates} :
 Proof.
   move => H HSafe_H.
   apply: functional_extensionality => b.
-  apply: prop_extensionality. by firstorder. 
+  apply: prop_extensionality. by firstorder.
 Qed.
 
 Lemma sCl_id_on_HSafe {E : Events} {Es : Endstates} :
@@ -326,7 +326,7 @@ Proof. by firstorder. Qed.
 Lemma hsCl_mono {E : Events} {Es : Endstates}:
   forall H1 H2 : hprop (@trace E Es),
     H1 ⊆ H2 -> (hsCl H1) ⊆ (hsCl H2).
-Proof. by firstorder. Qed. 
+Proof. by firstorder. Qed.
 
 Lemma hsCl_idmp  {E : Events} {Es : Endstates}
                  (H : hprop (@trace E Es)):
@@ -334,14 +334,14 @@ Lemma hsCl_idmp  {E : Events} {Es : Endstates}
 Proof.
   rewrite hsCl_id_on_HSafe.
   reflexivity.
-  exact: hsCl_HSafe. 
+  exact: hsCl_HSafe.
 Qed.
 
 Definition hsafe_uco {E : Events} {Es : Endstates} :
   @Uco ((@trace E Es) -> Prop) :=
   @Build_Uco (prop (@trace E Es))
              hsCl
-             hsCl_mono 
+             hsCl_mono
              hsCl_idmp
              hsCl_bigger.
 
@@ -365,4 +365,4 @@ Proof.
   move => β1 β2 β1' β2' [γ1 [γ2 [H_Π [Hsub1' Hbsu2']]]] H_sub1 H_sub2.
   exists γ1, γ2. split; apply: subset_trans; eauto.
   split; apply: subset_trans; eauto.
-Qed. 
+Qed.

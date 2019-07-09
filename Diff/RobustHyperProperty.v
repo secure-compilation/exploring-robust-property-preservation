@@ -13,7 +13,7 @@ Require Import LanguageModel.
 Require Import TraceModel.
 Require Import Properties.
 Require Import ChainModel.
-Require Import RobustTraceProperty. 
+Require Import RobustTraceProperty.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
@@ -33,25 +33,25 @@ Section RobustHyperPreservation.
   Local Definition hprop__S := hprop trace__S.
   Local Definition hprop__T := hprop trace__T.
 
-  
+
   Variable Source_Semantics : Semantics Source trace__S.
   Variable Target_Semantics : Semantics Target trace__T.
 
   Local Definition sem__S := sem Source_Semantics.
   Local Definition sem__T := sem Target_Semantics.
   Local Definition beh__S := beh Source_Semantics.
-  Local Definition beh__T := beh Target_Semantics. 
+  Local Definition beh__T := beh Target_Semantics.
   Local Definition par__S := par Source.
   Local Definition par__T := par Target.
   Local Definition ctx__S := ctx Source.
-  Local Definition ctx__T := ctx Target. 
+  Local Definition ctx__T := ctx Target.
   Local Definition rhsat__S := rhsat Source_Semantics.
   Local Definition rhsat__T := rhsat Target_Semantics.
-  
+
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
- (* CA: don't understand why this does not work 
+ (* CA: don't understand why this does not work
 
    Local Notation " C [ P ] " := (plug _  P C) (at level 50).
   *)
@@ -64,7 +64,7 @@ Section RobustHyperPreservation.
 
   Local Definition σ : hprop__T -> hprop__S := lift σ__π.
   Local Definition τ : hprop__S -> hprop__T := lift τ__π.
-  
+
 
   Definition σRhP (P : par__S) (H__T : hprop__T) :=
     rhsat__S P (σ H__T) -> rhsat__T (P ↓) H__T.

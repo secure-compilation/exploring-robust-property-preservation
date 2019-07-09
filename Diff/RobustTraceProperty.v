@@ -38,20 +38,20 @@ Section RobustPreservation.
   Local Definition par__S := par Source.
   Local Definition par__T := par Target.
   Local Definition ctx__S := ctx Source.
-  Local Definition ctx__T := ctx Target. 
+  Local Definition ctx__T := ctx Target.
   Local Definition rsat__S := rsat Source_Semantics.
   Local Definition rsat__T := rsat Target_Semantics.
-  
+
   Local Definition cmp := compile_par Source Target compilation_chain.
 
   Local Notation "P ↓" := (cmp P) (at level 50).
- (* CA: don't understand why this does not work 
+ (* CA: don't understand why this does not work
 
    Local Notation " C [ P ] " := (plug _  P C) (at level 50).
   *)
   Local Definition plug__S:= plug Source.
   Local Definition plug__T := plug Target.
-  
+
   Variable σ : prop__T -> prop__S.
   Variable τ : prop__S -> prop__T.
 

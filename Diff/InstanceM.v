@@ -4,7 +4,7 @@
 
 Require Import TraceModel.
 Require Import LanguageModel.
-Require Import ChainModel. 
+Require Import ChainModel.
 Require Import NonRobustTraceCriterion.
 
 Set Bullet Behavior "Strict Subproofs".
@@ -58,7 +58,7 @@ Module Source.
 
   (*how to relate values and messages*)
   Inductive sv_sm : se -> sm -> Prop :=
-    | Conv_base : forall n1, 
+    | Conv_base : forall n1,
       sv_sm (Num n1) (Msg_base n1)
     | Conv_ind : forall se1 se2 sm1 sm2,
       sv_sm se1 sm1 ->
@@ -112,7 +112,7 @@ Module Source.
     | SM_OP1 : forall se1 se2 se3, ssm_sem se1 se2 -> ssm_sem (Op se1 se3) (Op se2 se3)
     | SM_OP2 : forall se1 se2 n, ssm_sem se1 se2 -> ssm_sem (Op (Num n) se1) (Op (Num n) se2)
     | SM_OP : forall n1 n2 n, n = n1 + n2 -> ssm_sem (Op (Num n1) (Num n2)) (Num n)
-    | SM_Pair1 : forall se1 se2 se3, ssm_sem se1 se2 -> ssm_sem (Pair se1 se3) (Pair se2 se3) 
+    | SM_Pair1 : forall se1 se2 se3, ssm_sem se1 se2 -> ssm_sem (Pair se1 se3) (Pair se2 se3)
     | SM_Pair2 : forall se1 se2 sv1, ssm_sem se1 se2 -> ssm_sem (Pair sv1 se1) (Pair sv1 se2)
     | SM_P11 : forall se1 se2, ssm_sem se1 se2 -> ssm_sem (P1 se1) (P1 se2)
     | SM_P21 : forall se1 se2, ssm_sem se1 se2 -> ssm_sem (P2 se1) (P2 se2)
@@ -122,7 +122,7 @@ Module Source.
   (*reflexive transitive closure of the single semantic step*)
   Inductive ssemrt : se -> se -> Prop :=
     | Refl : forall se1, ssemrt se1 se1
-    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3. 
+    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.
     (*| Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.*)
 
   (*source big step reduction that chains messages as queues*)
@@ -239,7 +239,7 @@ Module Target.
     | SM_OP1 : forall te1 te2 te3, tsm_sem te1 te2 -> tsm_sem (Op te1 te3) (Op te2 te3)
     | SM_OP2 : forall te1 te2 n, tsm_sem te1 te2 -> tsm_sem (Op (Num n) te1) (Op (Num n) te2)
     | SM_OP : forall n1 n2 n, n = n1 + n2 -> tsm_sem (Op (Num n1) (Num n2)) (Num n)
-    | SM_Pair1 : forall te1 te2 te3, tsm_sem te1 te2 -> tsm_sem (Pair te1 te3) (Pair te2 te3) 
+    | SM_Pair1 : forall te1 te2 te3, tsm_sem te1 te2 -> tsm_sem (Pair te1 te3) (Pair te2 te3)
     | SM_Pair2 : forall te1 te2 tv1, tsm_sem te1 te2 -> tsm_sem (Pair tv1 te1) (Pair tv1 te2)
     | SM_P11 : forall te1 te2, tsm_sem te1 te2 -> tsm_sem (P1 te1) (P1 te2)
     | SM_P21 : forall te1 te2, tsm_sem te1 te2 -> tsm_sem (P2 te1) (P2 te2)
@@ -249,7 +249,7 @@ Module Target.
   (*reflexive transitive closure of the single semantic step*)
   Inductive tsemrt : te -> te -> Prop :=
     | Refl : forall te1, tsemrt te1 te1
-    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3. 
+    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.
     (*| Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.*)
 
 (*target big step reduction that chains messages as queues*)
@@ -290,12 +290,12 @@ Module Compiler.
 
   (*given a source expression with a type, translate that into a target sequence.*)
   Inductive gensend : S.se -> S.st -> T.ts -> Prop :=
-    | Snd_Base : forall n1 n2 n1' n2', 
-      S.swte (S.Pair (S.Num n1) (S.Num n2)) (S.Times S.Nat S.Nat) -> 
-      cmpe (S.Num n1) (S.Nat) (T.Num n1') -> 
-      cmpe (S.Num n2) (S.Nat) (T.Num n2') -> 
+    | Snd_Base : forall n1 n2 n1' n2',
+      S.swte (S.Pair (S.Num n1) (S.Num n2)) (S.Times S.Nat S.Nat) ->
+      cmpe (S.Num n1) (S.Nat) (T.Num n1') ->
+      cmpe (S.Num n2) (S.Nat) (T.Num n2') ->
       gensend (S.Pair (S.Num n1) (S.Num n2)) (S.Times S.Nat S.Nat) (T.Seq (T.Send (T.Num n1')) (T.Send (T.Num n2') ))
-    | Snd_Ind : forall se1 st1 st2 ts1 ts2, 
+    | Snd_Ind : forall se1 st1 st2 ts1 ts2,
       gensend (S.P1 se1) (st1) (ts1) ->
       gensend (S.P2 se1) (st1) (ts2) ->
       gensend (se1) (S.Times st1 st2) (T.Seq ts1 ts2).
@@ -316,27 +316,27 @@ Module TraceRelation.
 
   (*relate a source message to a target queue of msgs*)
   Inductive trel_msg : S.sm -> T.tq -> Prop :=
-    | TR_NN : forall sn1 sn2 tn1 tn2, 
-      sn1=tn1 -> 
-      sn2=tn2 -> 
+    | TR_NN : forall sn1 sn2 tn1 tn2,
+      sn1=tn1 ->
+      sn2=tn2 ->
       trel_msg  (S.Msg_ind (S.Msg_base sn1) (S.Msg_base sn2))
-                (T.Queue 
-                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q) 
+                (T.Queue
+                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q)
                     (T.Sing_q (T.Msg_l (T.M_Num tn2)) T.Empty_q))
     | TR_NM : forall sn1 tn1 sm1 tq1,
       sn1=tn1 ->
       trel_msg  sm1
                 tq1  ->
-      trel_msg  (S.Msg_ind (S.Msg_base sn1) sm1 ) 
-                (T.Queue 
+      trel_msg  (S.Msg_ind (S.Msg_base sn1) sm1 )
+                (T.Queue
                   (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q)
                   (tq1))
     | TR_MN : forall tn2 sm1 tq1 tn1 sn1,
       sn1=tn1 ->
       trel_msg sm1 tq1 ->
       trel_msg  (S.Msg_ind sm1 (S.Msg_base sn1))
-                (T.Queue 
-                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q) 
+                (T.Queue
+                    (T.Sing_q (T.Msg_l (T.M_Num tn1)) T.Empty_q)
                     (T.Sing_q (T.Msg_l (T.M_Num tn2)) T.Empty_q))
     | TR_MM : forall tq1 tq2 sm1 sm2,
       trel_msg sm1 tq1 ->
@@ -350,18 +350,18 @@ Module TraceRelation.
     | TRQ_m : forall sq1 tq1 sm1 tq2,
       trel_q sq1 tq1 ->
       trel_msg sm1 tq2 ->
-      trel_q 
-        (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q)) 
+      trel_q
+        (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q))
         (T.Queue tq1 tq2).
 End TraceRelation.
-    
+
 (*proving RTCtilde for our instance with our definition*)
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
-  Module R := TraceRelation.  
-                         
+  Module R := TraceRelation.
+
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
@@ -369,7 +369,7 @@ Module RTCprop.
     T.tv te2 ->
     T.tsemrt te1 te2 ->
     S.ssemrt se1 se2 /\ S.sv se2.
-  Proof. 
+  Proof.
     intros se1.
     induction se1; intros se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
     - (* e = num *)
@@ -396,13 +396,13 @@ Module RTCprop.
         inversion H4; subst.
         (* lost. i need to instatntiate the IH but i can't seem to get that the te1 ->* to a value te2, all i have is that the general expr reduces to a value but FFFF *)
          specialize (IHse1_1 _ _ _ _ H2 HCMPe2 HTVe2 HTSeme1) as [HR1 HV1].
-      
+
   Admitted.
 
 (*gensend is correct*)
   Theorem gensend_correct :
     forall se1 st1 st2 ts1 tq1,
-      C.gensend se1 (S.Times st1 st2) ts1 -> 
+      C.gensend se1 (S.Times st1 st2) ts1 ->
       T.tbsem ts1 tq1 T.Skip ->
     exists se2 sm1,
       S.ssemrt se1 se2 /\
@@ -411,7 +411,7 @@ Module RTCprop.
       R.trel_msg sm1 tq1.
   Proof.
   Admitted.
-  
+
 (*the statements compiler is correct with respect to tctilde*)
   Theorem rel_TC :
     forall ss ts tq,
@@ -424,16 +424,16 @@ Module RTCprop.
     intros ss.
     induction ss; intros ts tq Hcmp Htbeh.
     - (* Skip. *)
-      exists S.Empty_q.       (*instantiate existential*) 
+      exists S.Empty_q.       (*instantiate existential*)
       inversion Hcmp; subst.  (* obtain what the compiled statement is by applying the definition of compilation to the current statment: skip  *)
-      inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*) 
+      inversion Htbeh; subst. (* apply the definition of tbeh, obtain a tbsem step*)
       inversion H; subst. (* apply definition of tbsem and obtain the only queue produced by skip: the empty queue*)
       split. (* split the AND conjuncts *)
-      + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*) 
+      + constructor. (* apply definiion (empty queue relation) to obtain that source and target empty queues are related*)
       + constructor. (* apply definition of sbeh to say that skip produces empty queue *)
         constructor. (* by definition of sbeh that amounts to proving sbsem step for skip, which we have in the S_Skip case, so this holds*)
     - (* inductive cases: seq, if and send *)
-      (* Seq. *) 
+      (* Seq. *)
       inversion Hcmp; subst. (* by definition of the compiler we obtain a compiled target seq, we know the source is well typed and each subpart of the seq is compiled to target statements *)
       inversion Htbeh; subst. (* apply definition of tbeh and obtain a tbsem step for the target seq *)
       inversion H; subst. (* apply definition of tbsem for seq to know taht each substatement reduces with its own quque*)
@@ -456,9 +456,9 @@ Module RTCprop.
       inversion Hcmp; subst. (*a*)
       inversion Htbeh; subst. (*a*)
       inversion H; subst. (*a*)
-      + (* Then case. *) 
+      + (* Then case. *)
         apply T.B_Sing in H10. (*a*)
-        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*) 
+        specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*)
         exists sq1. (*a*)
         split. (*a*)
         * assumption. (*a*)
@@ -468,7 +468,7 @@ Module RTCprop.
           assert (Hcmp' : C.cmpe (S.Num 0) S.Nat (T.Num 0)).
             (*proof of the assert*) constructor. reflexivity. apply S.T_Num. (*a*)
           assert (Htv : T.tv (T.Num 0)) by apply T.V_Num. (*a*)
-          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*) 
+          pose proof cc_expr _ _ _ _ _ H3 Hcmp' Htv H9 as [Hssemrt Hsv]. (*a*)
           inversion Hsbeh1; subst. (* obtain the sbsem step for the then branch *)
           apply S.B_Ift with 0. (* the sbsem of the if now holds by the related reduction, supply 0 as the value the guard reduces to (coq can't figure it out alone)*)
           (* these 3 below are the assumptions needed to call the b_ift rule above, they are all trivial*)
@@ -476,16 +476,16 @@ Module RTCprop.
           assumption.
           assumption. (*a*)
           (* REMARK: instead of inversion 5 lines above, we had the following:
-          econstructor. 
-          -- reflexivity. 
-          -- assumption. 
+          econstructor.
+          -- reflexivity.
+          -- assumption.
           then here we had the inversion followed by assumption. This way seems cleaneer *)
       + (* Else case. *)
         apply T.B_Sing in H10.
         specialize (IHss2 ts2 tq H6 H10) as [sq2 [Htrel2 Hsbe2]].
-        exists sq2. 
+        exists sq2.
         split.
-        * assumption. 
+        * assumption.
         * constructor.
           inversion H2; subst.
           assert (Hcomp2 : C.cmpe (S.Num n) S.Nat (T.Num n)).
@@ -521,7 +521,7 @@ End RTCprop.
     induction se1 ; intros te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
     - (*e = num*)
       inversion HCMPe1; subst.
-      split. 
+      split.
       + (* two cases of the and*)
         inversion HTSeme1; subst. (* from the target semantics we get te2 is a the same tn*)
         inversion HCMPe2; subst. (* so from the compilation we get taht se2 is the same tn*)
@@ -562,7 +562,7 @@ End RTCprop.
       inversion H; subst.
       + (* primitive red = op*)
         split.
-        * 
+        *
           (* where are my IH?? *)
         admit.
       + (* pr = p1 *)
@@ -576,13 +576,13 @@ End RTCprop.
       inversion H; subst.
       + (* primitive red = op*)
         split.
-        * 
+        *
           (* where are my IH?? *)
         admit.
       + (* pr = p1 *)
         admit.
       + (* pr = p2*)
-        admit.      
+        admit.
 
 
 
@@ -703,7 +703,7 @@ Module RTC.
       intros se2 Hval Hsem;
       simpl in *.
     - split.
-      + 
+      +
 
       inversion Hsem; subst. split.
       + econstructor.

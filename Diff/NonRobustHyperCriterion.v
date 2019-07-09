@@ -64,13 +64,13 @@ Section HyperCriterion.
 
   Local Definition τP := τTP compilation_chain
                              Source_Semantics Target_Semantics
-                             τ'. 
+                             τ'.
 
   Local Definition σP := σTP compilation_chain
                              Source_Semantics Target_Semantics
-                             σ'. 
-  
-  
+                             σ'.
+
+
   Local Definition τHP := τHP compilation_chain
                               Source_Semantics Target_Semantics
                               τ'.
@@ -86,7 +86,7 @@ Section HyperCriterion.
     split => Hrel W.
     apply functional_extensionality => t__T. apply: prop_extensionality.
     rewrite (Hrel W). by firstorder.
-    rewrite (Hrel W). by firstorder. 
+    rewrite (Hrel W). by firstorder.
   Qed.
 
   Theorem rel_HC_τHP : rel_HC <-> τHP.
@@ -99,8 +99,8 @@ Section HyperCriterion.
   Qed.
 
   (*CA: if τ ⇆ σ is an insertion then
-        tilde_HC =>  σHP 
-        but not able to prove the vicerversa holds  
+        tilde_HC =>  σHP
+        but not able to prove the vicerversa holds
         (quite convinced it is not true)
   *)
 
@@ -108,9 +108,9 @@ Section HyperCriterion.
     rel_HC -> σHP.
   Proof.
     rewrite rel_HC' => HIns Hrel W H__T [b__T [bt_HT Heq]].
-    move: (Hrel W). rewrite /beh__T /beh__S Heq HIns. 
-    move => Heq__T. now subst.        
-  Qed. 
+    move: (Hrel W). rewrite /beh__T /beh__S Heq HIns.
+    move => Heq__T. now subst.
+  Qed.
 
   (****************************************************************)
 
@@ -126,26 +126,26 @@ Section HyperCriterion.
 
   Local Definition rel_FC2 := rel_FC2 compilation_chain
                                       Source_Semantics Target_Semantics
-                                      rel. 
+                                      rel.
 
   (* under the assumption rel is a total function from source to target traces
      HC comes as consequence of TC and FC
    *)
   Theorem rel_total_map_TC_plus_FC1_HC :
    (forall s, exists! t, rel s t) ->
-    rel_TC -> rel_FC1 -> rel_HC.  
+    rel_TC -> rel_FC1 -> rel_HC.
   Proof.
-   setoid_rewrite rel_TC'. setoid_rewrite rel_FC1'. 
+   setoid_rewrite rel_TC'. setoid_rewrite rel_FC1'.
    rewrite rel_HC' => rel_map bcc fcc W.
-   apply: mutual_inclusion. 
-   + by apply: bcc. 
+   apply: mutual_inclusion.
+   + by apply: bcc.
    + rewrite rel_adjunction_law => s behWs t rel_s_t.
      move: (fcc W s behWs). move => [t' [rel_s_t' beh_cmpW_t']].
      have Heq: t = t'.
      { move: (rel_map s). move => [t0 [rel_s_t0 eq_t0]].
          by rewrite -(eq_t0 t rel_s_t) -(eq_t0 t' rel_s_t'). }
        by rewrite Heq.
-   Qed.  
+   Qed.
 
   Theorem TC_plus_FC2_HC :
     rel_TC -> rel_FC2 -> rel_HC.
