@@ -26,3 +26,12 @@ UndefBehaviorCompCert.v
 
 TypeRelationExample.v
 ResourceExhaustionExample.v
+
+ResourceExhaustion/Maps.v
+ResourceExhaustion/Imp.v
+ResourceExhaustion/Sequences.v
+ResourceExhaustion/Semantics.v
+ResourceExhaustion/Compiler.v
+ResourceExhaustion/Machine.v
+ResourceExhaustion/MachineStackLimited.v
+ResourceExhaustion/CompilerStackLimited.v
