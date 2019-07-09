@@ -10,7 +10,7 @@ Require Import Stream.
 
 Record Events := {
 
-               ev : Set;
+               ev : Type;
                an_ev : ev;
                another_ev : ev;
                different_evs : an_ev <> another_ev;
@@ -20,13 +20,13 @@ Record Events := {
 
 Record Endstates := {
 
-              es : Set;
+              es : Type;
               an_es : es
               }.
 
 (** A trace represents either a stopped execution, a silently diverging
     execution or an infinite execution. *)
-Variant trace {E : Events} {Es : Endstates} : Set :=
+Variant trace {E : Events} {Es : Endstates} : Type :=
 | tstop (l : list (ev E)) (e : es Es) : trace
 | tsilent (l : list (ev E)) : trace
 | tstream (s : @stream (ev E)) : trace.
@@ -41,7 +41,7 @@ Definition infinite {E: Events} {Es : Endstates} (t : @trace E Es) : Prop :=
 
 (** A finite prefix is a list of evs, that can be continued (ftbd)
     or not (fstop). *)
-Variant finpref {E : Events} {Es : Endstates} : Set :=
+Variant finpref {E : Events} {Es : Endstates} : Type :=
 | fstop (l : list (ev E)) (es : (es Es)) : finpref
 | ftbd  (l : list (ev E)) : finpref.
 

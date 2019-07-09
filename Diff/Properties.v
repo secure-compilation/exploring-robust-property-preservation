@@ -19,9 +19,9 @@ Hypothesis prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
 Variable E : Events.
 Variable Es : Endstates.
 
-Definition prop (trace_set : Set)  := trace_set -> Prop.
-Definition hprop (trace_set : Set) := (prop trace_set) -> Prop.
-Definition h_true (trace_set : Set ) : hprop (trace_set) := fun (b : prop (trace_set)) => True.
+Definition prop (trace_set : Type)  := trace_set -> Prop.
+Definition hprop (trace_set : Type) := (prop trace_set) -> Prop.
+Definition h_true (trace_set : Type) : hprop (trace_set) := fun (b : prop (trace_set)) => True.
 
 
 Definition fprop {E : Events} {Es: Endstates} :=
@@ -197,7 +197,7 @@ Qed.
 (*****************************************************************************)
 
 (*CA: also for SSC hprop we only need a set of traces, not our particular model *)
-Definition SSC {trace_set : Set} (H: hprop trace_set)  : Prop :=
+Definition SSC {trace_set : Type} (H: hprop trace_set)  : Prop :=
   forall h, H h ->
        (forall b : (prop trace_set), b ⊆ h -> H b).
 
@@ -205,26 +205,26 @@ Definition SSC {trace_set : Set} (H: hprop trace_set)  : Prop :=
 (** *SSC closure operator*)
 (*****************************************************************************)
 
-Definition sCl {trace_set : Set}
+Definition sCl {trace_set : Type}
                (H : hprop trace_set) :
                hprop trace_set :=
   fun b => exists b', H b' /\ b ⊆ b'.
 
-Lemma sCl_bigger {trace_set : Set} (H : hprop trace_set) : H ⊆ (sCl H).
+Lemma sCl_bigger {trace_set : Type} (H : hprop trace_set) : H ⊆ (sCl H).
 Proof. firstorder. Qed.
 
-Lemma sCl_SCH {trace_set : Set} (H : hprop trace_set) : SSC (sCl H).
+Lemma sCl_SCH {trace_set : Type} (H : hprop trace_set) : SSC (sCl H).
 Proof.
   move => h [b' [Hb' bb']] b b_h. exists b'; auto.
 Qed.
 
-Lemma sCl_id_on_SSC {trace_set : Set} (H: hprop trace_set): SSC H -> sCl H = H.
+Lemma sCl_id_on_SSC {trace_set : Type} (H: hprop trace_set): SSC H -> sCl H = H.
 Proof.
   move => H_SSC. apply: functional_extensionality => b.
   apply: prop_extensionality. firstorder.
 Qed.
 
-Lemma sCl_smallest {trace_set : Set} (H: hprop trace_set):
+Lemma sCl_smallest {trace_set : Type} (H: hprop trace_set):
   forall H', SSC H' -> H ⊆ H' -> (sCl H) ⊆ H'.
 Proof.
   move => H' ssc_H' H_leq_H' b [b' [ b_leq_b' H_b']].

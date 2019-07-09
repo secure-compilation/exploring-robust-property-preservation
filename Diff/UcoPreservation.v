@@ -31,7 +31,7 @@ Section Closure_Operators_Preservation.
   (*CA: we don't need a particular structure of traces to define preservation
         e.g. traces = values or our defn of traces both make sense
    *)
-  Variable trace__S trace__T : Set.
+  Variable trace__S trace__T : Type.
 
   Local Definition prop__S := prop trace__S.
   Local Definition prop__T := prop trace__T.

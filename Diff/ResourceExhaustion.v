@@ -5,6 +5,8 @@ Require Import Stream.
 Require Import Properties.
 Require Import Galois.
 
+Require Import FunctionalExtensionality.
+
 Set Bullet Behavior "Strict Subproofs".
 
 

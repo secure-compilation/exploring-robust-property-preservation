@@ -42,3 +42,28 @@ Proof.
   + intros [] [] Hpref1 Hpref2; inversion Hpref1; inversion Hpref2; subst.
     simpl. split; auto; now apply (IHl1 l s).
 Qed.
+
+Fixpoint app_list_stream {A : Type} (l : list A) (s : stream) :=
+  match l with
+  | nil => s
+  | e :: l => scons e (app_list_stream l s)
+  end.
+
+Lemma list_stream_prefix_app {A : Type} :
+  forall (l' : list A) l s0, list_stream_prefix l s0 -> list_stream_prefix (l' ++ l) (app_list_stream l' s0).
+Proof.
+  intros l'.
+  induction l'.
+  - eauto.
+  - intros l s0 H.
+    simpl. split; eauto using IHl'.
+Qed.
+
+Lemma list_list_prefix_stream_app {A : Type} :
+  forall (l' l : list A) s0, list_list_prefix l' l -> list_stream_prefix l' (app_list_stream l s0).
+Proof.
+  induction l'.
+  - eauto.
+  - destruct l. intros s0 H. inversion H.
+    intros s0 H. simpl in *. destruct H; subst; split; eauto using IHl'.
+Qed.
