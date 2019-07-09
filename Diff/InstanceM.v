@@ -122,8 +122,8 @@ Module Source.
   (*reflexive transitive closure of the single semantic step*)
   Inductive ssemrt : se -> se -> Prop :=
     | Refl : forall se1, ssemrt se1 se1
-    (* | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3. *)
-    | Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.
+    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3. 
+    (*| Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.*)
 
   (*source big step reduction that chains messages as queues*)
   Inductive sbsem : ss -> sq -> ss -> Prop :=
@@ -249,8 +249,8 @@ Module Target.
   (*reflexive transitive closure of the single semantic step*)
   Inductive tsemrt : te -> te -> Prop :=
     | Refl : forall te1, tsemrt te1 te1
-    (* | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3. *)
-    | Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.
+    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3. 
+    (*| Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.*)
 
 (*target big step reduction that chains messages as queues*)
   Inductive tbsem : ts -> tq -> ts -> Prop :=
@@ -353,16 +353,15 @@ Module TraceRelation.
       trel_q 
         (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q)) 
         (T.Queue tq1 tq2).
-
 End TraceRelation.
-
+  
 (*proving RTCtilde for our instance with our definition*)
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
-  Module R := TraceRelation.
-
+  Module R := TraceRelation.  
+                      
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
@@ -370,6 +369,24 @@ Module RTCprop.
     T.tv te2 ->
     T.tsemrt te1 te2 ->
     S.ssemrt se1 se2 /\ S.sv se2.
+  Proof. 
+    intros se1 se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
+    (* i'd proceed by induction on the target reductions, so i invert that assumption*)
+    inversion HTSeme1; subst.
+    - (* refl case ... only the case for num should work here, the others are all contrad*)
+      admit.
+    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
+      induction H.
+      * (* op1 *)
+        admit.
+      *(* op2*)
+        admit.
+      * (*op*)
+        inversion HCMPe1 ;subst.
+        inversion HTSeme1; subst.
+        -- 
+        --(* refl, *)
+        
   Admitted.
 
 (*gensend is correct*)
@@ -547,12 +564,11 @@ Module RTC.
     | S.Times st1 st2 => T.Times (tcmp st1) (tcmp st2)
     end.
 
-  Theorem cc_expr_val : forall se1, T.tv (C.cmpe' se1) -> S.sv se1.
+  Theorem cc_expr_val : forall se1 st1 te1, C.cmpe se1 st1 te1 -> T.tv te1 -> S.sv se1.
   Proof.
+    intros se1 st1
   Admitted.
 
-  Theorem cc_eq : forall se1 se2, C.cmpe' se1 = C.cmpe' se2 -> se1 = se2.
-  Admitted.
 
   (* Compilation is well-typed (if the input is well-typed). *)
   (* Theorem cc_wf : forall se st, S.swte se st -> T.twte (C.cmpe' se) (... st). *)
