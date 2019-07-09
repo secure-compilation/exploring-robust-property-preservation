@@ -21,5 +21,8 @@ Relation4Correctness.v
 
 ResourceExhaustion.v
 
+UndefBehavior.v
+UndefBehaviorCompCert.v
+
 TypeRelationExample.v
 ResourceExhaustionExample.v
