@@ -55,6 +55,18 @@ Definition hsat{L : Language}
                (W : prg L) (H : hprop trace_set) : Prop :=
   H (beh S W).
 
+Lemma hsat_upper_closed  {L : Language}
+                         {trace_set : Set}
+                         (S : Semantics L trace_set)
+                         (W : prg L ) (H1 H2 : hprop trace_set) :
+  hsat S W H1 -> H1 ⊆ H2 -> hsat S W H2.
+Proof.
+  intros Hsat1 Hsuper.
+  apply Hsuper.
+  now apply Hsat1. 
+Qed.
+
+
 Definition rsat {L : Language}
                 {trace_set : Set}
                 (S : Semantics L trace_set)
