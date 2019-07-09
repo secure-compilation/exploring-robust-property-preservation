@@ -354,14 +354,14 @@ Module TraceRelation.
         (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q)) 
         (T.Queue tq1 tq2).
 End TraceRelation.
-  
+    
 (*proving RTCtilde for our instance with our definition*)
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.  
-                      
+                         
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
@@ -370,23 +370,33 @@ Module RTCprop.
     T.tsemrt te1 te2 ->
     S.ssemrt se1 se2 /\ S.sv se2.
   Proof. 
-    intros se1 se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
-    (* i'd proceed by induction on the target reductions, so i invert that assumption*)
-    inversion HTSeme1; subst.
-    - (* refl case ... only the case for num should work here, the others are all contrad*)
-      admit.
-    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
-      induction H.
-      * (* op1 *)
+    intros se1.
+    induction se1; intros se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
+    - (* e = num *)
+      inversion HCMPe1; subst.
+      inversion HTSeme1; subst.
+      +
+        inversion HCMPe2; subst.
+        split.
+        *
+          constructor.
+        *
+          constructor.
+      + (* trans case should be contradictory *)
+        inversion H;subst.
+        inversion H0; subst.
+        inversion H4; subst.
+    - (* e = op*)
+      inversion HCMPe1; subst.
+      inversion HTSeme1; subst.
+      * (* refl case should be contrad*)
         admit.
-      *(* op2*)
-        admit.
-      * (*op*)
-        inversion HCMPe1 ;subst.
-        inversion HTSeme1; subst.
-        -- 
-        --(* refl, *)
-        
+      * (* trans case*)
+        inversion H; subst.
+        inversion H4; subst.
+        (* lost. i need to instatntiate the IH but i can't seem to get that the te1 ->* to a value te2, all i have is that the general expr reduces to a value but FFFF *)
+         specialize (IHse1_1 _ _ _ _ H2 HCMPe2 HTVe2 HTSeme1) as [HR1 HV1].
+      
   Admitted.
 
 (*gensend is correct*)
@@ -502,6 +512,115 @@ Module RTCprop.
   Admitted.
 
 End RTCprop.
+(* all that is below is garbage *)
+
+
+
+
+(* tentative proof of cc_expr. old stuff, maybe useful*)
+    induction se1 ; intros te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
+    - (*e = num*)
+      inversion HCMPe1; subst.
+      split. 
+      + (* two cases of the and*)
+        inversion HTSeme1; subst. (* from the target semantics we get te2 is a the same tn*)
+        inversion HCMPe2; subst. (* so from the compilation we get taht se2 is the same tn*)
+        constructor. (* from the semrt perspective, this holds by refl.*)
+        inversion H; subst. (* ? looking for a contradiction? *)
+      +  (* prove the value *)
+        inversion HTSeme1; subst. (* again from the target sem we know no step is taken*)
+        * (* so in the refl case*)
+          inversion HCMPe2; subst. (* we apply the related compiler case*)
+          constructor.
+        * (* in the non refl case -> look for contradiction*)
+          inversion H; subst.
+    - (* e = op*)
+      inversion HCMPe1; subst.
+      inversion HTSeme1; subst.
+      * (* refl case: should be contradictory? *)
+        admit.
+      * (* trans case*)
+        inversion H; subst.
+        --
+      specialize (IHse1_1 _ _ H2 HCMPe2 HTVe2 _) as [ IHSSem1 IHSv1].
+      admit.
+    - (* e = pair*)
+      admit.
+    - (* e = p1*)
+      admit.
+    - (* e = p2*)
+      admit.
+
+
+
+       intros se1 se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
+    (* i'd proceed by induction on the target reductions, so i invert that assumption*)
+    inversion HTSeme1; subst.
+    - (* refl case ... only the case for num should work here, the others are all contrad*)
+      admit.
+    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
+      inversion H; subst.
+      + (* primitive red = op*)
+        split.
+        * 
+          (* where are my IH?? *)
+        admit.
+      + (* pr = p1 *)
+        admit.
+      + (* pr = p2*)
+        admit.
+
+
+
+    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
+      inversion H; subst.
+      + (* primitive red = op*)
+        split.
+        * 
+          (* where are my IH?? *)
+        admit.
+      + (* pr = p1 *)
+        admit.
+      + (* pr = p2*)
+        admit.      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
