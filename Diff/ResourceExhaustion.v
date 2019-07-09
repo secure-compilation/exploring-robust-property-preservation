@@ -79,7 +79,59 @@ Section ResourceExhaustion.
     induced_connection rel.
 
   Definition τ : propS -> propT := α GC_traceT_traceS.
+  Lemma τ_def : forall πS t__t,
+      (τ πS) t__t <-> (exists t__s, t__s ≡ t__t /\ πS t__s) \/ (exists m t__s, t__t = tstop m OOM /\ prefixTS (ftbd m) t__s /\ πS t__s).
+  Proof.
+    intros πS t__t.
+    unfold τ, GC_traceT_traceS, induced_connection, low_rel; simpl.
+    split.
+    - intros H.
+      destruct H as [t__s [H1 H2]].
+      destruct H2 as [H2 | H2].
+      + left; eexists; split; eauto.
+      + destruct H2 as [m [H2 H3]]; subst.
+        right.
+        eexists; eexists; split; try split; eauto.
+    - intros H.
+      destruct H as [[t__s [H1 H2]] | [m [t__s [H1 [H2 H3]]]]].
+      + eexists; split; eauto.
+      + eexists; split; eauto.
+  Qed.
+
   Definition σ : propT -> propS := γ GC_traceT_traceS.
+  Lemma σ_def : forall πT t__s,
+      (σ πT) t__s <-> (exists t__t, t__s ≡ t__t /\ πT t__t) /\ (forall m, prefixTS (ftbd m) t__s -> πT (tstop m OOM)).
+  Proof.
+    intros πT t__s.
+    unfold σ, GC_traceT_traceS, induced_connection, up_rel; simpl.
+    split.
+    - intros H.
+      split.
+      + destruct t__s.
+        * exists (tstop l (inl e : es endstateT)).
+          split; eauto.
+        * exists (tsilent l).
+          split; eauto.
+        * exists (tstream s).
+          split; eauto.
+      + intros m H0.
+        specialize (H (tstop m OOM)).
+        assert (rel t__s (tstop m OOM)).
+        { right.
+          exists m; split; auto. }
+        now apply H.
+    - intros H t__t H0.
+      destruct H as [[t__t' [H1 H2]] H3].
+      destruct H0.
+      + assert (t__t = t__t').
+        { clear -H H1.
+          inversion H; inversion H1; subst;
+            try now inversion H3.
+        }
+        now subst.
+      + destruct H as [m [H4 H5]]; subst; eauto.
+  Qed.
+
 
   Lemma τ_preserves_dense : forall (π : propS),
       Dense π -> Dense (τ π).
@@ -303,8 +355,9 @@ Section ResourceExhaustion.
              intros t__S' Hpref'.  unfold σ, γ. simpl.  unfold up_rel. rewrite not_forall_ex_not.
              exists (tstop m OOM). rewrite not_imp.
              split; auto. right. now (exists m).
-    + assert (prefix (ftbd l) (tstop l OOM)). { simpl; now apply  list_list_prefix_ref. }
-                                              specialize (mt_wit (tstop l OOM) H).
+    + assert (prefix (ftbd l) (tstop l OOM)).
+      { simpl; now apply  list_list_prefix_ref. }
+      specialize (mt_wit (tstop l OOM) H).
       exists (ftbd l). split.
       ++ destruct rel_ts_tt as  [Heq | [m [H1 H2]]].
          +++ inversion Heq; subst; now simpl in *.
