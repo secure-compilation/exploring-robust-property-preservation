@@ -36,6 +36,14 @@ Proof.
   - inversion H4.
 Qed.
 
+Lemma cstep_functional :
+  forall cs cs1 e1, cstep cs e1 cs1 ->
+               forall cs2 e2, cstep cs e2 cs2 -> cs1 = cs2 /\ e1 = e2.
+Proof.
+  intros cs cs1 e1 H cs2 e2 H0.
+  split; eauto using cstep_functional_event, cstep_functional_states.
+Qed.
+
 (** In small-step style, the semantics of a command [c] in a state [st]
   is determined by forming sequences of reductions starting from [c, st].
 - Finite sequences: zero, one or several reductions (reflexive transitive closure)
@@ -63,53 +71,53 @@ Remark irred_SKIP:
   forall st, irred_tr cstep (SKIP, st).
 Proof.
   unfold irred_tr; intros st st' STEP.
-  (* FILL IN HERE *)
-Admitted.
+  intros Hn.
+  inversion Hn.
+Qed.
 
-Lemma terminates_unique:
-  forall c st st1 st2 l1 l2,
-    terminates c st st1 l1 ->
-    terminates c st st2 l2 -> st1 = st2 /\ l1 = l2.
-Proof.
-  unfold terminates; intros. 
-  (* FILL IN HERE *)
-Admitted.
+(* Lemma terminates_unique: *)
+(*   forall c st st1 st2 l1 l2, *)
+(*     terminates c st st1 l1 -> *)
+(*     terminates c st st2 l2 -> st1 = st2 /\ l1 = l2. *)
+(* Proof. *)
+(*   (* FILL IN HERE *) *)
+(* Admitted. *)
 
-Lemma terminates_diverges_exclusive:
-  forall c st st' l s, terminates c st st' l -> diverges c st s -> False.
-Proof.
-  (* FILL IN HERE *)
-Admitted.
+(* Lemma terminates_diverges_exclusive: *)
+(*   forall c st st' l s, terminates c st st' l -> diverges c st s -> False. *)
+(* Proof. *)
+(*   (* FILL IN HERE *) *)
+(* Admitted. *)
 
-(** *** Exercise (3 stars, recommended) *)
-(** Show that Imp programs cannot go wrong.  Hint: first prove the following
-  "progress" result for non-[SKIP] commands. *)
+(* (** *** Exercise (3 stars, recommended) *) *)
+(* (** Show that Imp programs cannot go wrong.  Hint: first prove the following *)
+(*   "progress" result for non-[SKIP] commands. *) *)
 
-Lemma cstep_progress:
-  forall c st, c = SKIP \/ exists c', exists st', exists e, c / st ==> c' / st' ! e.
-Proof.
-  induction c; intros.
-  (* FILL IN HERE *)
-Admitted.
+(* Lemma cstep_progress: *)
+(*   forall c st, c = SKIP \/ exists c', exists st', exists e, c / st ==> c' / st' ! e. *)
+(* Proof. *)
+(*   induction c; intros. *)
+(*   (* FILL IN HERE *) *)
+(* Admitted. *)
 
-Definition goes_wrong (c: com) (st: state) : Prop :=
-  exists c', exists st', exists l,
-  star_tr cstep (c, st) l (c', st') /\ irred_tr cstep (c', st') /\ c' <> SKIP.
+(* Definition goes_wrong (c: com) (st: state) : Prop := *)
+(*   exists c', exists st', exists l, *)
+(*   star_tr cstep (c, st) l (c', st') /\ irred_tr cstep (c', st') /\ c' <> SKIP. *)
 
-Lemma not_goes_wrong:
-  forall c st, ~(goes_wrong c st).
-Proof.
-  unfold not, goes_wrong, irred_tr; intros.
-  (* FILL IN HERE *)
-Admitted.
+(* Lemma not_goes_wrong: *)
+(*   forall c st, ~(goes_wrong c st). *)
+(* Proof. *)
+(*   unfold not, goes_wrong, irred_tr; intros. *)
+(*   (* FILL IN HERE *) *)
+(* Admitted. *)
 
-(** As a corollary, using the [infseq_or_finseq] theorem from module [Sequence], we obtain that any IMP program either terminates safely or diverges. *)
+(* (** As a corollary, using the [infseq_or_finseq] theorem from module [Sequence], we obtain that any IMP program either terminates safely or diverges. *) *)
 
-Lemma terminates_or_diverges:
-  forall c st, (exists st', exists l, terminates c st st' l) \/ (exists s, diverges c st s).
-Proof.
-  (* FILL IN HERE *)
-Admitted.
+(* Lemma terminates_or_diverges: *)
+(*   forall c st, (exists st', exists l, terminates c st st' l) \/ (exists s, diverges c st s). *)
+(* Proof. *)
+(*   (* FILL IN HERE *) *)
+(* Admitted. *)
 
 (** Sequences of reductions can go under a sequence context, generalizing
   rule [CS_SeqStep]. *)

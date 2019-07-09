@@ -278,16 +278,22 @@ Proof.
   + right.
     destruct H2 as [l'0 [H3 H2]].
     exists (l ++ l'0); split; eauto.
-    admit. (* trivial *)
+
+
+    now apply list_list_prefix_app. (* trivial *)
     eapply star_tr_trans; eauto.
   + right.
     destruct H1 as [l1' [H3 H1]].
     exists l1'. split; eauto.
-    admit. (* trivial *)
+    eapply list_list_prefix_trans. eauto.
+    replace l with (l ++ []); last apply app_nil_r. rewrite <- app_assoc.
+    now apply list_list_prefix_app.
   + destruct H1 as [l1' [H3 H1]].
     right.
     exists l1'. split; eauto.
-    admit. (* trivial *)
+    eapply list_list_prefix_trans; eauto.
+    replace l with (l ++ []); last apply app_nil_r. rewrite <- app_assoc.
+    now apply list_list_prefix_app.
 
 - (* if true *)
   simpl in *.
@@ -298,7 +304,8 @@ Proof.
   edestruct compile_bexp_correct with (b := b); edestruct IHceval;
     eauto with codeseq.
   + rewrite H in *;
-      choose_side stk; [exists l; split; first admit; replace l with ([] ++ l); last reflexivity |];
+      choose_side stk; [exists l; split; first (simpl; apply list_list_prefix_ref);
+                          try replace l with ([] ++ l); last reflexivity |];
         eapply star_tr_trans;
         try eassumption;
         simpl; fold codeb; normalize;
@@ -363,7 +370,7 @@ Proof.
             eapply star_tr_one.
             econstructor. eapply trans_branch_backward.
             eauto with codeseq; omega. reflexivity. eauto. eapply star_tr_refl.
-            admit.
+            now apply list_list_prefix_app.
          ++ eapply star_tr_trans.
             replace l with ([] ++ l); try reflexivity.
             eapply star_tr_trans; eauto.
@@ -384,7 +391,7 @@ Proof.
          destruct (stack_limit <=? length stk) eqn:Hstk;
            [rewrite Nat.leb_le in Hstk | rewrite leb_iff_conv in Hstk].
          ++ right.
-            exists (l ++ []); split; first admit.
+            exists (l ++ []); split; first now apply list_list_prefix_app.
             eapply star_tr_trans.
             replace l with ([] ++ l); try reflexivity.
             eapply star_tr_trans; eauto.
@@ -397,7 +404,7 @@ Proof.
             eauto with codeseq; omega. reflexivity. eauto.
             eapply star_tr_refl.
          ++ right.
-            exists (l ++ l'0); split; first admit.
+            exists (l ++ l'0); split; first now apply list_list_prefix_app.
             eapply star_tr_trans.
             replace l with ([] ++ l); try reflexivity.
             eapply star_tr_trans; eauto.
@@ -415,7 +422,10 @@ Proof.
               with pc; last omega.
             eauto.
     * destruct H3 as [l'0 [Hpref Hstar]].
-      right; exists ([] ++ l'0); split; first admit. (* trivial *)
+      right; exists ([] ++ l'0); split.
+      simpl. eapply list_list_prefix_trans; eauto.
+      replace l with (l ++ []); last apply app_nil_r. rewrite <- app_assoc.
+      now apply list_list_prefix_app.
       eapply star_tr_trans. eauto. rewrite plus_0_r; eauto.
   + right; exists []; split; now eauto.
 
@@ -438,7 +448,7 @@ Proof.
   + right; eexists; split; now eauto.
     Unshelve.
     all: eauto.
-Admitted.
+Qed.
 
 Theorem compile_program_correct_terminating:
   forall c st st' l,
@@ -1110,6 +1120,7 @@ Lemma target_determinism : forall W s1 s2,
     semT W s2 ->
     s1 = s2.
 Proof.
+  (* follows from the determinism proved in Machine.v *)
 Admitted.
 
 Lemma rel_TC_fwd_rel_TC : rel_TC_fwd -> rel_TC.

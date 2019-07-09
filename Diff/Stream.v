@@ -67,3 +67,11 @@ Proof.
   - destruct l. intros s0 H. inversion H.
     intros s0 H. simpl in *. destruct H; subst; split; eauto using IHl'.
 Qed.
+
+Lemma list_list_prefix_app {A : Type} : forall (l : list A) l' l'',
+    list_list_prefix l' l'' -> list_list_prefix (l ++ l') (l ++ l'').
+Proof.
+  induction l.
+  eauto.
+  intros l' l'' H. split; eauto.
+Qed.
