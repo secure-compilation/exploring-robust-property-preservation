@@ -57,7 +57,6 @@ Section Preservation.
   Variable τ : prop__S -> prop__T.
 
   Local Definition σ__h : hprop__T -> hprop__S := lift σ.
-  Local Definition scl_σ__h : hprop__T -> hprop__S := sCl ∘ σ__h.
   Local Definition τ__h : hprop__S -> hprop__T := lift τ.
 
   Definition σhP (W : prg__S) (h__T : hprop__T) :=
@@ -65,11 +64,6 @@ Section Preservation.
 
 
   Definition σHP := forall W h__T, σhP W h__T.
-
-  Definition scl_σhP (W : prg__S) (h__T : hprop__T) :=
-    hsat__S W (scl_σ__h h__T) -> hsat__T (W ↓) h__T.
-
-  Definition scl_σHP := forall W h__T, scl_σhP W h__T.
 
   Lemma contra_σhP (W : prg__S) (h__T : hprop__T) :
     (σhP W h__T) <->  (~  h__T (beh__T (W ↓))  ->

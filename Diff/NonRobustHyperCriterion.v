@@ -16,6 +16,7 @@ Require Import Properties.
 Require Import ChainModel.
 Require Import NonRobustDef.
 Require Import NonRobustHyperDef.
+Require Import NonRobustTraceCriterion.
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
@@ -61,7 +62,15 @@ Section HyperCriterion.
 
   Local Definition rel_adjunction_law : Adjunction_law τ' σ' := adjunction_law adjunction.
 
+  Local Definition τP := τTP compilation_chain
+                             Source_Semantics Target_Semantics
+                             τ'. 
 
+  Local Definition σP := σTP compilation_chain
+                             Source_Semantics Target_Semantics
+                             σ'. 
+  
+  
   Local Definition τHP := τHP compilation_chain
                               Source_Semantics Target_Semantics
                               τ'.
@@ -71,27 +80,81 @@ Section HyperCriterion.
                           σ'.
 
 
-  Definition tilde_HC :=  forall W t__T, beh__T (W ↓) t__T <-> (exists t__S, rel t__S t__T /\ beh__S W t__S).
+  Definition rel_HC :=  forall W t__T, beh__T (W ↓) t__T <-> (exists t__S, rel t__S t__T /\ beh__S W t__S).
 
-  Definition tilde_HC' := forall W, beh__T (W ↓) = τ' (beh__S W).
-
-  Lemma tilde_HC_HC' : tilde_HC' <-> tilde_HC.
-  Proof.
-    split => Htilde W.
-    rewrite (Htilde W). by firstorder.
+  Lemma rel_HC' : rel_HC <-> forall W, beh__T (W ↓) = τ' (beh__S W).
+    split => Hrel W.
     apply functional_extensionality => t__T. apply: prop_extensionality.
-    rewrite (Htilde W). by firstorder.
+    rewrite (Hrel W). by firstorder.
+    rewrite (Hrel W). by firstorder. 
   Qed.
 
-  Theorem tilde_HC_τHP : tilde_HC <-> τHP.
+  Theorem rel_HC_τHP : rel_HC <-> τHP.
   Proof.
-    rewrite -tilde_HC_HC'. split.
-    - move => H_tilde W h__S. now exists (beh__S W).
+    rewrite rel_HC'. split.
+    - move => H_rel W h__S. now exists (beh__S W).
     - move => H_τHP W. specialize (H_τHP W (fun π__S => π__S = beh__S W)).
       have Hfoo : hsat__S W (fun π__S => π__S = beh__S W) by auto.
       destruct (H_τHP Hfoo) as [bs [Heq H]]. subst. exact H.
   Qed.
 
-  (*CA's TODO : relation between tilde_HC and σHP*)
+  (*CA: if τ ⇆ σ is an insertion then
+        tilde_HC =>  σHP 
+        but not able to prove the vicerversa holds  
+        (quite convinced it is not true)
+  *)
+
+  Lemma rel_HC_σHP : (Insertion_snd τ' σ') ->
+    rel_HC -> σHP.
+  Proof.
+    rewrite rel_HC' => HIns Hrel W H__T [b__T [bt_HT Heq]].
+    move: (Hrel W). rewrite /beh__T /beh__S Heq HIns. 
+    move => Heq__T. now subst.        
+  Qed. 
+
+  (****************************************************************)
+
+  (* rel_TC /\ rel_TC_fwd -> rel_HC ? *)
+
+  Local Definition rel_TC := rel_TC compilation_chain
+                                    Source_Semantics Target_Semantics
+                                    rel.
+
+  Local Definition rel_FC1 := rel_FC1 compilation_chain
+                                      Source_Semantics Target_Semantics
+                                      rel.
+
+  Local Definition rel_FC2 := rel_FC2 compilation_chain
+                                      Source_Semantics Target_Semantics
+                                      rel. 
+
+  (* under the assumption rel is a total function from source to target traces
+     HC comes as consequence of TC and FC
+   *)
+  Theorem rel_total_map_TC_plus_FC1_HC :
+   (forall s, exists! t, rel s t) ->
+    rel_TC -> rel_FC1 -> rel_HC.  
+  Proof.
+   setoid_rewrite rel_TC'. setoid_rewrite rel_FC1'. 
+   rewrite rel_HC' => rel_map bcc fcc W.
+   apply: mutual_inclusion. 
+   + by apply: bcc. 
+   + rewrite rel_adjunction_law => s behWs t rel_s_t.
+     move: (fcc W s behWs). move => [t' [rel_s_t' beh_cmpW_t']].
+     have Heq: t = t'.
+     { move: (rel_map s). move => [t0 [rel_s_t0 eq_t0]].
+         by rewrite -(eq_t0 t rel_s_t) -(eq_t0 t' rel_s_t'). }
+       by rewrite Heq.
+   Qed.  
+
+  Theorem TC_plus_FC2_HC :
+    rel_TC -> rel_FC2 -> rel_HC.
+  Proof.
+    setoid_rewrite rel_TC'. setoid_rewrite rel_FC2'.
+    rewrite rel_HC' => bcc fcc W.
+    apply: mutual_inclusion.
+    + exact (bcc W).
+    + rewrite rel_adjunction_law. exact (fcc W).
+  Qed.
 
 End HyperCriterion.

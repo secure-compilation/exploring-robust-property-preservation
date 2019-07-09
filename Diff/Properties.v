@@ -22,6 +22,7 @@ Variable Es : Endstates.
 Definition prop (trace_set : Type)  := trace_set -> Prop.
 Definition hprop (trace_set : Type) := (prop trace_set) -> Prop.
 Definition h_true (trace_set : Type) : hprop (trace_set) := fun (b : prop (trace_set)) => True.
+Definition hh_true (trace_set : Type) : (@hprop trace_set) -> Prop :=  fun _ => True. 
 
 
 Definition fprop {E : Events} {Es: Endstates} :=
@@ -231,7 +232,20 @@ Proof.
   apply: (ssc_H' b'); auto.
 Qed.
 
-(*CA's TODO: sCl as uco *)
+Lemma sCl_mono {trace_set : Type} (H1 H2 : hprop trace_set) :
+  H1 ⊆ H2 -> (sCl H1) ⊆ (sCl H2).
+Proof. by firstorder. Qed.
+
+Lemma sCl_idmp {trace_set : Type} (H : hprop trace_set) :
+  sCl (sCl H) = sCl H.
+Proof. apply: sCl_id_on_SSC. apply: sCl_SCH. Qed.  
+
+Definition ssch_uco {trace_set : Type} : @Uco (trace_set -> Prop) :=
+  @Build_Uco (prop trace_set)
+             sCl
+             sCl_mono 
+             sCl_idmp
+             sCl_bigger.
 
 
 (*****************************************************************************)
@@ -245,7 +259,7 @@ Definition HSafe {E : Events} {Es : Endstates}
 
 
 (*****************************************************************************)
-(** *SSC closure operator*)
+(** *HSafe closure operator*)
 (*****************************************************************************)
 
 Definition hsCl {E : Events} {Es : Endstates}
@@ -278,6 +292,14 @@ Proof.
   apply: (M_wit b); firstorder.
 Qed.
 
+Lemma hsCl_id_on_HSafe {E : Events} {Es : Endstates} :
+  forall H, @HSafe E Es H -> hsCl H = H.
+Proof.
+  move => H HSafe_H.
+  apply: functional_extensionality => b.
+  apply: prop_extensionality. by firstorder. 
+Qed.
+
 Lemma sCl_id_on_HSafe {E : Events} {Es : Endstates} :
   forall H, @HSafe E Es H -> sCl H = H.
 Proof.
@@ -301,4 +323,46 @@ Lemma hsCl_smallest {E : Events} {Es : Endstates}
   forall H', HSafe H' -> H ⊆ H' -> (hsCl H) ⊆ H'.
 Proof. by firstorder. Qed.
 
-(* CA's TODO: hsCl as closure operator *)
+Lemma hsCl_mono {E : Events} {Es : Endstates}:
+  forall H1 H2 : hprop (@trace E Es),
+    H1 ⊆ H2 -> (hsCl H1) ⊆ (hsCl H2).
+Proof. by firstorder. Qed. 
+
+Lemma hsCl_idmp  {E : Events} {Es : Endstates}
+                 (H : hprop (@trace E Es)):
+  hsCl (hsCl H) = hsCl H.
+Proof.
+  rewrite hsCl_id_on_HSafe.
+  reflexivity.
+  exact: hsCl_HSafe. 
+Qed.
+
+Definition hsafe_uco {E : Events} {Es : Endstates} :
+  @Uco ((@trace E Es) -> Prop) :=
+  @Build_Uco (prop (@trace E Es))
+             hsCl
+             hsCl_mono 
+             hsCl_idmp
+             hsCl_bigger.
+
+(*****************************************************************************)
+(** *2relSCH*)
+(*****************************************************************************)
+
+Definition SCH2 {trace_set : Type} (Π : (prop trace_set) * (prop trace_set) -> Prop) : Prop :=
+  forall β1 β2 β1' β2': prop trace_set,
+    Π (β1, β2) -> β1' ⊆ β1 -> β2' ⊆ β2 -> Π (β1', β2').
+
+Definition sCl2 {trace_set : Type}
+                (Π : (prop trace_set) * (prop trace_set) -> Prop) :
+                (prop  trace_set) * (prop trace_set) -> Prop  :=
+  fun b => exists b1 b2, Π (b1, b2) /\ (fst b) ⊆ b1 /\ (snd b) ⊆ b2.
+
+
+Lemma sCl2_SCH2 {trace_set : Type} (Π : (prop trace_set) * (prop trace_set) -> Prop) :
+  SCH2 (sCl2 Π).
+Proof.
+  move => β1 β2 β1' β2' [γ1 [γ2 [H_Π [Hsub1' Hbsu2']]]] H_sub1 H_sub2.
+  exists γ1, γ2. split; apply: subset_trans; eauto.
+  split; apply: subset_trans; eauto.
+Qed. 
