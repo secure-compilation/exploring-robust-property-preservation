@@ -109,12 +109,12 @@ Module Source.
   Record par :=
     {
       par_funs : funmap;
+      par_main : expr;
     }.
 
   Record ctx :=
     {
       ctx_funs : funmap;
-      ctx_main : expr;
     }.
 
   (* Record prg_wf (funs : funmap_turn) (main : expr) := *)
@@ -137,8 +137,11 @@ Module Source.
     | _, _ => None
     end.
 
-  Definition link_funs (p : par) (c : ctx) :=
-    StringMap.map2 link_fun (par_funs p) (ctx_funs c).
+  Definition link_funmaps (funs_p funs_c : funmap) : funmap_turn :=
+    StringMap.map2 link_fun funs_p funs_c.
+
+  Definition link_funs (p : par) (c : ctx) : funmap_turn :=
+    link_funmaps (par_funs p) (ctx_funs c).
 
   (* Lemma link_wf  (p : par) (c : ctx) : *)
   (*   closed (link_funs p c) (par_main p) = true -> *)
@@ -148,7 +151,7 @@ Module Source.
   (* Admitted. *)
 
   Definition link (p : par) (c : ctx) : prg :=
-    Build_prg (link_funs p c) (ctx_main c).
+    Build_prg (link_funs p c) (par_main p).
 
   (* Traces as lists of events. *)
   Inductive event :=
@@ -310,12 +313,12 @@ Module Target.
   Record par :=
     {
       par_funs : funmap;
+      par_main : expr;
     }.
 
   Record ctx :=
     {
       ctx_funs : funmap;
-      ctx_main : expr;
     }.
 
   (* Record prg_wf (funs : funmap_turn) (main : expr) := *)
@@ -338,8 +341,11 @@ Module Target.
     | _, _ => None
     end.
 
-  Definition link_funs (p : par) (c : ctx) :=
-    StringMap.map2 link_fun (par_funs p) (ctx_funs c).
+  Definition link_funmaps (funs_p funs_c : funmap) : funmap_turn :=
+    StringMap.map2 link_fun funs_p funs_c.
+
+  Definition link_funs (p : par) (c : ctx) : funmap_turn :=
+    link_funmaps (par_funs p) (ctx_funs c).
 
   (* Lemma link_wf  (p : par) (c : ctx) : *)
   (*   closed (link_funs p c) (par_main p) = true -> *)
@@ -349,7 +355,7 @@ Module Target.
   (* Admitted. *)
 
   Definition link (p : par) (c : ctx) : prg :=
-    Build_prg (link_funs p c) (ctx_main c).
+    Build_prg (link_funs p c) (par_main p).
 
   (* Traces as lists of events. *)
   Inductive event :=
@@ -482,10 +488,10 @@ Module Compiler.
     T.Build_prg (comp_funmap_turn (S.prg_funs p)) (comp_expr (S.prg_main p)).
 
   Definition comp_par (p : par S.lang) : par T.lang :=
-    T.Build_par (comp_funmap (S.par_funs p)).
+    T.Build_par (comp_funmap (S.par_funs p)) (comp_expr (S.par_main p)).
 
   Definition comp_ctx (c : ctx S.lang) : ctx T.lang :=
-    T.Build_ctx (comp_funmap (S.ctx_funs c)) (comp_expr (S.ctx_main c)).
+    T.Build_ctx (comp_funmap (S.ctx_funs c)).
 
   Definition chain :=
     Build_CompilationChain S.lang T.lang comp_prg comp_par comp_ctx.
@@ -521,10 +527,22 @@ Module RTCtilde.
   | RelTrace : forall t, T.wf_trace t -> trel (clean_trace t) t.
 
   (* Properties of trace cleanup. *)
+  Remark clean_trace_snoc_result : forall t n,
+    clean_trace (t ++ [T.Result n]) = clean_trace t ++ [S.Result n].
+  Admitted.
+
+  Remark clean_trace_app : forall t1 t2,
+    clean_trace (t1 ++ t2) = clean_trace t1 ++ clean_trace t2.
+  Admitted.
+
   Theorem trel_clean_trace : forall p t,
     T.sem_prg p t ->
     trel (clean_trace t) t.
-  Admitted.
+  Proof.
+    intros p t Hsem.
+    apply T.sem_trace in Hsem.
+    now constructor.
+  Qed.
 
   (* Context cleanup. *)
   Fixpoint clean_expr (e : T.expr) : S.expr :=
@@ -551,16 +569,80 @@ Module RTCtilde.
     | T.FArg => S.FArg
     end.
 
-  Definition clean_funmap : T.funmap ->S.funmap :=
+  Definition clean_funmap : T.funmap -> S.funmap :=
     StringMap.map clean_fexpr.
 
   Definition clean_ctx (c : T.ctx) : S.ctx :=
-    S.Build_ctx (clean_funmap (T.ctx_funs c)) (clean_expr (T.ctx_main c)).
+    S.Build_ctx (clean_funmap (T.ctx_funs c)).
 
   (* Main auxiliary results. *)
+  Remark eval_main_link_prg funs_p main_p funs_c main res :
+    T.eval_main (T.link_funs (T.Build_par funs_p main_p) (T.Build_ctx funs_c)) main res ->
+    let pc := T.Build_prg (T.link_funmaps funs_p funs_c) main in
+    T.eval_main (T.prg_funs pc) (T.prg_main pc) res.
+  Proof.
+    unfold T.link_funs. intros Heval. assumption.
+  Qed.
+
+  Remark sem_prg_link funs1 funs2 main t :
+    T.sem_prg (T.Build_prg (T.link_funmaps funs1 funs2) main)       t ->
+    T.sem_prg (T.link (T.Build_par funs1 main) (T.Build_ctx funs2)) t.
+  Proof.
+    easy.
+  Qed.
+
   Theorem sem_clean (par_s : S.par) (ctx_t : T.ctx) (t : T.trace) :
     T.sem_prg (T.link (C.comp_par par_s) ctx_t) t ->
     S.sem_prg (S.link par_s (clean_ctx ctx_t)) (clean_trace t).
+  Proof.
+    unfold S.link, T.link.
+    (*set (Hpar_s := par_s).*) destruct par_s as [funs_s main_s].
+    (*set (Hctx_t := ctx_t).*) destruct ctx_t as [funs_t].
+    simpl.
+    revert funs_s (*Hpar_s*) funs_t (*Hctx_t*) t.
+    (* Induction on the main expression. *)
+    induction main_s;
+      intros funs_s (*Hpar_s*) funs_t (*Hctx_t*) t Hsem;
+      simpl in *.
+    - (* Const. *)
+      inversion Hsem as [? ? Heval_prg]; subst.
+      inversion Heval_prg as [? ? Heval_main]; subst.
+      inversion Heval_main; subst.
+      simpl in *.
+      unfold clean_trace. simpl. change [S.Result ?X] with ([] ++ [S.Result X]).
+      now do 3 constructor.
+    - (* Plus. *)
+      inversion Hsem as [? ? Heval_prg]; subst.
+      inversion Heval_prg as [? ? Heval_main]; subst.
+      inversion Heval_main; subst.
+      simpl in *.
+      rewrite clean_trace_snoc_result, clean_trace_app.
+      do 3 constructor.
+      + apply eval_main_link_prg in H2.
+        pose proof T.Eval_Prg _ _ _ H2 as Heval1.
+        pose proof T.SemEval _ _ Heval1 as Hsem1.
+        simpl in Hsem1.
+        apply sem_prg_link in Hsem1.
+        specialize (IHmain_s1 _ _ _ Hsem1).
+        rewrite clean_trace_snoc_result in IHmain_s1.
+        inversion IHmain_s1 as [? ? Heval1']; subst.
+        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
+        unfold T.link in Heval1''. simpl in Heval1''.
+        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
+        assumption.
+      + (* Symmetric case. *)
+        apply eval_main_link_prg in H4.
+        pose proof T.Eval_Prg _ _ _ H4 as Heval1.
+        pose proof T.SemEval _ _ Heval1 as Hsem1.
+        simpl in Hsem1.
+        apply sem_prg_link in Hsem1.
+        specialize (IHmain_s2 _ _ _ Hsem1).
+        rewrite clean_trace_snoc_result in IHmain_s2.
+        inversion IHmain_s2 as [? ? Heval1']; subst.
+        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
+        unfold T.link in Heval1''. simpl in Heval1''.
+        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
+        assumption.
   Admitted.
 
   (* Main theorem. *)
