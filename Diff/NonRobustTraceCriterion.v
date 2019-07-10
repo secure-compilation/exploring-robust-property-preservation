@@ -103,7 +103,39 @@ Section TracePropertiesCriterion.
   Definition σ_fwd : prop__T -> prop__S :=
     fun π__T : prop__T =>
       (fun s => exists t, rel s t /\ π__T t).
+  
+  Lemma Galois_fwd_implies_total_rel :
+  Adjunction_law τ' σ_fwd -> (total rel).
+  Proof.
+    move/Galois_equiv => [monotau [monosig [G1 G2]]] s.
+    have Hs: (σ_fwd (τ' (fun s' => s' = s))) s by apply: G1.   
+    destruct Hs as [t Hs]. now exists t.
+  Qed.
 
+  Lemma σ_σ_fwd : σ' = σ_fwd <-> (forall t__S, exists! t__T, rel t__S t__T).
+  Proof.
+    split.
+    + move => H_eq t__S.
+      have adj_fwd: Adjunction_law τ' σ_fwd.
+      { rewrite -H_eq. exact rel_adjunction_law. } 
+      have: exists t__T, rel t__S t__T by apply: Galois_fwd_implies_total_rel.   
+      move => [t__T rel_s_t].
+      exists t__T. split; auto. move => t__T' rel_s_t'.
+      have H: τ' (σ_fwd (eq t__T)) t__T'.
+      { exists t__S. split;auto. by exists t__T. }
+      have G2: Galois_snd τ' σ_fwd. { move/Galois_equiv: adj_fwd. by intuition. }  
+        by apply: (G2 (eq t__T) t__T' H).
+    + move => Htot. apply: functional_extensionality => π__t.
+      apply: functional_extensionality => t__S. 
+      rewrite /σ_fwd /σ' /γ /= /up_rel. 
+      apply: prop_extensionality. split.
+      - by firstorder.
+      - move => [t__T [πt_tT rel_ts_tt]] t__T' H'.
+        destruct (Htot t__S) as [t Ht].
+        have [eq1 eq2] : t = t__T' /\ t = t__T by split; apply Ht.
+        now subst.
+  Qed.
+        
   Lemma rel_FC1' : rel_FC1 <-> forall W, beh__S W ⊆ σ_fwd (beh__T (W ↓)).
   Proof.
     split.

@@ -144,7 +144,7 @@ Definition induced_connection_swap {A C : Set} (rel : C -> A -> Prop) : Galois_C
 Definition total_fun_A_C {A C : Set} (rel : C -> A -> Prop) : Prop :=
   forall a, exists! c, rel c a.
 
-Definition total {A C : Set} (rel : C -> A -> Prop) : Prop :=
+Definition total {A C : Type} (rel : C -> A -> Prop) : Prop :=
   forall c, exists a, rel c a.
 
 Definition more_obs_rel {A C : Set} (rel : C -> A -> Prop) :=
