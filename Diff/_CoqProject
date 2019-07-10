@@ -48,6 +48,7 @@ UndefBehaviorCompCert.v
 
 TypeRelationExample.v
 ResourceExhaustionExample.v
+MoreTargetEventsExample.v
 
 ResourceExhaustion/Maps.v
 ResourceExhaustion/Imp.v
