@@ -42,6 +42,15 @@ Definition elements_set (A : Type) (m : StringMap.t A) : StringSet.t :=
   let keys := map fst (StringMap.elements m) in
   fold_left (fun acc key => StringSet.add key acc) keys StringSet.empty.
 
+(* A helper. *)
+Remark forall_app : forall A f (l1 l2 : list A),
+  Forall f l1 -> Forall f l2 -> Forall f (l1 ++ l2).
+Proof.
+  induction l1; intros l2 H1 H2.
+  - now eauto.
+  - simpl. inversion H1. now eauto.
+Qed.
+
 (* Source language. *)
 Module Source.
   (* Base expressions. *)
@@ -230,15 +239,123 @@ Module Source.
   Inductive sem_prg : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p t -> sem_prg p t.
 
+  Remark trace_exists_fun : forall arg e, exists res t, eval_fun arg e (res, t).
+  Proof.
+    intros arg e. induction e.
+    - do 2 eexists. now econstructor.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe1 as [n1 [? Hfun1]].
+      destruct IHe2 as [n2 [? Hfun2]].
+      destruct IHe3 as [n3 [? Hfun3]].
+      destruct IHe4 as [n4 [? Hfun4]].
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + do 2 eexists. econstructor; eassumption.
+      + do 2 eexists. eapply FEval_IfElse; eassumption.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe as [? [? Hfun1]].
+      do 2 eexists. econstructor; eassumption.
+    - do 2 eexists. econstructor; eassumption.
+  Qed.
+
   Remark trace_exists : forall W : prg, exists t : trace, sem_prg W t.
-  Admitted.
+  Proof.
+    intros [funs main].
+    induction main.
+    - eexists. now do 3 constructor.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain1 as [? Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [n1 t1 Hmain1]; subst.
+      destruct IHmain2 as [? Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [n2 t2 Hmain2]; subst.
+      destruct IHmain3 as [? Hsem3];
+        inversion Hsem3 as [? ? Hprg3];
+        inversion Hprg3 as [n3 t3 Hmain3]; subst.
+      destruct IHmain4 as [? Hsem4];
+        inversion Hsem4 as [? ? Hprg4];
+        inversion Hprg4 as [n4 t4 Hmain4]; subst.
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + eexists. do 3 econstructor; eassumption.
+      + eexists. do 2 constructor. eapply Eval_IfElse; eassumption.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 2 constructor. eapply Eval_Seq; eassumption.
+    - destruct IHmain as [t1 Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [? ? Hmain]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain as [? Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [n t' Hmain]; subst.
+      destruct (StringMap.find k funs) as [[turn e] |] eqn:Hcase.
+      + destruct (trace_exists_fun n e) as [? [? Hfun]].
+        eexists. do 2 constructor. eapply Eval_Fun; try eassumption.
+      + eexists. do 3 constructor; eassumption.
+  Qed.
 
   Inductive wf_trace : trace -> Prop :=
   | WFTrace : forall t t' res,
       t = t' ++ [Result res] -> Forall reg_event t' -> wf_trace t.
 
+  Lemma eval_fun_trace : forall arg e n t,
+    eval_fun arg e (n, t) ->
+    Forall reg_event t.
+  Proof.
+    induction e;
+      intros res t Heval;
+      inversion Heval; subst.
+    - now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; first now eauto.
+      now constructor.
+    - now eauto.
+  Qed.
+
+  Lemma eval_main_trace : forall funs main n t,
+    eval_main funs main (n, t) ->
+    Forall reg_event t.
+  Proof.
+    induction main;
+      intros res t Heval;
+      inversion Heval; subst.
+    - now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; first now eauto.
+      now constructor.
+    - apply forall_app; first now eauto.
+      eapply eval_fun_trace; eassumption.
+    - now eauto.
+  Qed.
+
   Theorem sem_trace : forall p t, sem_prg p t -> wf_trace t.
-  Admitted.
+  Proof.
+    intros p t Hsem.
+    inversion Hsem as [? ? Hprg]; subst.
+    inversion Hprg as [? ? Hmain]; subst.
+    apply eval_main_trace in Hmain.
+    now econstructor.
+  Qed.
 
   Definition lang := Build_Language link.
   Definition sem := Build_Semantics lang sem_prg trace_exists.
@@ -445,15 +562,133 @@ Module Target.
   Inductive sem_prg : prg -> trace -> Prop :=
   | SemEval : forall p t, eval_prg p t -> sem_prg p t.
 
+  Remark trace_exists_fun : forall arg e, exists res t, eval_fun arg e (res, t).
+  Proof.
+    intros arg e. induction e.
+    - do 2 eexists. now econstructor.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe1 as [n1 [? Hfun1]].
+      destruct IHe2 as [n2 [? Hfun2]].
+      destruct IHe3 as [n3 [? Hfun3]].
+      destruct IHe4 as [n4 [? Hfun4]].
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + do 2 eexists. econstructor; eassumption.
+      + do 2 eexists. eapply FEval_IfElse; eassumption.
+    - destruct IHe1 as [? [? Hfun1]].
+      destruct IHe2 as [? [? Hfun2]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe as [? [? Hfun1]].
+      do 2 eexists. econstructor; eassumption.
+    - destruct IHe as [? [? Hfun1]].
+      do 2 eexists. econstructor; eassumption.
+    - do 2 eexists. econstructor; eassumption.
+  Qed.
+
   Remark trace_exists : forall W : prg, exists t : trace, sem_prg W t.
-  Admitted.
+  Proof.
+    intros [funs main].
+    induction main.
+    - eexists. now do 3 constructor.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain1 as [? Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [n1 t1 Hmain1]; subst.
+      destruct IHmain2 as [? Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [n2 t2 Hmain2]; subst.
+      destruct IHmain3 as [? Hsem3];
+        inversion Hsem3 as [? ? Hprg3];
+        inversion Hprg3 as [n3 t3 Hmain3]; subst.
+      destruct IHmain4 as [? Hsem4];
+        inversion Hsem4 as [? ? Hprg4];
+        inversion Hprg4 as [n4 t4 Hmain4]; subst.
+      destruct (Compare_dec.le_gt_dec n1 n2) as [Hle | Hgt].
+      + eexists. do 3 econstructor; eassumption.
+      + eexists. do 2 constructor. eapply Eval_IfElse; eassumption.
+    - destruct IHmain1 as [t1 Hsem1];
+        inversion Hsem1 as [? ? Hprg1];
+        inversion Hprg1 as [? ? Hmain1]; subst.
+      destruct IHmain2 as [t2 Hsem2];
+        inversion Hsem2 as [? ? Hprg2];
+        inversion Hprg2 as [? ? Hmain2]; subst.
+      eexists. do 2 constructor. eapply Eval_Seq; eassumption.
+    - destruct IHmain as [t1 Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [? ? Hmain]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain as [? Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [n t' Hmain]; subst.
+      eexists. do 3 constructor; eassumption.
+    - destruct IHmain as [? Hsem];
+        inversion Hsem as [? ? Hprg];
+        inversion Hprg as [n t' Hmain]; subst.
+      destruct (StringMap.find k funs) as [[turn e] |] eqn:Hcase.
+      + destruct (trace_exists_fun n e) as [? [? Hfun]].
+        eexists. do 2 constructor. eapply Eval_Fun; try eassumption.
+      + eexists. do 3 constructor; eassumption.
+  Qed.
 
   Inductive wf_trace : trace -> Prop :=
   | WFTrace : forall t t' res,
       t = t' ++ [Result res] -> Forall reg_event t' -> wf_trace t.
 
+  Lemma eval_fun_trace : forall arg e n t,
+    eval_fun arg e (n, t) ->
+    Forall reg_event t.
+  Proof.
+    induction e;
+      intros res t Heval;
+      inversion Heval; subst.
+    - now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; first now eauto.
+      now repeat constructor.
+    - apply forall_app; first now eauto.
+      now repeat constructor.
+    - now eauto.
+  Qed.
+
+  Lemma eval_main_trace : forall funs main n t,
+    eval_main funs main (n, t) ->
+    Forall reg_event t.
+  Proof.
+    induction main;
+      intros res t Heval;
+      inversion Heval; subst.
+    - now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; [| apply forall_app]; now eauto.
+    - apply forall_app; now eauto.
+    - apply forall_app; first now eauto.
+      now repeat constructor.
+    - apply forall_app; first now eauto.
+      now repeat constructor.
+    - apply forall_app; first now eauto.
+      eapply eval_fun_trace; eassumption.
+    - now eauto.
+  Qed.
+
   Theorem sem_trace : forall p t, sem_prg p t -> wf_trace t.
-  Admitted.
+  Proof.
+    intros p t Hsem.
+    inversion Hsem as [? ? Hprg]; subst.
+    inversion Hprg as [? ? Hmain]; subst.
+    apply eval_main_trace in Hmain.
+    now econstructor.
+  Qed.
 
   Definition lang := Build_Language link.
   Definition sem := Build_Semantics lang sem_prg trace_exists.
@@ -536,21 +771,34 @@ Module RTCtilde.
   | RelTrace : forall t, T.wf_trace t -> trel (clean_trace t) t.
 
   (* Properties of trace cleanup. *)
+  Remark clean_trace_app : forall t1 t2,
+    clean_trace (t1 ++ t2) = clean_trace t1 ++ clean_trace t2.
+  Proof.
+    induction t1 as [| e t1' IHt1']; intros t2.
+    - reflexivity.
+    - simpl. unfold clean_trace.
+      destruct (pub_event e) eqn:Hcase; simpl; rewrite Hcase; simpl;
+        unfold clean_trace in IHt1'; now rewrite IHt1'.
+  Qed.
+
   Remark clean_trace_snoc_result : forall t n,
     clean_trace (t ++ [T.Result n]) = clean_trace t ++ [S.Result n].
-  Admitted.
+  Proof.
+    intros; now rewrite clean_trace_app.
+  Qed.
 
   Remark clean_trace_snoc_output : forall t n,
     clean_trace (t ++ [T.Output n]) = clean_trace t ++ [S.Output n].
-  Admitted.
+  Proof.
+    intros; now rewrite clean_trace_app.
+  Qed.
 
   Remark clean_trace_snoc_outputh : forall t n,
     clean_trace (t ++ [T.OutputH n]) = clean_trace t.
-  Admitted.
-
-  Remark clean_trace_app : forall t1 t2,
-    clean_trace (t1 ++ t2) = clean_trace t1 ++ clean_trace t2.
-  Admitted.
+  Proof.
+    intros; rewrite clean_trace_app.
+    unfold clean_trace. now rewrite app_nil_r.
+  Qed.
 
   Theorem trel_clean_trace : forall p t,
     T.sem_prg p t ->
