@@ -1,46 +1,5 @@
 (* Add LoadPath ".". *)
 
-(*
-
-- Should semantics be defined for typed programs only?
-
-- What would type soundness be?
-
-- Maybe go for small-step?
-
-- easy to prove there is a trace in a small-step semantics.
-
-HInBool ~> ( [ HINat _ ], HRError )
-HInBool ~> ( [ HIBool true ], HRBool true )
-HInBool ~> ( [ HIBool false ], HRBool false )
-
-LInBool ~> ( [ LINat _ ], LRError )
-LInBool ~> ( [ LINat 1 ], LRBool true )
-LInBool ~> ( [ LINat 0 ], LRBool false )
-
-P = if HInBool then 1 else 0
-
-P! = if cast(LInNat) <= 0 then 0 else 1
-
-1. extend the tilde relation s.t. true <-> 1, 2, 3, ...; false <-> 0; <----
-
-2.A. cast inputs / cast outputs;
-
-2.B. throw an exception on wrong input / cast output;
-true | true ==> 1 + 1
-
-2.C. continue w/out cast on inputs / cast output;
-
-2.D. cast input to 1 whenever it is not zero;
-
-2.E. throw an exception on wrong input;
-
-2.F. continue w/out cast on inputs.
-
-LInBool ~> ( [ LINat 2 ], LRNat 1 )
-
-*)
-
 Inductive SExp :=
   SNat : nat -> SExp
 | SBool : bool -> SExp
@@ -1491,7 +1450,7 @@ Proof.
   intros; destruct b1; destruct b2; destruct H; reflexivity.
 Qed.
 
-Lemma correctness : rel_TC.
+Theorem correctness : rel_TC.
 Proof.
   unfold rel_TC.
   unfold NonRobustTraceCriterion.rel_TC.
