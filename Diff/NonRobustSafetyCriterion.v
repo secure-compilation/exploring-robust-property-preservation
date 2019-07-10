@@ -71,12 +71,12 @@ Section SafetyCriterion.
                             σ'.
 
 
-  Definition tilde_SC :=
+  Definition rel_SC :=
     forall W (t : trace__T) (m : finpref__T),
       prefix m t ->  sem__T (W ↓) t ->
       (exists t' s, rel s t' /\ prefix m t' /\ sem__S W s).
 
-  Theorem tilde_SC_σSP : tilde_SC <-> (forall W (π__T : prop__T), Safety__T π__T -> σP W π__T).
+  Theorem rel_SC_σSP : rel_SC <-> (forall W (π__T : prop__T), Safety__T π__T -> σP W π__T).
   Proof.
     have G2 : Galois_snd τ' σ' by firstorder.
     split.
@@ -103,10 +103,10 @@ Section SafetyCriterion.
         by apply: NNPP.
   Qed.
 
-  Theorem tilde_SC_Cl_τTP : tilde_SC <-> (forall W (π__S : prop__S), Cl_τP W π__S).
+  Theorem rel_SC_Cl_τTP : rel_SC <-> (forall W (π__S : prop__S), Cl_τP W π__S).
   Proof.
     setoid_rewrite <- (uco_adjuncts _ _ _ safety_uco rel_adjunction_law).
-    by rewrite tilde_SC_σSP -Safety_Cl_prop.
+    by rewrite rel_SC_σSP -Safety_Cl_prop.
   Qed.
 
 End SafetyCriterion.
