@@ -3,6 +3,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.FSets.FMapInterface.
+Require Import Coq.FSets.FMapFacts.
 Require Import Coq.FSets.FMapWeakList.
 Require Import Coq.FSets.FSetWeakList.
 Require Import TraceModel.
@@ -29,6 +30,8 @@ End DecidableString.
 
 Module StringMap : WS with Module E := DecidableString :=
   FMapWeakList.Make DecidableString.
+
+Module StringMapFacts := WFacts_fun DecidableString StringMap.
 
 (* And function name sets, for interfacing purposes. *)
 Module StringSet := FSetWeakList.Make DecidableString.
@@ -127,6 +130,9 @@ Module Source.
       prg_funs : funmap_turn;
       prg_main : expr;
     }.
+
+  Definition prg_wf (p : prg) : Prop :=
+    well_formed_calls (prg_funs p) (prg_main p).
 
   (* Linking. Assume main in the program and combine functions from program and
      context with tags to remember provenance. *)
@@ -332,6 +338,9 @@ Module Target.
       prg_main : expr;
     }.
 
+  Definition prg_wf (p : prg) : Prop :=
+    well_formed_calls (prg_funs p) (prg_main p).
+
   (* Linking. Assume main in the program and combine functions from program and
      context with tags to remember provenance. *)
   Definition link_fun (par_fun ctx_fun : option fexpr) :=
@@ -535,6 +544,10 @@ Module RTCtilde.
     clean_trace (t ++ [T.Output n]) = clean_trace t ++ [S.Output n].
   Admitted.
 
+  Remark clean_trace_snoc_outputh : forall t n,
+    clean_trace (t ++ [T.OutputH n]) = clean_trace t.
+  Admitted.
+
   Remark clean_trace_app : forall t1 t2,
     clean_trace (t1 ++ t2) = clean_trace t1 ++ clean_trace t2.
   Admitted.
@@ -579,6 +592,12 @@ Module RTCtilde.
   Definition clean_ctx (c : T.ctx) : S.ctx :=
     S.Build_ctx (clean_funmap (T.ctx_funs c)).
 
+  (* Cheat code: the language model does not easily allow a conditional
+     formulation based on some well-formedness conditions on program and
+     context. Use this to artificially establish that assumed fact after
+     program and context have been introduced. *)
+  Hypothesis hyp_wf : forall p c, T.prg_wf (T.link (C.comp_par p) c).
+
   (* Main auxiliary results. *)
   Remark eval_main_link_prg funs_p main_p funs_c main res :
     T.eval_main (T.link_funs (T.Build_par funs_p main_p) (T.Build_ctx funs_c)) main res ->
@@ -593,6 +612,44 @@ Module RTCtilde.
     T.sem_prg (T.link (T.Build_par funs1 main) (T.Build_ctx funs2)) t.
   Proof.
     easy.
+  Qed.
+
+  Remark find_clean_ctx : forall k par_s ctx_t tag e,
+    StringMap.find k (T.link_funs (C.comp_par par_s)            ctx_t)  = Some (tag, e) ->
+    StringMap.find k (S.link_funs             par_s  (clean_ctx ctx_t)) = Some (tag, clean_fexpr e).
+  Admitted.
+
+  Lemma eval_fun_clean (arg res : nat) (e : T.fexpr) (t : T.trace) :
+    T.eval_fun arg e (res, t) ->
+    S.eval_fun arg (clean_fexpr e) (res, clean_trace t).
+  Proof.
+    revert arg res t.
+    induction e; subst;
+      intros arg res t Heval;
+      inversion Heval; subst;
+      simpl.
+    - now constructor.
+    - rewrite clean_trace_app. constructor.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+    - rewrite 2!clean_trace_app. econstructor.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+      + assumption.
+      + eapply IHe3; eassumption.
+    - rewrite 2!clean_trace_app. eapply S.FEval_IfElse.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+      + assumption.
+      + eapply IHe4; eassumption.
+    - rewrite clean_trace_app. eapply S.FEval_Seq.
+      + eapply IHe1; eassumption.
+      + eapply IHe2; eassumption.
+    - rewrite clean_trace_app; simpl. econstructor.
+      apply IHe; eassumption.
+    - rewrite clean_trace_snoc_outputh.
+      apply IHe; assumption.
+    - now constructor.
   Qed.
 
   Theorem sem_clean (par_s : S.par) (ctx_t : T.ctx) (t : T.trace) :
@@ -625,7 +682,6 @@ Module RTCtilde.
       + apply eval_main_link_prg in H2.
         pose proof T.Eval_Prg _ _ _ H2 as Heval1.
         pose proof T.SemEval _ _ Heval1 as Hsem1.
-        simpl in Hsem1.
         apply sem_prg_link in Hsem1.
         specialize (IHmain_s1 _ _ _ Hsem1).
         rewrite clean_trace_snoc_result in IHmain_s1.
@@ -638,7 +694,6 @@ Module RTCtilde.
         apply eval_main_link_prg in H4.
         pose proof T.Eval_Prg _ _ _ H4 as Heval1.
         pose proof T.SemEval _ _ Heval1 as Hsem1.
-        simpl in Hsem1.
         apply sem_prg_link in Hsem1.
         specialize (IHmain_s2 _ _ _ Hsem1).
         rewrite clean_trace_snoc_result in IHmain_s2.
@@ -659,7 +714,6 @@ Module RTCtilde.
           apply eval_main_link_prg in H4.
           pose proof T.Eval_Prg _ _ _ H4 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s1 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s1.
@@ -671,7 +725,6 @@ Module RTCtilde.
         * apply eval_main_link_prg in H6.
           pose proof T.Eval_Prg _ _ _ H6 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s2 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s2.
@@ -683,7 +736,6 @@ Module RTCtilde.
         * apply eval_main_link_prg in H8.
           pose proof T.Eval_Prg _ _ _ H8 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s3 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s3.
@@ -698,7 +750,6 @@ Module RTCtilde.
           apply eval_main_link_prg in H4.
           pose proof T.Eval_Prg _ _ _ H4 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s1 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s1.
@@ -710,7 +761,6 @@ Module RTCtilde.
         * apply eval_main_link_prg in H6.
           pose proof T.Eval_Prg _ _ _ H6 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s2 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s2.
@@ -722,7 +772,6 @@ Module RTCtilde.
         * apply eval_main_link_prg in H8.
           pose proof T.Eval_Prg _ _ _ H8 as Heval1.
           pose proof T.SemEval _ _ Heval1 as Hsem1.
-          simpl in Hsem1.
           apply sem_prg_link in Hsem1.
           specialize (IHmain_s4 _ _ _ Hsem1).
           rewrite clean_trace_snoc_result in IHmain_s4.
@@ -741,7 +790,6 @@ Module RTCtilde.
       + apply eval_main_link_prg in H2.
         pose proof T.Eval_Prg _ _ _ H2 as Heval1.
         pose proof T.SemEval _ _ Heval1 as Hsem1.
-        simpl in Hsem1.
         apply sem_prg_link in Hsem1.
         specialize (IHmain_s1 _ _ _ Hsem1).
         rewrite clean_trace_snoc_result in IHmain_s1.
@@ -753,7 +801,6 @@ Module RTCtilde.
       + apply eval_main_link_prg in H4.
         pose proof T.Eval_Prg _ _ _ H4 as Heval1.
         pose proof T.SemEval _ _ Heval1 as Hsem1.
-        simpl in Hsem1.
         apply sem_prg_link in Hsem1.
         specialize (IHmain_s2 _ _ _ Hsem1).
         rewrite clean_trace_snoc_result in IHmain_s2.
@@ -772,7 +819,6 @@ Module RTCtilde.
       apply eval_main_link_prg in H1.
       pose proof T.Eval_Prg _ _ _ H1 as Heval1.
       pose proof T.SemEval _ _ Heval1 as Hsem1.
-      simpl in Hsem1.
       apply sem_prg_link in Hsem1.
       specialize (IHmain_s _ _ _ Hsem1).
       rewrite clean_trace_snoc_result in IHmain_s.
@@ -782,7 +828,35 @@ Module RTCtilde.
       apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
       assumption.
     - (* Fun. *)
-  Admitted.
+      inversion Hsem as [? ? Heval]; subst.
+      inversion Heval as [m l Heval']; subst. simpl in Heval'.
+      inversion Heval'; subst;
+        rewrite clean_trace_snoc_result;
+        do 2 constructor.
+      + (* Found *)
+        rewrite clean_trace_app. econstructor.
+        * apply find_clean_ctx in H3. eassumption.
+        * (* Standard inductive case (on an existential and other names). *)
+          apply eval_main_link_prg in H4.
+          pose proof T.Eval_Prg _ _ _ H4 as Heval1.
+          pose proof T.SemEval _ _ Heval1 as Hsem1.
+          apply sem_prg_link in Hsem1.
+          specialize (IHmain_s _ _ _ Hsem1).
+          rewrite clean_trace_snoc_result in IHmain_s.
+          inversion IHmain_s as [? ? Heval1']; subst.
+          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
+          unfold T.link in Heval1''. simpl in Heval1''.
+          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
+          eassumption.
+        * eapply eval_fun_clean; last eassumption.
+      + (* Not found: contradiction based on well-formedness assumption. *)
+        pose proof hyp_wf Hpar_s Hctx_t as Hwf.
+        inversion Hwf as [| | | | | | ? ? Hcontra]; subst.
+        unfold T.link, Hpar_s, Hctx_t in Hcontra. simpl in Hcontra.
+        apply StringMap.mem_2 in Hcontra.
+        apply StringMapFacts.not_find_in_iff in H0.
+        contradiction.
+  Qed.
 
   (* Main theorem. *)
   Corollary extra_target_RTCt : rel_RTC C.chain S.sem T.sem trel.
