@@ -45,6 +45,28 @@ of all such references is the `Diff` folder.
  * Theorem 5.3 (robust trace-relating compiler correctness with extra observations in the target):
    File `MoreTargetEventsExample.v`, Corollary `extra_target_RTCt`.
 
+ * Figure 3 (additional trinitarian equivalences):
+
+    * Robust safety properties:
+      File `RobustSafetyCriterion.v`, Theorems `tilde_RSC_σRSP` and `tilde_RSC_Cl_τRTP`.
+
+    * Robust trace properties: Theorem 5.2.
+
+    * Robust subset-closed hyperproperties:
+      File `RobustSSCHCriterion.v`, Theorems `rel_RSCHC_sClτRSCHP` and `rel_RTC_σRTP`.
+
+    * Robust hyperproperties:
+      File `RobustHyperCriterion.v`, Theorems `rel_RHC_τRHP` and `rel_RHC_σRHP`.
+
+    * Robust hypersafety properties:
+      File `RobustHyperSafetyCriterion.v`, Theorems `rel_RHSC_sCl_σRHSP` and `rel_RHSC_hsCl_τRHSP`.
+
+    * Robust 2-relational trace properties:
+      File `Robust2relTraceCriterion.v`, Theorems `rel_R2rTC_τR2rTP` and `rel_R2rTC_σR2rTP`.
+
+    * Robust 2-relational subset-closed hyperproperties:
+      File `Robust2relSSCHCriterion.v`, Theorems `rel_R2rSCHC_sCl_τR2rSCHP` and `rel_R2rTC_σR2rTP`.
+
 ### Prerequisites for the Coq proofs ###
 
 The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.X but it
