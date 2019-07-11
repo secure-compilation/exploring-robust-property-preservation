@@ -1,7 +1,7 @@
-# Trace-Relating Compiler Correctness and Security #
+# Trace-Relating Compiler Correctness and Secure Compilation #
 
 This repository contains the Coq development of the paper
-**Trace-relating compiler correctness and security**.
+**Trace-relating compiler correctness and secure sompilation**.
 
 ### Entry points ###
 
