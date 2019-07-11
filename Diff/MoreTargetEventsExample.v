@@ -862,6 +862,12 @@ Module RTCtilde.
     easy.
   Qed.
 
+  (* If lookup succeeds on a target map containing functions from a compiled
+     source program (clean by definition) and a target context, a second lookup
+     on the source map containing the functions from the original source program
+     and the cleaned functions from the context will also succeed, and its body
+     be the body of the first lookup, once cleaned. This property follows
+     trivially from our definitions and those of standard maps. *)
   Remark find_clean_ctx : forall k par_s ctx_t tag e,
     StringMap.find k (T.link_funs (C.comp_par par_s)            ctx_t)  = Some (tag, e) ->
     StringMap.find k (S.link_funs             par_s  (clean_ctx ctx_t)) = Some (tag, clean_fexpr e).

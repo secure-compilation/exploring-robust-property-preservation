@@ -1,17 +1,54 @@
-# Exploring Robust Property Preservation for Secure Compilation #
+# Trace-Relating Compiler Correctness and Security #
 
-This repository contains the Coq development of the paper:
-- Carmine Abate, Roberto Blanco, Deepak Garg, Catalin Hritcu, Marco Patrignani, and Jérémy Thibault.
-  **[Journey Beyond Full Abstraction: Exploring Robust Property Preservation for Secure Compilation](http://arxiv.org/abs/1807.04603)**. arXiv:1807.04603. July 2018.
+This repository contains the Coq development of the paper
+**Trace-relating compiler correctness and security**.
 
 ### Entry points ###
 
-The best entry point for this work is the appendix of the paper above,
-which includes direct pointers to various Coq and text files.
+The paper includes includes direct pointers to the mechanizations of its main
+results. From those theorems, formal definitions can quickly be found. The root
+of all such references is the `Diff` folder.
+
+ * Theorem 2.4 (coincidence of TPσ and TPτ):
+   File ``NonRobustDef.v``, Corollary `Adj_σTP_iff_τTP`.
+
+ * Theorem 2.6 (adjunction of the induced property mappings):
+   File ``Galois.v``, Lemma `induced_adj_law`.
+
+ * Theorem 2.7 (trinitarian equivalence):
+   File `NonRobustTraceCriterion.v`, Theorems `rel_TC_τTP` and `rel_TC_σTP`.
+
+ * Theorem 2.13 (preservation of subset-closed hyperproperties):
+   File `NonRobustSSCHCriterion.v`, Theorems `rel_TC_sClτSCHP` and `rel_TC_sCl_σRSCHP`.
+
+ * Example 3.1 (trace relation of a compiler with undefined behavior):
+   File `UndefBehaviorCompCert.v`.
+
+ * Example 3.3 (trace-relating compiler with resource exhaustion):
+   File `ResourceExhaustion.v` and subfolder `ResourceExhaustion/`.
+
+ * Theorem 3.4 (trace-relating compiler correctness with different source and target values):
+   File `TypeRelationExampleInput.v`, Theorem `correctness`.
+
+ * Theorem 3.11 (trace-preserving compilation and abstract noninterference):
+   File `ANI.v` , Theorem `compiling_ANI`.
+
+ * Theorem 4.3 (trinitarian equivalence for safety properties):
+   File `NonRobustSafetyCriterion.v`, Theorems `tilde_SC_σSP` and `tilde_SC_Cl_τTP`.
+
+ * Theorem 4.5 (weak trinitarian equivalence for non-subset closed hyperproperties):
+   File `NonRobustHyperCriterion.v `, Theorem `rel_HC_τHP` and Lemma `rel_HC_σHP`.
+
+ * Theorem 5.2 (trinitarian equivalence for robust trace properties):
+   File `RobustTraceCriterion.v`, Theorems `rel_RTC_τRTP` and `rel_RTC_σRTP`.
+
+ * Theorem 5.3 (robust trace-relating compiler correctness with extra observations in the target):
+   File `MoreTargetEventsExample.v`, Corollary `extra_target_RTCt`.
 
 ### Prerequisites for the Coq proofs ###
 
-The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.0  but it has very few dependencies, so it will likely work with other versions as well.
+The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.X but it
+has very few dependencies, so it will likely work with other versions as well.
 
 ### Replaying the Coq proofs ###
 
@@ -19,4 +56,5 @@ The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.0  but it
 
 ### License ###
 
-This Coq development is licensed under the Apache License, Version 2.0 (see `LICENSE`)
+This Coq development is licensed under the Apache License, Version 2.0 (see
+`LICENSE`) unless overridden by another license file.

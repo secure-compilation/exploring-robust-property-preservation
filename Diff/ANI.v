@@ -116,7 +116,7 @@ Section ANI.
   (* CA: notice that ϕ_sharp_ϕ and  ρ_ρ_sharp together provide an equivalence
          that we do not really need.
 
-      CA : I think it is possible to weaken our assumptions,
+       CA: I think it is possible to weaken our assumptions,
            what I think is strictly necessary is the folllwing
 
            let f := swap_low rel
