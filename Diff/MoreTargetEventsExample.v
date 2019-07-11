@@ -906,6 +906,24 @@ Module RTCtilde.
     - now constructor.
   Qed.
 
+  Ltac t_sem_clean :=
+    match goal with
+    | IHmain : forall _ _ _ _ , S.sem_prg {| S.prg_funs := _; S.prg_main := ?E |} _,
+    Heval_main : T.eval_main _ (C.comp_expr ?E) (_, ?T)
+    |- S.eval_main _ ?E (_, clean_trace ?T) =>
+      apply eval_main_link_prg in Heval_main;
+      pose proof T.Eval_Prg _ _ _ Heval_main as Heval_prg';
+      pose proof T.SemEval _ _ Heval_prg' as Hsem_prg';
+      apply sem_prg_link in Hsem_prg';
+      specialize (IHmain _ _ _ Hsem_prg');
+      rewrite clean_trace_snoc_result in IHmain;
+      inversion IHmain as [? ? Heval_prg'']; subst;
+      inversion Heval_prg'' as [? ? Heval_main'' Htrace]; subst;
+      unfold T.link in Heval_main''; simpl in Heval_main'';
+      apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst;
+      eassumption
+  end.
+
   Theorem sem_clean (par_s : S.par) (ctx_t : T.ctx) (t : T.trace) :
     T.sem_prg (T.link (C.comp_par par_s) ctx_t) t ->
     S.sem_prg (S.link par_s (clean_ctx ctx_t)) (clean_trace t).
@@ -932,30 +950,8 @@ Module RTCtilde.
       inversion Heval_main; subst.
       simpl in *.
       rewrite clean_trace_snoc_result, clean_trace_app.
-      do 3 constructor.
-      + apply eval_main_link_prg in H2.
-        pose proof T.Eval_Prg _ _ _ H2 as Heval1.
-        pose proof T.SemEval _ _ Heval1 as Hsem1.
-        apply sem_prg_link in Hsem1.
-        specialize (IHmain_s1 _ _ _ Hsem1).
-        rewrite clean_trace_snoc_result in IHmain_s1.
-        inversion IHmain_s1 as [? ? Heval1']; subst.
-        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-        unfold T.link in Heval1''. simpl in Heval1''.
-        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
-        assumption.
-      + (* Symmetric case. *)
-        apply eval_main_link_prg in H4.
-        pose proof T.Eval_Prg _ _ _ H4 as Heval1.
-        pose proof T.SemEval _ _ Heval1 as Hsem1.
-        apply sem_prg_link in Hsem1.
-        specialize (IHmain_s2 _ _ _ Hsem1).
-        rewrite clean_trace_snoc_result in IHmain_s2.
-        inversion IHmain_s2 as [? ? Heval1']; subst.
-        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-        unfold T.link in Heval1''. simpl in Heval1''.
-        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
-        assumption.
+      do 3 constructor;
+        now t_sem_clean.
     - (* If. *)
       inversion Hsem as [? ? Heval]; subst.
       inversion Heval as [m l Heval']; subst. simpl in Heval'.
@@ -963,106 +959,19 @@ Module RTCtilde.
         rewrite clean_trace_snoc_result, 2!clean_trace_app;
         do 2 econstructor.
       + (* Then branch. *)
-        eapply S.Eval_IfThen; try eassumption.
-        * (* Each case is completely standard. *)
-          apply eval_main_link_prg in H4.
-          pose proof T.Eval_Prg _ _ _ H4 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s1 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s1.
-          inversion IHmain_s1 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
-        * apply eval_main_link_prg in H6.
-          pose proof T.Eval_Prg _ _ _ H6 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s2 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s2.
-          inversion IHmain_s2 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
-        * apply eval_main_link_prg in H8.
-          pose proof T.Eval_Prg _ _ _ H8 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s3 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s3.
-          inversion IHmain_s3 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
+        eapply S.Eval_IfThen; try eassumption;
+          now t_sem_clean.
       + (* Else branch. *)
-        eapply S.Eval_IfElse; try eassumption.
-        * (* Each case is completely standard. *)
-          apply eval_main_link_prg in H4.
-          pose proof T.Eval_Prg _ _ _ H4 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s1 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s1.
-          inversion IHmain_s1 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
-        * apply eval_main_link_prg in H6.
-          pose proof T.Eval_Prg _ _ _ H6 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s2 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s2.
-          inversion IHmain_s2 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
-        * apply eval_main_link_prg in H8.
-          pose proof T.Eval_Prg _ _ _ H8 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s4 _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s4.
-          inversion IHmain_s4 as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          assumption.
+        eapply S.Eval_IfElse; try eassumption;
+          now t_sem_clean.
     - (* Seq. *)
       inversion Hsem as [? ? Heval_prg]; subst.
       inversion Heval_prg as [? ? Heval_main]; subst.
       inversion Heval_main; subst.
       simpl in *.
       rewrite clean_trace_snoc_result, clean_trace_app.
-      do 3 econstructor.
-      + apply eval_main_link_prg in H2.
-        pose proof T.Eval_Prg _ _ _ H2 as Heval1.
-        pose proof T.SemEval _ _ Heval1 as Hsem1.
-        apply sem_prg_link in Hsem1.
-        specialize (IHmain_s1 _ _ _ Hsem1).
-        rewrite clean_trace_snoc_result in IHmain_s1.
-        inversion IHmain_s1 as [? ? Heval1']; subst.
-        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-        unfold T.link in Heval1''. simpl in Heval1''.
-        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-        eassumption.
-      + apply eval_main_link_prg in H4.
-        pose proof T.Eval_Prg _ _ _ H4 as Heval1.
-        pose proof T.SemEval _ _ Heval1 as Hsem1.
-        apply sem_prg_link in Hsem1.
-        specialize (IHmain_s2 _ _ _ Hsem1).
-        rewrite clean_trace_snoc_result in IHmain_s2.
-        inversion IHmain_s2 as [? ? Heval1']; subst.
-        inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-        unfold T.link in Heval1''. simpl in Heval1''.
-        apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst n t.
-        assumption.
+      do 3 econstructor;
+        now t_sem_clean.
     - (* Out. *)
       inversion Hsem as [? ? Heval_prg]; subst.
       inversion Heval_prg as [? ? Heval_main]; subst.
@@ -1070,17 +979,7 @@ Module RTCtilde.
       simpl in *.
       rewrite clean_trace_snoc_result, clean_trace_snoc_output.
       do 3 constructor.
-      apply eval_main_link_prg in H1.
-      pose proof T.Eval_Prg _ _ _ H1 as Heval1.
-      pose proof T.SemEval _ _ Heval1 as Hsem1.
-      apply sem_prg_link in Hsem1.
-      specialize (IHmain_s _ _ _ Hsem1).
-      rewrite clean_trace_snoc_result in IHmain_s.
-      inversion IHmain_s as [? ? Heval1']; subst.
-      inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-      unfold T.link in Heval1''. simpl in Heval1''.
-      apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-      assumption.
+      now t_sem_clean.
     - (* Fun. *)
       inversion Hsem as [? ? Heval]; subst.
       inversion Heval as [m l Heval']; subst. simpl in Heval'.
@@ -1091,17 +990,7 @@ Module RTCtilde.
         rewrite clean_trace_app. econstructor.
         * apply find_clean_ctx in H3. eassumption.
         * (* Standard inductive case (on an existential and other names). *)
-          apply eval_main_link_prg in H4.
-          pose proof T.Eval_Prg _ _ _ H4 as Heval1.
-          pose proof T.SemEval _ _ Heval1 as Hsem1.
-          apply sem_prg_link in Hsem1.
-          specialize (IHmain_s _ _ _ Hsem1).
-          rewrite clean_trace_snoc_result in IHmain_s.
-          inversion IHmain_s as [? ? Heval1']; subst.
-          inversion Heval1' as [? ? Heval1'' Htrace]; subst.
-          unfold T.link in Heval1''. simpl in Heval1''.
-          apply app_inj_tail in Htrace as [Ht Hn]; inversion Hn; subst.
-          eassumption.
+          now t_sem_clean.
         * eapply eval_fun_clean; last eassumption.
       + (* Not found: contradiction based on well-formedness assumption. *)
         pose proof hyp_wf Hpar_s Hctx_t as Hwf.
