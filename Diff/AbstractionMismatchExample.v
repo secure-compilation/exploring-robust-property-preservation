@@ -304,7 +304,7 @@ Module Compiler.
   Inductive cmp : S.ss -> T.ts -> Prop :=
     | CMP_Skip : cmp S.Skip T.Skip
     | CMP_Ifz : forall seg ss1 ss2 teg ts1 ts2, S.swts (S.Ifz seg ss1 ss2)-> cmpe seg S.Nat teg -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Ifz seg ss1 ss2) (T.Ifz teg ts1 ts2)
-    (* RB: What information is te1 giving us here? *)
+    (* What information is te1 giving us here? *)
     | CMP_Send : forall se1 st1 te1 ts1, S.swts (S.Send se1) -> cmpe se1 st1 te1 -> gensend se1 st1 ts1 -> cmp (S.Send se1) ts1
     | CMP_Seq : forall ss1 ss2 ts1 ts2, S.swts (S.Seq ss1 ss2) -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Seq ss1 ss2) (T.Seq ts1 ts2).
 
