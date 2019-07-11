@@ -35,10 +35,10 @@ Inductive aexp : Type :=
   | AMinus : aexp -> aexp -> aexp
   | AMult : aexp -> aexp -> aexp.
 
-Definition W : id := Id "W".
-Definition X : id := Id "X".
-Definition Y : id := Id "Y".
-Definition Z : id := Id "Z".
+(* Definition W : id := Id "W". *)
+(* Definition X : id := Id "X". *)
+(* Definition Y : id := Id "Y". *)
+(* Definition Z : id := Id "Z". *)
 
 Inductive bexp : Type :=
   | BTrue : bexp
