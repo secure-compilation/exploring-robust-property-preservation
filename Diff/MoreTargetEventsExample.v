@@ -906,11 +906,11 @@ Module RTCtilde.
     - now constructor.
   Qed.
 
-  Ltac t_sem_clean :=
+  Ltac t_sem_clean_ind :=
     match goal with
     | IHmain : forall _ _ _ _ , S.sem_prg {| S.prg_funs := _; S.prg_main := ?E |} _,
-    Heval_main : T.eval_main _ (C.comp_expr ?E) (_, ?T)
-    |- S.eval_main _ ?E (_, clean_trace ?T) =>
+      Heval_main : T.eval_main _ (C.comp_expr ?E) (_, ?T)
+      |- S.eval_main _ ?E (_, clean_trace ?T) =>
       apply eval_main_link_prg in Heval_main;
       pose proof T.Eval_Prg _ _ _ Heval_main as Heval_prg';
       pose proof T.SemEval _ _ Heval_prg' as Hsem_prg';
@@ -924,6 +924,53 @@ Module RTCtilde.
       eassumption
   end.
 
+  Ltac t_sem_clean_constr :=
+    match goal with
+    | |- S.eval_main _ (S.IfLe _ _ _ _) _ =>
+      match goal with
+      | H : _ <= _ |- _ => eapply S.Eval_IfThen
+      | H : _ >  _ |- _ => eapply S.Eval_IfElse
+      end
+    | _ => econstructor
+    end.
+
+  Ltac t_sem_clean :=
+    match goal with
+    | Hsem_prg : T.sem_prg ?P _ |- _ =>
+      inversion Hsem_prg as [? ? Heval_prg]; subst;
+      inversion Heval_prg as [? ? Heval_main]; subst;
+      inversion Heval_main; subst;
+      simpl in *;
+      match goal with (* Discharge function not found case. *)
+      | H : StringMap.find _  (T.link_funs (C.comp_par ?P) ?C) = None |- _ =>
+        pose proof hyp_wf P C as Hwf;
+        inversion Hwf as [| | | | | | ? ? Hcontra]; subst;
+        unfold T.link in Hcontra; simpl in Hcontra;
+        apply StringMap.mem_2 in Hcontra;
+        apply StringMapFacts.not_find_in_iff in H;
+        contradiction
+      | _ => idtac
+      end;
+      match P with (* Pre-constructor rewrites. *)
+      | {| T.prg_funs := _; T.prg_main := T.Const _ |} =>
+        unfold clean_trace; simpl;
+        try change [S.Result ?X] with ([] ++ [S.Result X])
+      | _ =>
+        try rewrite clean_trace_snoc_result;
+        repeat rewrite clean_trace_app
+      end;
+      constructor; constructor; simpl; t_sem_clean_constr;
+      match P with (* Discharge side sub-goals. *)
+      | {| T.prg_funs := _; T.prg_main := T.IfLe _ _ _ _ |} =>
+        try eassumption
+      | {| T.prg_funs := _; T.prg_main := T.Fun _ _ |} =>
+        (try apply eval_fun_clean; eassumption) ||
+        (try apply find_clean_ctx; eassumption)
+      | _ => idtac
+      end;
+      now t_sem_clean_ind (* Finish inductive sub-goals. *)
+    end.
+
   Theorem sem_clean (par_s : S.par) (ctx_t : T.ctx) (t : T.trace) :
     T.sem_prg (T.link (C.comp_par par_s) ctx_t) t ->
     S.sem_prg (S.link par_s (clean_ctx ctx_t)) (clean_trace t).
@@ -933,72 +980,10 @@ Module RTCtilde.
     set (Hctx_t := ctx_t). destruct ctx_t as [funs_t].
     simpl.
     revert funs_s Hpar_s funs_t Hctx_t t.
-    (* Induction on the main expression. *)
     induction main_s;
       intros funs_s Hpar_s funs_t Hctx_t t Hsem;
-      simpl in *.
-    - (* Const. *)
-      inversion Hsem as [? ? Heval_prg]; subst.
-      inversion Heval_prg as [? ? Heval_main]; subst.
-      inversion Heval_main; subst.
-      simpl in *.
-      unfold clean_trace. simpl. change [S.Result ?X] with ([] ++ [S.Result X]).
-      now do 3 constructor.
-    - (* Plus. *)
-      inversion Hsem as [? ? Heval_prg]; subst.
-      inversion Heval_prg as [? ? Heval_main]; subst.
-      inversion Heval_main; subst.
-      simpl in *.
-      rewrite clean_trace_snoc_result, clean_trace_app.
-      do 3 constructor;
-        now t_sem_clean.
-    - (* If. *)
-      inversion Hsem as [? ? Heval]; subst.
-      inversion Heval as [m l Heval']; subst. simpl in Heval'.
-      inversion Heval'; subst;
-        rewrite clean_trace_snoc_result, 2!clean_trace_app;
-        do 2 econstructor.
-      + (* Then branch. *)
-        eapply S.Eval_IfThen; try eassumption;
-          now t_sem_clean.
-      + (* Else branch. *)
-        eapply S.Eval_IfElse; try eassumption;
-          now t_sem_clean.
-    - (* Seq. *)
-      inversion Hsem as [? ? Heval_prg]; subst.
-      inversion Heval_prg as [? ? Heval_main]; subst.
-      inversion Heval_main; subst.
-      simpl in *.
-      rewrite clean_trace_snoc_result, clean_trace_app.
-      do 3 econstructor;
-        now t_sem_clean.
-    - (* Out. *)
-      inversion Hsem as [? ? Heval_prg]; subst.
-      inversion Heval_prg as [? ? Heval_main]; subst.
-      inversion Heval_main; subst.
-      simpl in *.
-      rewrite clean_trace_snoc_result, clean_trace_snoc_output.
-      do 3 constructor.
-      now t_sem_clean.
-    - (* Fun. *)
-      inversion Hsem as [? ? Heval]; subst.
-      inversion Heval as [m l Heval']; subst. simpl in Heval'.
-      inversion Heval'; subst;
-        rewrite clean_trace_snoc_result;
-        do 2 constructor.
-      + (* Found *)
-        rewrite clean_trace_app. econstructor.
-        * apply find_clean_ctx in H3. eassumption.
-        * (* Standard inductive case (on an existential and other names). *)
-          now t_sem_clean.
-        * eapply eval_fun_clean; last eassumption.
-      + (* Not found: contradiction based on well-formedness assumption. *)
-        pose proof hyp_wf Hpar_s Hctx_t as Hwf.
-        inversion Hwf as [| | | | | | ? ? Hcontra]; subst.
-        unfold T.link, Hpar_s, Hctx_t in Hcontra. simpl in Hcontra.
-        apply StringMap.mem_2 in Hcontra.
-        apply StringMapFacts.not_find_in_iff in H0.
-        contradiction.
+      simpl in *;
+      t_sem_clean.
   Qed.
 
   (* Main theorem. *)
