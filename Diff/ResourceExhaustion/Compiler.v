@@ -28,18 +28,6 @@ Fixpoint compile_aexp (a: aexp) : code :=
   | AMult a1 a2 => compile_aexp a1 ++ compile_aexp a2 ++ Imul :: nil
   end.
 
-(** Some examples. *)
-
-Notation vx := (Id "X").
-Notation vy := (Id "Y").
-
-Compute (compile_aexp (APlus (AId vx) (ANum 1))).
-
-(** Result is: [ [Ivar vx, Iconst 1, Iadd] ] *)
-
-Compute (compile_aexp (AMult (AId vy) (APlus (AId vx) (ANum 1)))).
-
-(** Result is: [ [Ivar vy, Ivar vx, Iconst 1, Iadd, Imul] ] *)
 
 (** The code [compile_bexp b cond ofs] for a boolean expression [b]
 - skips forward the [ofs] following instructions if [b] evaluates to [cond] (a boolean)
@@ -68,20 +56,6 @@ Fixpoint compile_bexp (b: bexp) (cond: bool) (ofs: nat) : code :=
       let c1 := compile_bexp b1 false (if cond then length c2 else ofs + length c2) in
       c1 ++ c2
   end.
-
-(** Examples. *)
-
-Compute (compile_bexp (BEq (AId vx) (ANum 1)) true 42).
-
-(** Result is: [ [Ivar vx, Iconst 1, Ibeq 42] ] *)
-
-Compute (compile_bexp (BAnd (BLe (ANum 1) (AId vx)) (BLe (AId vx) (ANum 10))) false 42).
-
-(** Result is: [ [Iconst 1, Ivar vx, Ibgt 45, Ivar vx, Iconst 10, Ibgt 42] ] *)
-
-Compute (compile_bexp (BNot (BAnd BTrue BFalse)) true 42).
-
-(** Result is: [ [Ibranch_forward 42] ] *)
 
 (** The code for a command [c]
 - updates the variable state as prescribed by [c]
@@ -122,20 +96,6 @@ Fixpoint compile_com (c: com) : code :=
 
 Definition compile_program (p: com) : code :=
   compile_com p ++ Ihalt :: nil.
-
-(** Examples of compilation: *)
-
-Compute (compile_program (vx ::= APlus (AId vx) (ANum 1))).
-
-(** Result is: [ [Ivar vx, Iconst 1, Iadd, Isetvar vx, Ihalt] ] *)
-
-Compute (compile_program (WHILE BTrue DO SKIP END)).
-
-(** Result is: [ [Ibranch_backward 1, Ihalt] ].  That's a tight loop indeed! *)
-
-Compute (compile_program (IFB BEq (AId vx) (ANum 1) THEN vx ::= ANum 0 ELSE SKIP FI)).
-
-(** Result is: [ [Ivar vx, Iconst 1, Ibne 3, Iconst 0, Isetvar vx, Ibranch_forward 0, Ihalt] ] *)
 
 (** *** Exercise (1 star_tr, recommended) *)
 (** The last example shows a slight inefficiency in the code generated for
