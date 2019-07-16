@@ -1,7 +1,7 @@
 # Trace-Relating Compiler Correctness and Secure Compilation #
 
 This repository contains the Coq development of the paper
-- **[Trace-relating compiler correctness and secure sompilation](https://arxiv.org/abs/1907.05320)**.
+- **[Trace-relating compiler correctness and secure compilation](https://arxiv.org/abs/1907.05320)**.
   Carmine Abate, Roberto Blanco, Ștefan Ciobâcă, Deepak Garg,
   Cătălin Hriţcu, Marco Patrignani, Éric Tanter, and Jérémy Thibault.
   arXiv:1907.05320. July 2019.
