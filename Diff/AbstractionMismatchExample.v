@@ -376,6 +376,26 @@ Module RTCprop.
     T.tsemrt te1 te2 ->
     S.ssemrt se1 se2 /\ S.sv se2.
   Proof.
+    (* A new proof attempt. *)
+    intros se1 se2 st te1 te2 HCMPe1. revert se2 te2.
+    induction HCMPe1;
+      try rename se2 into se2'; try rename te2 into te2';
+      intros se2 te2 HCMPe2 HTVe2 HTSeme1;
+      subst.
+    - inversion HTSeme1; subst.
+      + inversion HCMPe2; subst.
+        split; now constructor.
+      + inversion H1; subst.
+        inversion H; subst.
+        now inversion H4.
+    - inversion HTSeme1; subst.
+      + now inversion HTVe2.
+      + inversion H0; subst.
+        inversion HCMPe2; subst.
+        * split; last now constructor.
+
+    Restart.
+
     intros se1.
     induction se1; intros se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
     - (* e = num *)
