@@ -365,7 +365,7 @@ Module TraceRelation.
       trel_msg sm2 tq2 ->
       trel_msg  (S.Msg_ind sm1 sm2)
                 (T.Queue tq1 tq2).
-
+ 
   (*relate a source queue to a target queue*)
   Inductive trel_q : S.sq -> T.tq -> Prop :=
     | TRQ_e : trel_q S.Empty_q T.Empty_q
@@ -376,14 +376,14 @@ Module TraceRelation.
         (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q))
         (T.Queue tq1 tq2).
 End TraceRelation.
-
+ 
 (*proving RTCtilde for our instance with our definition*)
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.
-
+ 
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
@@ -392,53 +392,32 @@ Module RTCprop.
     T.tsemrt te1 te2 ->
     S.ssemrt se1 se2 /\ S.sv se2.
   Proof.
-    (* A new proof attempt. *)
     intros se1 se2 st te1 te2 HCMPe1. revert se2 te2.
     induction HCMPe1;
       try rename se2 into se2'; try rename te2 into te2';
       intros se2 te2 HCMPe2 HTVe2 HTSeme1;
       subst.
-    - inversion HTSeme1; subst.
-      + inversion HCMPe2; subst.
-        split; now constructor.
-      + inversion H1; subst.
-        inversion H; subst.
-        now inversion H4.
-    - inversion HTSeme1; subst.
-      + now inversion HTVe2.
-      + inversion H0; subst.
-        inversion HCMPe2; subst.
-        * split; last now constructor.
-
-    Restart.
-
-    intros se1.
-    induction se1; intros se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
-    - (* e = num *)
-      inversion HCMPe1; subst.
+    - inversion HTSeme1; subst. (* reason about the target semantics, only one case is good:the value case*)
+      + inversion HCMPe2; subst. (* reason about the compilation of te2 to recover that se2 is a number*)
+        split; now constructor. (* both cases hold trivially now*)
+    - (* op case*)
       inversion HTSeme1; subst.
-      +
-        inversion HCMPe2; subst.
-        split.
-        *
-          constructor.
-        *
-          constructor.
-      + (* trans case should be contradictory *)
-        inversion H;subst.
-        inversion H0; subst.
-        inversion H4; subst.
-    - (* e = op*)
-      inversion HCMPe1; subst.
+      (* something is wrong in the IH?*)
+      admit.
+    - (* pair case *)
+      inversion HTSeme1; subst. (* reason about the target semantics: pairs reduce to pairs*)
+      inversion HCMPe2; subst. (* reason about the compilation: if i compile to a pair i had a pair to start with so se2 is a pair*)
+      (* now we can instantiate the IHs since we have that each element of the subpair reduces to a value*)
+      specialize (IHHCMPe1_1 _ _ H10 H4 H2) as [Hs1 Hv1]. 
+      specialize (IHHCMPe1_2 _ _ H11 H6 H3) as [Hs2 Hv2].
+      (* both cases of the AND hold by IH*)
+      split; constructor; assumption.
+    - (* p1 case *)
       inversion HTSeme1; subst.
-      * (* refl case should be contrad*)
-        admit.
-      * (* trans case*)
-        inversion H; subst.
-        inversion H4; subst.
-        (* lost. i need to instatntiate the IH but i can't seem to get that the te1 ->* to a value te2, all i have is that the general expr reduces to a value but FFFF *)
-         specialize (IHse1_1 _ _ _ _ H2 HCMPe2 HTVe2 HTSeme1) as [HR1 HV1].
-
+      inversion H2; subst.
+      admit.
+    - (* p2 case*)
+      admit.
   Admitted.
 
 (*gensend is correct*)
