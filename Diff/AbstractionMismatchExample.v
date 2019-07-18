@@ -120,14 +120,22 @@ Module Source.
     | SM_P2 : forall sv1 sv2, sv sv1 -> sv sv2 -> ssm_sem (P2 (Pair sv1 sv2)) sv2.
 
   (*reflexive transitive closure of the single semantic step*)
-  Inductive ssemrt : se -> se -> Prop :=
-    | Refl : forall se1, ssemrt se1 se1
-    | Step :  forall ctx se1 se2, ssem ctx se1 se2 se1' se2'-> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se1' se2'
-    | Trans : forall se1 se2 se3, ssemrt se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.
+  (*Inductive ssemrt : se -> se -> Prop :=*)
+    (*| Refl : forall se1, ssemrt se1 se1*)
+    (*| Step :  forall ctx se1 se2, ssem ctx se1 se2 se1' se2'-> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se1' se2'*)
+    (*| Trans : forall se1 se2 se3, ssemrt se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.*)
     (*old case for the trans step with ctx sem, WRONG*)
     (*| Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.*)
     (*old case for the trans step with cos sem, WRONG*)
     (*| Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.*)
+
+    (*big step semantics for expressions*)
+  Inductive ssemrt : se -> se -> Prop :=
+    | BS_Val : forall n, ssemrt (Num n) (Num n)
+    | BS_Op : forall se1 se2 n1 n2 n, n = n1 + n2 -> ssemrt se1 (Num n1) -> ssemrt se2 (Num n2) -> ssemrt (Op se1 se2) (Num n)
+    | BS_Pair : forall se1 se2 sv1 sv2, ssemrt se1 sv1 -> ssemrt se2 sv2 -> sv sv1 -> sv sv2 -> ssemrt (Pair se1 se2) (Pair sv1 sv2)
+    | BS_P1 : forall se1 sv1 sv2, ssemrt se1 (Pair sv1 sv2) -> sv (Pair sv1 sv2) -> ssemrt (P1 se1) sv1
+    | BS_P2 : forall se1 sv1 sv2, ssemrt se1 (Pair sv1 sv2) -> sv (Pair sv1 sv2) -> ssemrt (P2 se1) sv2.
 
   (*source big step reduction that chains messages as queues*)
   Inductive sbsem : ss -> sq -> ss -> Prop :=
@@ -251,12 +259,20 @@ Module Target.
     | SM_P2 : forall tv1 tv2, tv tv1 -> tv tv2 -> tsm_sem (P2 (Pair tv1 tv2)) tv2.
 
   (*reflexive transitive closure of the single semantic step*)
-  Inductive tsemrt : te -> te -> Prop :=
-    | Refl : forall te1, tsemrt te1 te1
-    | Step :  forall ctx te1 te2 te1' te2', tsem ctx te1 te2 te1' te2'-> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te1' te2'
-    | Trans : forall te1 te2 te3, tsemrt te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.
+  (*Inductive tsemrt : te -> te -> Prop :=*)
+    (*| Refl : forall te1, tsemrt te1 te1*)
+    (*| Step :  forall ctx te1 te2 te1' te2', tsem ctx te1 te2 te1' te2'-> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te1' te2'*)
+    (*| Trans : forall te1 te2 te3, tsemrt te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.*)
     (*| Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.*)
     (*| Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.*)
+
+  (*big step sem for exprs*)
+  Inductive tsemrt : te -> te -> Prop :=
+    | BS_Val : forall n, tsemrt (Num n) (Num n)
+    | BS_Op : forall te1 te2 n1 n2 n, n = n1 + n2 -> tsemrt te1 (Num n1) -> tsemrt te2 (Num n2) -> tsemrt (Op te1 te2) (Num n)
+    | BS_Pair : forall te1 te2 tv1 tv2, tsemrt te1 tv1 -> tsemrt te2 tv2 -> tv tv1 -> tv tv2 -> tsemrt (Pair te1 te2) (Pair tv1 tv2)
+    | BS_P1 : forall te1 tv1 tv2, tsemrt te1 (Pair tv1 tv2) -> tv (Pair tv1 tv2) -> tsemrt (P1 te1) tv1
+    | BS_P2 : forall te1 tv1 tv2, tsemrt te1 (Pair tv1 tv2) -> tv (Pair tv1 tv2) -> tsemrt (P2 te1) tv2.
 
 (*target big step reduction that chains messages as queues*)
   Inductive tbsem : ts -> tq -> ts -> Prop :=
