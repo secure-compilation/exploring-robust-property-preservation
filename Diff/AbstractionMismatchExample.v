@@ -383,7 +383,7 @@ Module RTCprop.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.
- 
+  
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
     C.cmpe se1 st te1 ->
@@ -414,8 +414,11 @@ Module RTCprop.
       split; constructor; assumption.
     - (* p1 case *)
       inversion HTSeme1; subst.
-      inversion H2; subst.
-      admit.
+      inversion H1; subst.
+      +
+        specialize (IHHCMPe1 _ _ HCMPe2 
+      + 
+        admit.
     - (* p2 case*)
       admit.
   Admitted.
