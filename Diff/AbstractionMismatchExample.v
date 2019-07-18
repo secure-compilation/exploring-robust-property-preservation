@@ -122,7 +122,11 @@ Module Source.
   (*reflexive transitive closure of the single semantic step*)
   Inductive ssemrt : se -> se -> Prop :=
     | Refl : forall se1, ssemrt se1 se1
-    | Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.
+    | Step :  forall ctx se1 se2, ssem ctx se1 se2 se1' se2'-> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se1' se2'
+    | Trans : forall se1 se2 se3, ssemrt se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.
+    (*old case for the trans step with ctx sem, WRONG*)
+    (*| Tran: forall ctx se1 se2 se3 se1' se2', ssem ctx se1 se2 -> splug ctx se1 se1' -> splug ctx se2 se2' -> ssemrt se2' se3 -> ssemrt se1' se3.*)
+    (*old case for the trans step with cos sem, WRONG*)
     (*| Tran : forall se1 se2 se3, ssm_sem se1 se2 -> ssemrt se2 se3 -> ssemrt se1 se3.*)
 
   (*source big step reduction that chains messages as queues*)
@@ -249,7 +253,9 @@ Module Target.
   (*reflexive transitive closure of the single semantic step*)
   Inductive tsemrt : te -> te -> Prop :=
     | Refl : forall te1, tsemrt te1 te1
-    | Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.
+    | Step :  forall ctx te1 te2 te1' te2', tsem ctx te1 te2 te1' te2'-> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te1' te2'
+    | Trans : forall te1 te2 te3, tsemrt te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.
+    (*| Tran: forall ctx te1 te2 te3 te1' te2', tsem ctx te1 te2 -> tplug ctx te1 te1' -> tplug ctx te2 te2' -> tsemrt te2' te3 -> tsemrt te1' te3.*)
     (*| Tran : forall te1 te2 te3, tsm_sem te1 te2 -> tsemrt te2 te3 -> tsemrt te1 te3.*)
 
 (*target big step reduction that chains messages as queues*)
