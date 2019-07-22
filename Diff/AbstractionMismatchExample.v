@@ -402,8 +402,34 @@ Module RTCprop.
         split; now constructor. (* both cases hold trivially now*)
     - (* op case*)
       inversion HTSeme1; subst.
-      (* something is wrong in the IH?*)
-      admit.
+      inversion HCMPe2; subst.
+      split. (* split, the second case is already trivial *)
+      +
+        assert ( HComp_nat : C.cmpe (S.Num n1) S.Nat (T.Num n1)).
+        (*prove the assert*)
+        constructor.
+        reflexivity.
+        constructor.
+        (*finish proving the assert*)
+        assert (Htvalnum : T.tv (T.Num n1)).
+        (*prove the assert*)
+        constructor.
+        (*finished*)
+        specialize (IHHCMPe1_1 (S.Num n1) (T.Num n1) HComp_nat Htvalnum H3) as [Hs1 Hv1].
+        assert (HCompnat2 : C.cmpe (S.Num n2) S.Nat (T.Num n2)).
+        (*start*)
+        constructor.
+        reflexivity.
+        constructor.
+        (*end*)
+        assert (Htvalnum2 : T.tv (T.Num n2)).
+        (*start*)
+        constructor.
+      (*end*)
+        specialize (IHHCMPe1_2 (S.Num n2) (T.Num n2) HCompnat2 Htvalnum2 H5) as [Hs2 Hv2].
+        
+        
+      + constructor.
     - (* pair case *)
       inversion HTSeme1; subst. (* reason about the target semantics: pairs reduce to pairs*)
       inversion HCMPe2; subst. (* reason about the compilation: if i compile to a pair i had a pair to start with so se2 is a pair*)
