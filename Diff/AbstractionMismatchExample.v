@@ -307,8 +307,8 @@ Module Compiler.
     | CMPE_Nat : forall sn tn, sn = tn -> S.swte (S.Num sn) S.Nat -> cmpe (S.Num sn) (S.Nat) (T.Num tn)
     | CMPE_Op : forall se1 se2 te1 te2, S.swte (S.Op se1 se2) S.Nat -> cmpe se1 S.Nat te1 -> cmpe se2 S.Nat te2 -> cmpe (S.Op se1 se2) S.Nat (T.Op te1 te2)
     | CMPE_Pair : forall se1 st1 te1 se2 st2 te2, S.swte (S.Pair se1 se2) (S.Times st1 st2) -> cmpe se1 st1 te1 -> cmpe se2 st2 te2 -> cmpe (S.Pair se1 se2) (S.Times st1 st2) (T.Pair te1 te2)
-    | CMPE_P1 : forall se1 st1 te1, S.swte (S.P1 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P1 se1) st1 (T.P1 te1)
-    | CMPE_P2 : forall se1 st1 te1, S.swte (S.P2 se1) st1 -> cmpe se1 st1 te1 -> cmpe (S.P2 se1) st1 (T.P2 te1).
+    | CMPE_P1 : forall se1 st1 st2 te1, S.swte (S.P1 se1) st1 -> cmpe se1 (S.Times st1 st2) te1 -> cmpe (S.P1 se1) st1 (T.P1 te1)
+    | CMPE_P2 : forall se1 st1 st2 te1, S.swte (S.P2 se1) st2 -> cmpe se1 (S.Times st1 st2) te1 -> cmpe (S.P2 se1) st2 (T.P2 te1).
 
   (*given a source expression with a type, translate that into a target sequence.*)
   Inductive gensend : S.se -> S.st -> T.ts -> Prop :=
@@ -327,7 +327,7 @@ Module Compiler.
     | CMP_Skip : cmp S.Skip T.Skip
     | CMP_Ifz : forall seg ss1 ss2 teg ts1 ts2, S.swts (S.Ifz seg ss1 ss2)-> cmpe seg S.Nat teg -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Ifz seg ss1 ss2) (T.Ifz teg ts1 ts2)
     (* What information is te1 giving us here? *)
-    | CMP_Send : forall se1 st1 te1 ts1, S.swts (S.Send se1) -> cmpe se1 st1 te1 -> gensend se1 st1 ts1 -> cmp (S.Send se1) ts1
+    | CMP_Send : forall se1 st1 st2 te1 ts1, S.swts (S.Send se1) -> cmpe se1 (S.Times st1 st2) te1 -> gensend se1 (S.Times st1 st2) ts1 -> cmp (S.Send se1) ts1
     | CMP_Seq : forall ss1 ss2 ts1 ts2, S.swts (S.Seq ss1 ss2) -> cmp ss1 ts1 -> cmp ss2 ts2 -> cmp (S.Seq ss1 ss2) (T.Seq ts1 ts2).
 
 End Compiler.
@@ -375,14 +375,50 @@ Module TraceRelation.
       trel_q
         (S.Queue sq1 (S.Sing_q (S.Msg_l sm1) S.Empty_q))
         (T.Queue tq1 tq2).
-End TraceRelation.
+End TraceRelation. 
  
-(*proving RTCtilde for our instance with our definition*)
+(*proving RTCtilde for our instance with our definition*) 
 Module RTCprop.
   Module S := Source.
   Module T := Target.
   Module C := Compiler.
   Module R := TraceRelation.
+
+  
+(* compiled expr are well typed*)
+  Theorem comp_impl_wt :
+    forall se1 st1 te1,
+      C.cmpe se1 st1 te1 ->
+      S.swte se1 st1.
+  Proof.
+    intros se1 st1 te1 Hcmp.
+    inversion Hcmp; subst ; assumption. 
+  Qed.
+  
+(* a source expression that is compiled and reduces to a pair means the subpair have source level counterpart*)
+  Theorem comp_red_impl_src :
+    forall se1 st1 st2 te1 tv1 tv2,
+      C.cmpe se1 (S.Times st1 st2) te1 ->
+      T.tsemrt te1 (T.Pair tv1 tv2) ->
+      T.tv (T.Pair tv1 tv2) ->
+         exists sv1 sv2,
+           C.cmpe sv1 st1 tv1 /\
+           C.cmpe sv2 st2 tv2.
+  Proof.
+    intros se1 st1 st2 te1 tv1 tv2 Hcmp Htsem HPair.
+    induction st1; induction st2.
+    - (* nat nat*)
+      inversion Hcmp; subst.
+      + admit.
+      + admit.
+      + admit.
+    - (* nat times *)
+      admit.
+    - (* times nat*)
+      admit.
+    - (* times times*)
+      admit.
+  Admitted.
   
 (*the expression compiler is correct. i.e., it refines execution*)
   Theorem cc_expr : forall se1 se2 st te1 te2,
@@ -427,28 +463,86 @@ Module RTCprop.
         constructor.
       (*end*)
         specialize (IHHCMPe1_2 (S.Num n2) (T.Num n2) HCompnat2 Htvalnum2 H5) as [Hs2 Hv2].
-        
-        
+        econstructor.
+        * reflexivity.  
+        * assumption.
+        * assumption. 
       + constructor.
     - (* pair case *)
       inversion HTSeme1; subst. (* reason about the target semantics: pairs reduce to pairs*)
-      inversion HCMPe2; subst. (* reason about the compilation: if i compile to a pair i had a pair to start with so se2 is a pair*)
+      inversion HCMPe2; subst. (* reason about the compilation: if i compile to a pair i had a pair to start with so se2 is a pair*) 
       (* now we can instantiate the IHs since we have that each element of the subpair reduces to a value*)
       specialize (IHHCMPe1_1 _ _ H10 H4 H2) as [Hs1 Hv1]. 
       specialize (IHHCMPe1_2 _ _ H11 H6 H3) as [Hs2 Hv2].
-      (* both cases of the AND hold by IH*)
-      split; constructor; assumption.
+      (* both cases of the AND hold by IH*) 
+      split; constructor; assumption. 
     - (* p1 case *)
       inversion HTSeme1; subst.
-      inversion H1; subst.
-      +
-        specialize (IHHCMPe1 _ _ HCMPe2 
-      + 
-        admit.
-    - (* p2 case*)
-      admit.
-  Admitted.
+      inversion H2; subst. (* we know of only 1/2 of the pair, so we rely on a lemma for the other half*)
+      (* we need to know that tv1 also comes from a source level value *)
+      pose proof comp_red_impl_src  _ _ _ _ _ _ HCMPe1 H1 H2 as [Hesv1 [Hesv2 [Hv1 Hv2]]].
+      (* we then assume that the new value is compiled to tv1  *)
+      assert (Hcomppair: C.cmpe (S.Pair se2 Hesv2) (S.Times st1 st2) (T.Pair te2 tv2)).
+      {
+        constructor.  (* break down the related compilation case*)
+        + constructor. (* well typedness conditions *)
+          *
+            assert (Hstw : S.swte se2 st1).
+            { pose proof comp_impl_wt _ _ _ HCMPe2 as Hw.
+              apply Hw. (* this is unclean but ok *) }
+            now apply Hstw.
+          *
+            pose proof comp_impl_wt _ _ _ Hv2 as Hw2.
+            now apply Hw2.
+        + now apply HCMPe2. (* subcompilation parte 1 (here) and 2 (below) *)
+        + now apply Hv2.
+      }
+      specialize (IHHCMPe1 (S.Pair se2 Hesv2) (T.Pair te2 tv2) Hcomppair H2 H1) as [Hs1 Hvs1].
+      (* apply the IH*)
+      inversion Hvs1 ; subst.
+      (* basically holds by HP now *)
+      split.
+      * 
+        econstructor.
+        --
+          now apply Hs1.
+        -- 
+          now apply Hvs1.
+      *
+        now apply H6.
+    - (* p2 case -- adapted from the case above.*)
+      inversion HTSeme1; subst.
+      inversion H2; subst.
+      pose proof comp_red_impl_src  _ _ _ _ _ _ HCMPe1 H1 H2 as [Hesv1 [Hesv2 [Hv1 Hv2]]].
+      assert (Hcomppair: C.cmpe (S.Pair Hesv1 se2) (S.Times st1 st2) (T.Pair tv1 te2)).
+      {
+        constructor.  
+        + constructor.
+          *
+            pose proof comp_impl_wt _ _ _ Hv1 as Hw1.
+            apply Hw1.
+          *            
+            assert (Hstw : S.swte se2 st2).
+            { pose proof comp_impl_wt _ _ _ HCMPe2 as Hw.
+              apply Hw. }
+            apply Hstw.
+        + apply Hv1.
+        + apply HCMPe2.
+      }
+      specialize (IHHCMPe1 (S.Pair Hesv1 se2) (T.Pair tv1 te2) Hcomppair H2 H1) as [Hs1 Hvs1].
+      inversion Hvs1 ; subst.
+      split.
+      * 
+        econstructor.
+        --
+          apply Hs1.
+        -- 
+          apply Hvs1.
+      *
+        apply H7.
+  Qed.
 
+  
 (*gensend is correct*)
   Theorem gensend_correct :
     forall se1 st1 st2 ts1 tq1,
@@ -507,7 +601,7 @@ Module RTCprop.
       inversion Htbeh; subst. (*a*)
       inversion H; subst. (*a*)
       + (* Then case. *)
-        apply T.B_Sing in H10. (*a*)
+        apply T.B_Sing in H10. (*a*) 
         specialize (IHss1 ts1 tq H5 H10) as [sq1 [Htrel1 Hsbeh1]]. (*a*)
         exists sq1. (*a*)
         split. (*a*)
@@ -523,11 +617,11 @@ Module RTCprop.
           apply S.B_Ift with 0. (* the sbsem of the if now holds by the related reduction, supply 0 as the value the guard reduces to (coq can't figure it out alone)*)
           (* these 3 below are the assumptions needed to call the b_ift rule above, they are all trivial*)
           reflexivity.
-          assumption.
+          assumption.  
           assumption. (*a*)
           (* REMARK: instead of inversion 5 lines above, we had the following:
           econstructor.
-          -- reflexivity.
+          -- reflexivity. 
           -- assumption.
           then here we had the inversion followed by assumption. This way seems cleaneer *)
       + (* Else case. *)
@@ -548,273 +642,15 @@ Module RTCprop.
       inversion Hcmp; subst.
       inversion Htbeh; subst.
       inversion H0; subst.
-      Print gensend_correct.
-      inversion H1; subst.
-      inversion H4; subst.
-      -- inversion H2; subst. (* op *)
-      -- inversion H; subst ; try inversion H2. (* we analyse what gensend gives back. most are contradictions, only seq is valid *)
-         pose proof gensend_correct _ _ _ _ _ H2 H.
-         (* 2 cases: a flat pair of nums or a nested pair of pairs*)
-         ** exists (S.Sing_q (S.Msg_l (S.Msg_ind (S.Msg_base n1) (S.Msg_base n2) )) S.Empty_q).
-            destruct (H18) as [sexpr [smess [ Hssemrt [Hsv [Hsm_sv Htrelmsg] ] ] ] ].
-         subst.
-      admit.
+      pose proof gensend_correct _ _ _ _ _ H2 H as [Hse [Hsm [Hssem [Hsv [Hsvsm Htrel]]]]].
+      exists (S.Sing_q (S.Msg_l Hsm) (S.Empty_q)). (* we have the source message, so we instantiate the existential *)
+      split.
+      +
+        admit.
+      +
+        constructor.
+        admit.
   Admitted.
 
 End RTCprop.
 (* all that is below is garbage *)
-
-
-
-
-(* tentative proof of cc_expr. old stuff, maybe useful*)
-    induction se1 ; intros te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
-    - (*e = num*)
-      inversion HCMPe1; subst.
-      split.
-      + (* two cases of the and*)
-        inversion HTSeme1; subst. (* from the target semantics we get te2 is a the same tn*)
-        inversion HCMPe2; subst. (* so from the compilation we get taht se2 is the same tn*)
-        constructor. (* from the semrt perspective, this holds by refl.*)
-        inversion H; subst. (* ? looking for a contradiction? *)
-      +  (* prove the value *)
-        inversion HTSeme1; subst. (* again from the target sem we know no step is taken*)
-        * (* so in the refl case*)
-          inversion HCMPe2; subst. (* we apply the related compiler case*)
-          constructor.
-        * (* in the non refl case -> look for contradiction*)
-          inversion H; subst.
-    - (* e = op*)
-      inversion HCMPe1; subst.
-      inversion HTSeme1; subst.
-      * (* refl case: should be contradictory? *)
-        admit.
-      * (* trans case*)
-        inversion H; subst.
-        --
-      specialize (IHse1_1 _ _ H2 HCMPe2 HTVe2 _) as [ IHSSem1 IHSv1].
-      admit.
-    - (* e = pair*)
-      admit.
-    - (* e = p1*)
-      admit.
-    - (* e = p2*)
-      admit.
-
-
-
-       intros se1 se2 st te1 te2 HCMPe1 HCMPe2 HTVe2 HTSeme1.
-    (* i'd proceed by induction on the target reductions, so i invert that assumption*)
-    inversion HTSeme1; subst.
-    - (* refl case ... only the case for num should work here, the others are all contrad*)
-      admit.
-    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
-      inversion H; subst.
-      + (* primitive red = op*)
-        split.
-        *
-          (* where are my IH?? *)
-        admit.
-      + (* pr = p1 *)
-        admit.
-      + (* pr = p2*)
-        admit.
-
-
-
-    - (* trans case .. now i have the IH for the second part of the reduction and a case analysis on the single reduction*)
-      inversion H; subst.
-      + (* primitive red = op*)
-        split.
-        *
-          (* where are my IH?? *)
-        admit.
-      + (* pr = p1 *)
-        admit.
-      + (* pr = p2*)
-        admit.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-(*tctilde proven in the general framework. equivalent to ours but more convoluted*)
-Module RTC.
-  Module S := Source.
-  Module T := Target.
-  Module C := Compiler.
-  Module R := TraceRelation.
-
-  (* moved these here, this section is hopefully going to the dumpster*)
-  Fixpoint cmpe' (se : S.se) : T.te :=
-    match se with
-    | S.Num n => T.Num n
-    | S.Op se1 se2 => T.Op (cmpe' se1) (cmpe' se2)
-    | S.Pair se1 se2 => T.Pair (cmpe' se1) (cmpe' se2)
-    | S.P1 se1 => T.P1 (cmpe' se1)
-    | S.P2 se2 => T.P2 (cmpe' se2)
-    end.
-  Fixpoint gensend' (se : S.se) : T.ts :=
-    match se with
-    | S.Pair (S.Num n1) (S.Num n2) => T.Seq (T.Send (T.Num n1)) (T.Send (T.Num n2))
-    | S.Pair se1 se2 => T.Seq (gensend' se1) (gensend' se2)
-    | _ => T.Skip (* bad case *)
-    end.
-
-  Fixpoint cmp' (ss : S.ss) : T.ts :=
-    match ss with
-    | S.Skip => T.Skip
-    | S.Ifz seg ss1 ss2 => T.Ifz (cmpe' seg) (cmp' ss1) (cmp' ss2)
-    | S.Send se1 => gensend' se1
-    | S.Seq ss1 ss2 => T.Seq (cmp' ss1) (cmp' ss2)
-    end.
-
-  Definition chain := Build_CompilationChain S.slang T.tlang cmp' cmp' id.
-
-  Fixpoint tcmp (st : S.st) : T.tt :=
-    match st with
-    | S.Nat => T.Nat
-    | S.Times st1 st2 => T.Times (tcmp st1) (tcmp st2)
-    end.
-
-  Theorem cc_expr_val : forall se1 st1 te1, C.cmpe se1 st1 te1 -> T.tv te1 -> S.sv se1.
-  Proof.
-    intros se1 st1
-  Admitted.
-
-
-  (* Compilation is well-typed (if the input is well-typed). *)
-  (* Theorem cc_wf : forall se st, S.swte se st -> T.twte (C.cmpe' se) (... st). *)
-  Theorem cc_expr : forall se1 se2,
-    T.tv (C.cmpe' se2) ->
-    T.tsemrt (C.cmpe' se1) (C.cmpe' se2) ->
-    S.ssemrt se1 se2 /\ S.sv se2.
-  Proof.
-
-    (* A not very promising start. *)
-
-    induction se1;
-      intros se2 Hval Hsem;
-      simpl in *.
-    - split.
-      +
-
-      inversion Hsem; subst. split.
-      + econstructor.
-    Restart.
-
-    (* The intuitive starting point is promising. *)
-
-    intros se1 se2 Hval Hsem.
-    remember (C.cmpe' se1) as se1_comp eqn:Hse1.
-    remember (C.cmpe' se2) as se2_comp eqn:Hse2.
-    revert se1 se2 Hse1 Hse2 Hval.
-    induction Hsem;
-      intros se1 se2 Hse1 Hse2 Hval;
-      subst.
-    - assert (se1 = se2) by admit; subst se2.
-      split.
-      + constructor.
-      + admit. (* Theorem out. *)
-    - apply IHHsem.
-      + (* After applying the IH, hopefully at the proper time, only this
-           sub-goal is interesting. *)
-
-        (* This sequence of inversions seems natural, but the equality seems
-           too strong to prove. *)
-
-        inversion H; subst.
-        inversion H2; subst.
-        * inversion H0; subst;
-            inversion H1; subst.
-          -- Print Target.Op.
-
-        (* This variant leads to similar sub-goals. *)
-
-        (* inversion H0; subst. *)
-        (* * inversion H; subst. *)
-        (*   inversion H2; subst. *)
-        (*   -- inversion H1; subst. *)
-        (*      rewrite <- H3 in H2. *)
-        (*      (* Check T.PR_Op. *) *)
-        (*      admit. *)
-        (*   -- inversion H1; subst. *)
-        (*      rewrite <- H3 in H2. *)
-        (*      (* Check T.PR_P1. *) *)
-        (*      admit. *)
-        (*   -- admit. *)
-
-        admit.
-
-      + reflexivity.
-      + assumption.
-  Admitted.
-
-  Theorem RTC :
-    rel_TC Compiler.chain Source.ssemt Target.tsemt TraceRelation.trel_q.
-  Admitted.
-End RTC.
-
-
-
-
-
-
-
-
