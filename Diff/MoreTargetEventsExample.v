@@ -21,11 +21,25 @@ Inductive turn : Set :=
 (* Name-function maps, with some parts stubbed. *)
 Module DecidableString : DecidableType.
   Definition t := string.
-  Axiom eq : string -> string -> Prop.
-  Axiom eq_refl : forall x, eq x x.
-  Axiom eq_sym : forall x y, eq x y -> eq y x.
-  Axiom eq_trans : forall x y z, eq x y -> eq y z -> eq x z.
-  Axiom eq_dec : forall x y, {eq x y} + {~ eq x y}.
+
+  Definition eq : string -> string -> Prop := eq.
+
+  Theorem eq_refl : forall x, eq x x.
+  Proof.
+    easy.
+  Qed.
+
+  Theorem eq_sym : forall x y, eq x y -> eq y x.
+  Proof.
+    easy.
+  Qed.
+
+  Theorem eq_trans : forall x y z, eq x y -> eq y z -> eq x z.
+  Proof.
+    intros x y z Hxy Hyz. inversion Hxy. inversion Hyz. easy.
+  Qed.
+
+  Definition eq_dec : forall x y, {eq x y} + {~ eq x y} := string_dec.
 End DecidableString.
 
 Module StringMap : WS with Module E := DecidableString :=
@@ -553,7 +567,7 @@ Module Target.
   | Eval_BadFun : forall id earg,
       StringMap.find id fs = None ->
       eval_main fs (Fun id earg) (0, []).
-  
+
   Inductive eval_prg (p : prg) : trace -> Prop :=
   | Eval_Prg : forall n t,
       eval_main (prg_funs p) (prg_main p) (n, t) ->
