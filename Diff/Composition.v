@@ -102,33 +102,49 @@ Section Conjunction.
   Local Definition CCtilde_cap := rel_TC compilation_chain Source_Semantics Target_Semantics rel_cap.
   Local Definition τTP        := τTP compilation_chain Source_Semantics Target_Semantics τ.      
   
-  Lemma CCtilde_cap_τTP : CCtilde_cap <-> τTP.
-  Proof.
-    rewrite /CCtilde_cap -rel_is_relcap. 
-     setoid_rewrite contra_τTP. split.
-    - move => Htilde W π [t [Hsemt Hτ]].
-      destruct (Htilde W t Hsemt) as [s [Hrel_s_t Hsems]].
-      exists s. split; auto. move => s_in_π. apply: Hτ.
-      move: Hrel_s_t. rewrite /rel /τ /τ1 /τ2 /α /= /low_rel => Hrel.
-      move: Hrel => [[y1 [Heq1 Hrel1]] [y2 [Heq2 Hrel2]]]. subst. 
-      split; by exists s. 
-    - move => Hτ W t HsemWt.
-      have H : (forall s1 s2, sem__S W s1 -> sem__S W s2 -> rel1 s1 t -> rel2 s2 t -> s1 <> s2) \/
-               (exists s1 s2, sem__S W s1 /\ sem__S W s2 /\ rel1 s1 t /\ rel2 s2 t /\ s1 = s2) by admit. 
-      (* just classical reasoning *)
-      case: H. 
-      move => H. exfalso.
-      have cc1 : CCtilde1 by admit. have cc2 : CCtilde2 by admit. 
-      destruct (cc1 W t HsemWt) as [s1 [HsemWs1 Hrel1]].
-      destruct (cc2 W t HsemWt) as [s2 [HsemWs2 Hrel2]].
-      case: (Hτ W (fun s => ~ rel s t /\ sem__S W s)).
-      { admit. (* W↓ does not satisfies τ{π__S} = ∅! *) }
-      move => s [HsemWs K]. move /de_morgan1: K. rewrite -dne.
-      rewrite rel_is_relcap /rel_cap. move  => [[k11 k12]| k2]; try now auto. 
-      by apply: (H s s).      
-      (* 2nd case *)
-      by firstorder. 
-   Admitted.    
+  (* Lemma CCtilde_cap_τTP : CCtilde_cap <-> τTP. *)
+  (* Proof. *)
+  (*   rewrite /CCtilde_cap -rel_is_relcap.  *)
+  (*    setoid_rewrite contra_τTP. split. *)
+  (*   - move => Htilde W π [t [Hsemt Hτ]]. *)
+  (*     destruct (Htilde W t Hsemt) as [s [Hrel_s_t Hsems]]. *)
+  (*     exists s. split; auto. move => s_in_π. apply: Hτ. *)
+  (*     move: Hrel_s_t. rewrite /rel /τ /τ1 /τ2 /α /= /low_rel => Hrel. *)
+  (*     move: Hrel => [[y1 [Heq1 Hrel1]] [y2 [Heq2 Hrel2]]]. subst.  *)
+  (*     split; by exists s.  *)
+  (*   - move => Hτ W t HsemWt. *)
+  (*     have H : (forall s1 s2, sem__S W s1 -> sem__S W s2 -> rel1 s1 t -> rel2 s2 t -> s1 <> s2) \/ *)
+  (*              (exists s1 s2, sem__S W s1 /\ sem__S W s2 /\ rel1 s1 t /\ rel2 s2 t /\ s1 = s2). *)
+  (*     { case: (classic (forall s1 s2, sem__S W s1 -> sem__S W s2 -> rel1 s1 t -> rel2 s2 t -> s1 <> s2)); auto. *)
+  (*       rewrite not_forall_ex_not. move => [s1 H]. move /not_forall_ex_not : H => [s2 H]. *)
+  (*       right. exists s1, s2. *)
+  (*       repeat (move /not_imp: H => [h H]; split; auto; clear h).  *)
+  (*       by apply: NNPP. }  *)
+  (*     case: H.  *)
+  (*     move => H. exfalso. *)
+  (*     have cc1 : CCtilde1. *)
+  (*     { setoid_rewrite trinity1. setoid_rewrite contra_τTP. *)
+  (*       move => Ws π__S [t0 [H1 H2]]. destruct (Hτ Ws π__S) as [s Hs].  *)
+  (*       exists t0. split; auto. rewrite /τ. move => [Htau1 Htau2].   *)
+  (*         by apply: H2. *)
+  (*       exists s; auto. }             *)
+  (*     have cc2 : CCtilde2. *)
+  (*     { setoid_rewrite trinity2. setoid_rewrite contra_τTP. *)
+  (*       move => Ws π__S [t0 [H1 H2]]. destruct (Hτ Ws π__S) as [s Hs].  *)
+  (*       exists t0. split; auto. rewrite /τ. move => [Htau1 Htau2].   *)
+  (*         by apply: H2. *)
+  (*       exists s; auto. }            *)
+  (*     destruct (cc1 W t HsemWt) as [s1 [HsemWs1 Hrel1]]. *)
+  (*     destruct (cc2 W t HsemWt) as [s2 [HsemWs2 Hrel2]]. *)
+  (*     have not_t : ~ (τ (fun s =>  rel s t )) t by admit.          *)
+  (*     case: (Hτ W (fun s =>  rel s t )). *)
+  (*     { exists t. split; auto. }  *)
+  (*     move => s [HsemWs K].  move /de_morgan1: K. rewrite -dne. *)
+  (*     rewrite rel_is_relcap /rel_cap. move  => [[k11 k12]| k2]; try now auto.  *)
+  (*     by apply: (H s s).       *)
+  (*     (* 2nd case *) *)
+   (*    by firstorder.  *)
+   (* Admitted.     *)
   
   Theorem TPtau_for_conjunction :
     CCtilde1 /\ CCtilde2 -> τTP.
@@ -140,13 +156,17 @@ Section Conjunction.
       by apply: (Hτ1 W). by apply: (Hτ2 W).
   Qed.     
  
+  (* The problem is that τ does not coincide with the abstraction of 
+      the galois connection induced by ~ So that in general no involution in possible
+        (see Lemma 2.9 in the paper)  *)
   
-  Theorem conjunction_intersection : CCtilde1 /\ CCtilde2 <->  CCtilde_cap.
-  Proof.
-    rewrite CCtilde_cap_τTP. split.
-    - exact TPtau_for_conjunction.  
-    - setoid_rewrite trinity1. setoid_rewrite trinity2.
-      by firstorder.
-   Qed.                                   
+  (* Theorem conjunction_intersection : CCtilde1 /\ CCtilde2 <->  CCtilde_cap. *)
+  (* Proof. *)
+  (*   rewrite CCtilde_cap_τTP. split. *)
+  (*   - exact TPtau_for_conjunction.   *)
+  (*   - setoid_rewrite trinity1. setoid_rewrite trinity2. *)
+  (*     by firstorder. *)
+  (*  Qed.       *)                             
 
+  
 End Conjunction.
