@@ -854,6 +854,11 @@ Module RTCtilde.
   Definition clean_ctx (c : T.ctx) : S.ctx :=
     S.Build_ctx (clean_funmap (T.ctx_funs c)).
 
+  Lemma clean_comp_fexpr : forall e, clean_fexpr (C.comp_fexpr e) = e.
+  Proof.
+    intro e; induction e; simpl; congruence.
+  Qed.
+
   (* Cheat code: the language model does not easily allow a conditional
      formulation based on some well-formedness conditions on program and
      context. Use this to artificially establish that assumed fact after
