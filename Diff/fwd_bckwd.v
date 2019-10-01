@@ -18,8 +18,6 @@ Require Import Properties.
 Require Import ChainModel.
 Require Import NonRobustTraceCriterion. 
 
-Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
-
 Section FC_TC.
 
   Variable Source Target: Language.
@@ -37,8 +35,8 @@ Section FC_TC.
   Local Definition finpref__T := @finpref T_evs T_end.
 
   (* maybe worth moving this to TraceModel.v *)
-  Variable is_input__S : ev__S -> bool. 
-  Variable is_input__T : ev__T -> bool.
+  Variable is_input__S : list ev__S -> bool. 
+  Variable is_input__T : list ev__T -> bool.
   
   Variable Source_Semantics : EventTraceSemantics Source S_evs S_end.
   Variable Target_Semantics : EventTraceSemantics Target T_evs T_end.
@@ -57,74 +55,134 @@ Section FC_TC.
   Local Definition plug__S:= plug Source.
   Local Definition plug__T := plug Target.
 
-  Variable rel : ev__S -> ev__T -> Prop.
+  (* we assume a relation over lists of events because we might want to realte
+     a single source events to a sequence of target events
+  *)
+  Variable rel : (list ev__S) -> (list ev__T) -> Prop.
 
   Variable inputs_related_only_with_inputs :
-    forall e__S e__T, rel e__S e__T -> is_input__S e__S = is_input__T e__T.
+    forall l m, rel l m -> is_input__S l = is_input__T m.
 
-  Variable rel_right_total_on_inputs : forall e__T, is_input__T e__T = true -> exists e__S, rel e__S e__T.  
+  Variable rel_right_total_on_inputs : forall m, is_input__T m = true -> exists l, rel l m.  
 
   Lemma rel_right_total_is_input :
-    forall e__T, is_input__T e__T = true -> exists e__S, rel e__S e__T /\ is_input__S e__S = true.
+    forall m, is_input__T m = true -> exists l, rel l m /\ is_input__S l = true.
   Proof.
     move => et et_input.
     destruct (rel_right_total_on_inputs et_input) as [es rel_es_et].
     exists es. split; auto. rewrite -et_input. by apply: inputs_related_only_with_inputs. 
   Qed.                                          
 
-  (* lists pointwise related, 
-     they must have the same length!
-   *) 
-  Inductive list_lock_rel : list ev__S -> list ev__T -> Prop :=
-   | nil_rel  : list_lock_rel nil nil
-   | rel_cons : forall e__S e__T l m, list_lock_rel l m -> rel e__S e__T -> list_lock_rel (cons e__S l) (cons e__T m). 
-   
-  CoInductive stream_rel : @stream ev__S -> @stream ev__T -> Prop :=
-    | rel_scons : forall e__S e__T l m, stream_rel l m -> rel e__S e__T -> stream_rel (scons e__S l) (scons e__T m). 
-
-  Definition list_rel (l : list ev__S) (m : list ev__T) : Prop :=
-    (exists ll, list_list_prefix ll l /\ list_lock_rel ll m) \/
-    (exists mm, list_list_prefix mm m /\ list_lock_rel l mm). 
+  Definition stream_rel (s : @stream ev__S) (t : @stream ev__T) : Prop :=
+    (forall l, list_stream_prefix l s -> exists m, list_stream_prefix m t /\ rel l m) /\
+    (forall m, list_stream_prefix m t -> exists l, list_stream_prefix l s /\ rel l m). 
 
   (*CA: not sure this is good! 
         we only look at the list/strema of events and require they are related 
 
         We can relate a source terminating trace with a target silenlty diverging one! 
 
-        Is it the case that we need a relation also on endstates? 
-        
+        not sure this is necessary in the proof! (pending more for "yes it is necessary")
   *)
   Definition trace_rel (s : trace__S) (t : trace__T) : Prop :=
     match s, t with
-    | tstop l _ , tstop m _ => list_rel l m
-    | tstop l _, tsilent m => list_rel l m
-    | tstop l _, tstream m => exists mm, list_stream_prefix mm m /\ list_lock_rel l mm
-    | tsilent l , tstop m _ => list_rel l m
-    | tsilent l , tsilent m => list_rel l m
-    | tsilent l, tstream m  => exists mm, list_stream_prefix mm m /\ list_lock_rel l mm
-    | tstream l , tstop m _ => exists ll, list_stream_prefix ll l /\ list_lock_rel ll m
-    | tstream l, tsilent m => exists ll, list_stream_prefix ll l /\ list_lock_rel ll m
+    | tstop l _ , tstop m _ => rel l m
+    | tstop l _, tsilent m => rel l m
+    | tstop l _, tstream m => exists mm, list_stream_prefix mm m /\ rel l mm
+    | tsilent l , tstop m _ => rel l m
+    | tsilent l , tsilent m => rel l m
+    | tsilent l, tstream m  => exists mm, list_stream_prefix mm m /\ rel l mm
+    | tstream l , tstop m _ => exists ll, list_stream_prefix ll l /\ rel ll m
+    | tstream l, tsilent m => exists ll, list_stream_prefix ll l  /\ rel ll m
     | tstream l, tstream m => stream_rel l m
     end.  
-  
-  Local Notation "s ≅ t" := (trace_rel s t) (at level 50).  
+
+  Definition pref_rel (l : finpref__S) (m : finpref__T) : Prop :=
+    match l, m with
+    | fstop h _ , fstop k _ => rel h k
+    | fstop h _ , ftbd k    => rel h k
+    | ftbd  h   , fstop k _ => rel h k
+    | ftbd  h   , ftbd k    => rel h k
+    end.                   
+    
+  Local Notation "s ≅ t" := (trace_rel s t) (at level 50).
+
+  Locate input_totality.
   
   Variable src_input_totality : input_totality is_input__S Source_Semantics.
   
   Variable rel_trg_determinacy : forall W t1 t2,
-      sem__T (W↓) t1 /\ sem__T (W↓) t2 ->
-      (forall s, sem__S W s -> s ≅ t1 -> s ≅ t2) (* relaxing t1 = t2 *) \/
+      sem__T (W↓) t1 -> sem__T (W↓) t2 ->
+      ((forall s, sem__S W s -> s ≅ t1 -> s ≅ t2) (* relaxing t1 = t2 *) \/
       (exists m1 m2 i1 i2, i1 <> i2 /\
-                      (forall l, list_rel l m1 -> list_rel l m2) /\
-                      prefix (ftbd (snoc m1 i1)) t1 /\
-                      prefix (ftbd (snoc m2 i2)) t2). 
+                      (forall l, rel l m1 -> rel l m2) /\
+                      prefix (ftbd (m1 ++ i1)) t1 /\
+                      prefix (ftbd (m2 ++ i2)) t2)).
 
-  (* TODO: 
-     
-     
+  Variable rel_box_logical : forall W l l1 m m1 y i,
+      psem__S W (ftbd (l ++ y ++ l1)) ->
+      psem__T (W↓) (ftbd (m ++ i ++ m1)) -> 
+      rel l m -> rel y i ->
+      is_input__S y -> is_input__T i ->
+      rel l1 m1.
 
-
-   *)
   
+  Local Definition rel_FC1 := rel_FC1 compilation_chain 
+                                      Source_Semantics Target_Semantics
+                                      trace_rel. 
 
+  Local Definition rel_TC := rel_TC compilation_chain 
+                                    Source_Semantics Target_Semantics
+                                    trace_rel.
+
+  Lemma not_rel_first_time_on_inputs (W : prg__S) (s : trace__S) (t : trace__T) :
+    rel_FC1 -> sem__T (W↓) t -> sem__S W s ->
+    ~s ≅ t -> (exists l m y i,
+                  is_input__S y = true /\ is_input__T i = true /\
+                  ~ rel y i /\ 
+                  prefix (ftbd (l ++ y)) s /\
+                  prefix (ftbd (m ++ i)) t).
+  Proof.
+   (* 1. use FC~ to get t0 s.t. s ~ t0 
+       2. use target determinacy to get s ~ t \/ t0,t "differ" the first time 
+          on inputs i, i0 with i0 ~ y0
+       3. if y0 ~ i then look at the next input in t (using box_logical) --
+           if all inputs i' in t are related to the corresponding s inputs then by box_logical 
+           the traces are related 
+       3bis. if ¬ y0 ~ i then we are done 
+     *) Admitted.  
+
+  
+  Lemma forward_implies_finpref_backward :
+    rel_FC1 ->
+    (forall W t m, sem__T (W↓) t -> prefix m t -> exists l, pref_rel l m /\ psem__S W l).
+  Admitted.
+
+  Lemma forward_implies_finite_trace_backward :
+    rel_FC1 ->
+    (forall W l es, sem__T (W↓) (tstop l es) -> exists s, s ≅ (tstop l es) /\ sem__S W s). 
+  Admitted. (* immediate from forward_implies_finpref_backward *)
+
+  Lemma forward_implies_silent_backward :
+    rel_FC1 ->
+    (forall W l, sem__T (W↓) (tsilent l) -> exists s, s ≅ (tsilent l) /\ sem__S W s). 
+  Admitted. (* immediate from forward_implies_finpref_backward *)
+
+  Lemma forwad_implies_div_backward :
+   rel_FC1 ->
+   (forall W l, sem__T (W↓) (tstream l) -> exists s, s ≅ (tstream l) /\ sem__S W s). 
+  Proof.  
+  move => Hfwd W l semWcmpt.
+  Admitted. 
+    
+  Theorem forward_implies_backward : rel_FC1 -> rel_TC.
+  Proof.
+    move => Hfwd W t semWcmpt.
+    destruct t.
+    - by apply: forward_implies_finite_trace_backward.
+    - by apply: forward_implies_silent_backward.   
+    - by apply: forwad_implies_div_backward. 
+   Qed.
+    
+    
 End FC_TC.
