@@ -88,3 +88,10 @@ Proof.
     inversion H_pref; subst.
   + inversion H1. + inversion H1. + now rewrite H0.
 Qed.
+
+
+Fixpoint snoc {A : Type} (l : list A) (a : A) : list A :=
+  match l with
+  | nil => cons a nil
+  | cons x xs => cons x (snoc xs a)
+  end.

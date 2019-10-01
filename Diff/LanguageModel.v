@@ -15,15 +15,44 @@ Record Language := {
    }.
 
 
-(* CA: semantics of a language can be defined over an arbitrary set *)
+(* semantics of a language can be defined over an arbitrary set *)
 
-Record Semantics (L : Language) (trace_set : Type) := {
+Structure Semantics (L : Language) (trace_set : Type) := {
 
   sem : prg L -> trace_set -> Prop;
   non_empty_sem : forall W, exists t, sem W t
 
   }.
 
+
+(* in case we have usual traces over events we can also have W ⇝* m for m finite prefix *)
+
+Structure EventTraceSemantics (L : Language) (Ev : Events) (Es : Endstates) := {
+                                                                                 
+  ev_semantics : Semantics L (@trace Ev Es);
+  psem W (m : @finpref Ev Es) := exists t, prefix m t /\ sem ev_semantics W t 
+  
+  }.
+
+Coercion ev_semantics : EventTraceSemantics >-> Semantics.
+
+Definition input_totality {L : Language} {Ev : Events} {Es : Endstates}
+                          (is_input : ev Ev -> bool)
+                          (event_semantics : EventTraceSemantics L Ev Es) : Prop :=
+  forall (W : prg L) (l : list (ev Ev)) (i1 i2 : ev Ev),
+      (is_input i1 = true) ->
+      (is_input i1 = true) ->
+      psem event_semantics W (ftbd (snoc l i1)) ->
+      psem event_semantics W ( ftbd (snoc l i2)).  
+
+Definition determinacy {L : Language} {Ev : Events} {Es : Endstates}
+                       (is_input : ev Ev -> bool)
+                       (event_semantics : EventTraceSemantics L Ev Es) : Prop :=
+  forall (W : prg L) (t1 t2 : @trace Ev Es),
+    sem (ev_semantics event_semantics) W t1 ->
+    sem (ev_semantics event_semantics) W t2 ->
+    t1 = t2 \/ (exists l i1 i2, i1 <> i2 /\ prefix (ftbd (snoc l i1)) t1 /\ prefix (ftbd (snoc l i2)) t2).  
+    
 
 Definition beh {L : Language}
                {trace_set : Type}
