@@ -57,8 +57,27 @@ Section FC_TC.
 
   (* we assume a relation over lists of events because we might want to realte
      a single source events to a sequence of target events
+  
+     example: 
+
+      Input__S := Nat 
+      Input__T := List ({0,1}) 
+
+      with the relation defined to be the binary representation of a natural number
+
+      3 ~ [1,1] 
+
+     CA: However this way we lose the following porperty 
+
+         [e1] ++ [e2]  ~ [e1'] ++ [e2'] => e1 ~ e1' ∧ e2 ~ e2' 
+
+         that was foundamental in the sketch proof (see board/FCtilde_TCtilde_logical.jpg)  
+
   *)
+
+  
   Variable rel : (list ev__S) -> (list ev__T) -> Prop.
+  Variable rel_nil_nil : rel nil nil.                         
 
   Variable inputs_related_only_with_inputs :
     forall l m, rel l m -> is_input__S l = is_input__T m.
@@ -88,12 +107,12 @@ Section FC_TC.
     match s, t with
     | tstop l _ , tstop m _ => rel l m
     | tstop l _, tsilent m => rel l m
-    | tstop l _, tstream m => exists mm, list_stream_prefix mm m /\ rel l mm
+    | tstop l _, tstream m => forall mm, list_stream_prefix mm m -> rel l mm
     | tsilent l , tstop m _ => rel l m
     | tsilent l , tsilent m => rel l m
-    | tsilent l, tstream m  => exists mm, list_stream_prefix mm m /\ rel l mm
-    | tstream l , tstop m _ => exists ll, list_stream_prefix ll l /\ rel ll m
-    | tstream l, tsilent m => exists ll, list_stream_prefix ll l  /\ rel ll m
+    | tsilent l, tstream m  => forall mm, list_stream_prefix mm m -> rel l mm
+    | tstream l , tstop m _ => forall ll, list_stream_prefix ll l -> rel ll m
+    | tstream l, tsilent m => forall ll, list_stream_prefix ll l  -> rel ll m
     | tstream l, tstream m => stream_rel l m
     end.  
 
@@ -106,8 +125,6 @@ Section FC_TC.
     end.                   
     
   Local Notation "s ≅ t" := (trace_rel s t) (at level 50).
-
-  Locate input_totality.
   
   Variable src_input_totality : input_totality is_input__S Source_Semantics.
   
@@ -155,8 +172,18 @@ Section FC_TC.
   
   Lemma forward_implies_finpref_backward :
     rel_FC1 ->
-    (forall W t m, sem__T (W↓) t -> prefix m t -> exists l, pref_rel l m /\ psem__S W l).
-  Admitted.
+    (forall W m, psem__T (W↓) (ftbd m) -> exists l, rel l m /\ psem__S W (ftbd l)).
+  Proof.
+    move => Hfwd W.
+    apply: rev_ind. 
+     - exists nil. split.
+       assumption.
+       move: (non_empty_sem Source_Semantics W) => [s semWs].
+       exists s. split; auto. by destruct s. 
+     - move => e__T m0 IH psemWcmpm.
+       have psemWcmpm0 : psem__T (W↓) (ftbd m0) by admit. (* deduce it from psemwcmpm *)
+       move: (IH psemWcmpm0) => [l0 [rel_l0_m0 psemWl0]].
+       Print rel_trg_determinacy. Admitted. 
 
   Lemma forward_implies_finite_trace_backward :
     rel_FC1 ->

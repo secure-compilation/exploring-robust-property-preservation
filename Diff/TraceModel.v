@@ -95,3 +95,4 @@ Fixpoint snoc {A : Type} (l : list A) (a : A) : list A :=
   | nil => cons a nil
   | cons x xs => cons x (snoc xs a)
   end.
+
