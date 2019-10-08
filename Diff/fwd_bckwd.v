@@ -136,7 +136,22 @@ Section FC_TC.
     (exists l m y i, prefix (ftbd (snoc l y)) s /\
                  prefix (ftbd (snoc m i)) t /\
                  ~ rel y i ).
-  
+
+  (* CA: this seems needed to me, however it also seems to conflict
+         with the defintion of ≅ (between traces) starting from ~ (between events). 
+
+         e.g. W = in x; ⊥ 
+
+              W↓ = in x; if (good x) then out 0 
+                         else ⊥. 
+
+              meaning that a silently diverging trace should be related to 
+              arbitrary "longer" traces. 
+
+          This way one might lose the property that if s ~ t then prefixes of s 
+          are related with prefixes of t (of the same length).           
+
+   *)
   Variable rel_box_logical : forall W l m y i,
       psem__S W (ftbd (snoc l y)) ->
       psem__T (W↓) (ftbd (snoc m i)) -> 
