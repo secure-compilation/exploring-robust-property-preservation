@@ -15,7 +15,7 @@ Require Import TraceModel.
 Require Import Properties.
 Require Import ChainModel.
 Require Import NonRobustDef.
-Require Import NonRobustTraceCriterion.
+Require Import NonRobustTraceCriterion. 
 
 Hypothesis prop_extensionality : forall A B : Prop, (A <-> B) -> A = B.
 
@@ -48,7 +48,7 @@ Section ANI.
   Local Notation "W ↓" := (cmp W) (at level 50).
 
   Variable rel : trace__S -> trace__T -> Prop.
-  Variable H_rel : more_obs_rel rel.
+  Variable H_rel : more_obs_rel rel. 
 
   Local Definition ins : Galois_Insertion trace__S trace__T :=
     induced_insertion_swap H_rel.
@@ -99,18 +99,25 @@ Section ANI.
 
   Definition ANI {X : Set} (ϕ ρ : @Uco X) : (X -> Prop) -> Prop :=
     fun π : X -> Prop =>
-      forall x1 x2, (uco ϕ) (single x1) = (uco ϕ) (single x2) ->
+      forall x1 x2, π x1 -> π x2 ->
+                (uco ϕ) (single x1) = (uco ϕ) (single x2) ->
                 (uco ρ) (single x1) = (uco ρ) (single x2).
 
   Theorem compiling_ANI (W : prg__S) (ϕ ρ : @Uco trace__S):
-    hsat__S W (ANI ϕ ρ) -> hsat__T (W ↓) (ANI (ϕ ♯) (ρ ♯)).
+    rel_TC ->
+    hsat__S W (ANI ϕ ρ) ->
+    hsat__T (W ↓) (ANI (ϕ ♯) (ρ ♯)).
   Proof.
-    move => Hsrc t1 t2 H_ϕ_sharp.
+    move => CCtilde Hsrc t1 t2 semWcmp1 semWcmp2 H_ϕ_sharp. 
     destruct H_rel as [Hfun Htot].
-    destruct (Hfun t1) as [s1 [Hrel1 Hunique1]].
-    destruct (Hfun t2) as [s2 [Hrel2 Hunique2]]. clear Hunique1 Hunique2.
+    destruct (Hfun t1) as [s1 [Hrel1 Hunique1]]. (* *) 
+    destruct (Hfun t2) as [s2 [Hrel2 Hunique2]].
+    destruct (CCtilde W t1 semWcmp1) as [ss1 [relss1t1 Wsem1]]. 
+    destruct (CCtilde W t2 semWcmp2) as [ss2 [relss2t2 Wsem2]].
+    move: (Hunique1 ss1 relss1t1) => Heq1.
+    move: (Hunique2 ss2 relss2t2) => Heq2. subst.  
     move: (ϕ_sharp_ϕ Hrel1 Hrel2 H_ϕ_sharp) => Hϕ.
-    move: (Hsrc s1 s2 Hϕ). exact (ρ_ρ_sharp Hrel1 Hrel2).
+    move: (Hsrc ss1 ss2 Wsem1 Wsem2 Hϕ). exact (ρ_ρ_sharp Hrel1 Hrel2).
   Qed.
 
   (* CA: notice that ϕ_sharp_ϕ and  ρ_ρ_sharp together provide an equivalence
