@@ -112,6 +112,23 @@ Section HyperCriterion.
     move => Heq__T. now subst.
   Qed.
 
+  Lemma σHP_rel_HC : (Reflection_fst τ' σ') ->
+    σHP -> rel_HC.
+  Proof.
+    rewrite rel_HC' => Hrefl Hσpres W.
+    move: (Hσpres W (fun π__T => π__T = τ' (beh__S W))).
+    rewrite /σhP => σ_pres_behW. apply: σ_pres_behW.
+    have: (NonRobustHyperDef.σ__h σ' (eq^~ (τ' (beh__S W)))) = (fun π__S => π__S = (beh__S W)).
+    { rewrite /NonRobustHyperDef.σ__h /lift.
+      apply: functional_extensionality => x.
+      apply: prop_extensionality.
+      split.
+      move => [b2 [H1 H2]]. subst. apply: Hrefl. 
+      move => Heq. rewrite Heq. exists (τ' (beh__S W)).
+      split; [reflexivity | by rewrite Hrefl]. } 
+    move => Heq. by rewrite Heq.  
+   Qed. 
+    
   (****************************************************************)
 
   (* rel_TC /\ rel_TC_fwd -> rel_HC ? *)

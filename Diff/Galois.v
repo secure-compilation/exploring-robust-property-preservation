@@ -70,7 +70,7 @@ Proof.
       apply: subset_trans. apply: mono_α. exact H. by apply: G2.
 Qed.
 
-
+(* Galois Insertion (α (γ a)) = a *)
 Definition Insertion_snd {A C : Type}
            (α: (C -> Prop) -> (A -> Prop))
            (γ: (A -> Prop) -> (C -> Prop)) :=
@@ -97,6 +97,35 @@ Proof.
 Qed.
 
 Coercion Insertion_coercion_Connection  : Galois_Insertion >-> Galois_Connection.
+
+(* Galois Reflection (γ (α c)) = c *)
+
+Definition Reflection_fst {A C : Type}
+           (α: (C -> Prop) -> (A -> Prop))
+           (γ: (A -> Prop) -> (C -> Prop)) :=
+  forall (c : C -> Prop), (γ (α c)) = c.
+
+Structure Galois_Reflection (A C : Type) := {
+            α__r : (C -> Prop) -> (A -> Prop);
+            γ__r : (A -> Prop) -> (C -> Prop);
+            mono_α__r : monotone α__r;
+            mono_γ__r: monotone γ__r;
+            R1 : Reflection_fst α__r γ__r;
+            G2 : Galois_snd α__r γ__r
+          }.
+
+Lemma Reflection_coercion_Connection {A C : Type} :
+  Galois_Reflection A C -> Galois_Connection A C.
+Proof.
+  move => [α γ mono_alpha mono_gamma H1 H2].
+  have H_adj: Adjunction_law α γ.
+  rewrite Galois_equiv. repeat split; auto.
+  move => a. rewrite (H1 a). now apply: subset_ref.
+  exact (Build_Galois_Connection H_adj).
+Qed.
+
+Coercion Reflection_coercion_Connection  : Galois_Reflection >-> Galois_Connection.
+
 
   (* Given ∼ ⊆ 2^C × 2^A there is a pair of maps
      α : 2^C -> 2^A,  γ : 2^A -> 2^C, that is a Galois connection
