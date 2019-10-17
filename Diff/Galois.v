@@ -324,3 +324,24 @@ Definition induced_connection_prod {A C : Set} (rel : C -> A -> Prop)
   : Galois_Connection (A * A) (C * C) :=
   Build_Galois_Connection (induced_adj_law_prod rel).
 
+
+Lemma rel_total_surjective {A C : Set} (rel : C -> A -> Prop):
+  more_obs_rel (swap_rel rel) -> (* total and surjective map from A to C *)
+  γ (induced_connection rel) = fun (a : A -> Prop) => (fun x : C => exists y : A, rel x y /\ a y).
+Proof.
+  move => [Hrel1 Hrel2].
+  rewrite /γ /= /up_rel. 
+  apply: functional_extensionality => a.
+  apply: functional_extensionality => x.
+  apply: prop_extensionality.
+  split.
+  + firstorder.
+  + move => [y [rel_x_y a_y]] y0 rel_x_y0.    
+    move : (Hrel2 y) => [x0 rel_x0_y].
+    move : (Hrel1 x) => [y_u rel_x_yu].
+    move: rel_x_yu. rewrite /unique. move => [rel_yu_x Hunique].
+    have hfoo0 : (swap_rel rel) y0 x by [].
+    move: (Hunique y0 hfoo0) => Heq0. subst.  
+    have hfoo  : (swap_rel rel) y x by [].
+    move: (Hunique y hfoo) => Heq. by subst.
+Qed.     
