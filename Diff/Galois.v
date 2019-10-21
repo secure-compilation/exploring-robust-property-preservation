@@ -344,4 +344,23 @@ Proof.
     move: (Hunique y0 hfoo0) => Heq0. subst.  
     have hfoo  : (swap_rel rel) y x by [].
     move: (Hunique y hfoo) => Heq. by subst.
-Qed.     
+Qed.
+
+Lemma rel_total_surjective_up_inj {A C : Set} (rel : C -> A -> Prop):
+  more_obs_rel (swap_rel rel) -> (* total and surjective map from A to C *)
+  (forall π1 π2, π1 <> π2 -> 
+   (γ (induced_connection rel) π1) <> (γ (induced_connection rel) π2)).
+Proof.
+  move => Hrel π1 π2 Hdiff. rewrite (rel_total_surjective Hrel) => Hf.
+  apply: Hdiff.
+  apply: functional_extensionality => a.
+  apply: prop_extensionality.
+  move: Hrel. rewrite /swap_rel /=. move =>  [Hrel1 Hrel2]. 
+  move: (Hrel2 a) => [c rel_a_c]. move: (Hrel1 c) => [unique_a [rel_unique_c Hunique]].
+  split => Hπi.
+  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π2 a') by admit. 
+  move: (Hunique a rel_a_c) (Hunique a' rel_c_a') => Heq1 Heq2. by subst.
+  (* symmetric case *)
+  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π1 a') by admit. (* form Hf. *)
+  move: (Hunique a rel_a_c) (Hunique a' rel_c_a') => Heq1 Heq2. by subst.
+Admitted. 
