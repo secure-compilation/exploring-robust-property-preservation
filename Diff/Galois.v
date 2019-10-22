@@ -346,6 +346,10 @@ Proof.
     move: (Hunique y hfoo) => Heq. by subst.
 Qed.
 
+Lemma equal_pointwise {X : Set} (π1 π2 : X -> Prop) :
+  π1 = π2 -> (forall x : X, π1 x = π2 x).
+Proof. move => Heq x. by rewrite Heq. Qed. 
+
 Lemma rel_total_surjective_up_inj {A C : Set} (rel : C -> A -> Prop):
   more_obs_rel (swap_rel rel) -> (* total and surjective map from A to C *)
   (forall π1 π2, π1 <> π2 -> 
@@ -358,9 +362,13 @@ Proof.
   move: Hrel. rewrite /swap_rel /=. move =>  [Hrel1 Hrel2]. 
   move: (Hrel2 a) => [c rel_a_c]. move: (Hrel1 c) => [unique_a [rel_unique_c Hunique]].
   split => Hπi.
-  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π2 a') by admit. 
+  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π2 a').
+  { move: (equal_pointwise Hf c) => Heq. rewrite -Heq.
+    by exists a. } 
   move: (Hunique a rel_a_c) (Hunique a' rel_c_a') => Heq1 Heq2. by subst.
   (* symmetric case *)
-  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π1 a') by admit. (* form Hf. *)
+  have [a' [rel_c_a' π2_a']] : exists a': A, rel c a'  /\ (π1 a').
+  { move: (equal_pointwise Hf c) => Heq. rewrite Heq.
+    by exists a. } 
   move: (Hunique a rel_a_c) (Hunique a' rel_c_a') => Heq1 Heq2. by subst.
-Admitted. 
+Qed. 
