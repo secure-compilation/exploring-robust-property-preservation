@@ -136,21 +136,21 @@ Section RobustHyperCriterion.
 
   
   Lemma σRHP_rel_RHC:  
-    (Reflection_fst τ' σ') ->                   
+    (Reflection_fst τ' σ') ->
     σRHP -> rel_RHC.
   Proof.
     rewrite rel_RHC' => Hrefl Hσpres P Ct.
     
     rewrite /RobustHyperProperty.σRhP .
     have Hfoo: (RobustHyperProperty.rhsat__S Source_Semantics P
-     (RobustHyperProperty.σ σ'
-                            (fun π__T : prop trace__T => exists C__S : ctx Source, π__T = τ' (beh__S (plug__S P C__S))))).
+                                           (RobustHyperProperty.σ σ'
+                                                                  (fun π__T : prop trace__T => exists C__S : ctx Source, π__T = τ' (beh__S (plug__S P C__S))))).
     { 
       move => C__S. exists (fun t => (τ' (beh__S (plug__S P C__S)) t)).  
       split. by exists C__S. by  rewrite Hrefl.  
     }  
     move: (Hσpres P (fun π__T => exists C__S, π__T = τ' (beh__S (plug__S P C__S))) Hfoo).
-    by firstorder. 
+      by firstorder. 
   Qed. 
 
 End RobustHyperCriterion.
