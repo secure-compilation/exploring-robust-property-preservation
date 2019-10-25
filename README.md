@@ -8,7 +8,7 @@ This branch contains the Coq development of the paper
 
 ### Prerequisites for the Coq proofs ###
 
-The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.X but it
+The Coq development is known to work with Coq v8.8.X and v8.9.X but it
 has very few dependencies, so it will likely work with other versions as well.
 
 ### Replaying the Coq proofs ###
