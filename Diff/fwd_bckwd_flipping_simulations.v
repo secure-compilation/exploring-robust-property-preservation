@@ -3,11 +3,9 @@ From mathcomp Require Import all_ssreflect.
 Set Implicit Arguments.
 Unset Printing Implicit Defensive.
 
-Require Import ClassicalExtras.
-Require Import MyNotation.
 Require Import Setoid.
-Require Import List.
-Require Import Stream.
+Require Export Classical.
+
 
 Section labels.
 
