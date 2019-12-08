@@ -21,11 +21,25 @@ Inductive turn : Set :=
 (* Name-function maps, with some parts stubbed. *)
 Module DecidableString : DecidableType.
   Definition t := string.
-  Axiom eq : string -> string -> Prop.
-  Axiom eq_refl : forall x, eq x x.
-  Axiom eq_sym : forall x y, eq x y -> eq y x.
-  Axiom eq_trans : forall x y z, eq x y -> eq y z -> eq x z.
-  Axiom eq_dec : forall x y, {eq x y} + {~ eq x y}.
+
+  Definition eq : string -> string -> Prop := eq.
+
+  Theorem eq_refl : forall x, eq x x.
+  Proof.
+    easy.
+  Qed.
+
+  Theorem eq_sym : forall x y, eq x y -> eq y x.
+  Proof.
+    easy.
+  Qed.
+
+  Theorem eq_trans : forall x y z, eq x y -> eq y z -> eq x z.
+  Proof.
+    intros x y z Hxy Hyz. inversion Hxy. inversion Hyz. easy.
+  Qed.
+
+  Definition eq_dec : forall x y, {eq x y} + {~ eq x y} := string_dec.
 End DecidableString.
 
 Module StringMap : WS with Module E := DecidableString :=
@@ -553,7 +567,7 @@ Module Target.
   | Eval_BadFun : forall id earg,
       StringMap.find id fs = None ->
       eval_main fs (Fun id earg) (0, []).
-  
+
   Inductive eval_prg (p : prg) : trace -> Prop :=
   | Eval_Prg : forall n t,
       eval_main (prg_funs p) (prg_main p) (n, t) ->
@@ -840,6 +854,11 @@ Module RTCtilde.
   Definition clean_ctx (c : T.ctx) : S.ctx :=
     S.Build_ctx (clean_funmap (T.ctx_funs c)).
 
+  Lemma clean_comp_fexpr : forall e, clean_fexpr (C.comp_fexpr e) = e.
+  Proof.
+    intro e; induction e; simpl; congruence.
+  Qed.
+
   (* Cheat code: the language model does not easily allow a conditional
      formulation based on some well-formedness conditions on program and
      context. Use this to artificially establish that assumed fact after
@@ -871,7 +890,54 @@ Module RTCtilde.
   Remark find_clean_ctx : forall k par_s ctx_t tag e,
     StringMap.find k (T.link_funs (C.comp_par par_s)            ctx_t)  = Some (tag, e) ->
     StringMap.find k (S.link_funs             par_s  (clean_ctx ctx_t)) = Some (tag, clean_fexpr e).
-  Admitted.
+  Proof.
+    intros k [par_funs par_main] [ctx_funs] tag e.
+    unfold T.link_funs, S.link_funs, T.link_funmaps, S.link_funmaps. simpl.
+    unfold C.comp_funmap, clean_funmap. simpl.
+    intro H.
+    setoid_rewrite StringMap.map2_1; [setoid_rewrite StringMap.map2_1 in H |].
+    - (* Main goal. *)
+      unfold T.link_fun in H. unfold S.link_fun.
+      destruct (StringMap.find k (StringMap.map C.comp_fexpr par_funs)) as [e' |] eqn:Hcase1.
+      + inversion H; subst tag e; clear H.
+        rewrite StringMapFacts.map_o in Hcase1. unfold option_map in Hcase1.
+        destruct (StringMap.find k par_funs) as [e |] eqn:Hcase2; last discriminate.
+        inversion Hcase1; subst e'; clear Hcase1.
+        now rewrite clean_comp_fexpr.
+      + destruct (StringMap.find k ctx_funs) as [f |] eqn:Hcase2; last discriminate.
+        inversion H; subst tag e; clear H.
+        rewrite StringMapFacts.map_o in Hcase1. unfold option_map in Hcase1.
+        destruct (StringMap.find k par_funs) eqn:Hcase3; first discriminate.
+        rewrite StringMapFacts.map_o. unfold option_map. now rewrite Hcase2.
+    - (* First side goal. *)
+      remember
+        (StringMap.map2 T.link_fun (StringMap.map C.comp_fexpr par_funs) ctx_funs)
+        as map.
+      apply StringMap.find_2, StringMap.elements_1 in H.
+      pose proof @StringMapFacts.elements_in_iff (turn * T.fexpr) map k as Hlemma.
+      assert
+        (Hex : exists e : turn * T.fexpr,
+            InA (StringMap.eq_key_elt (elt:=turn * T.fexpr)) (k, e) (StringMap.elements map))
+        by eauto.
+      apply Hlemma in Hex.
+      subst map.
+      now apply StringMap.map2_2 in Hex.
+    - (* Second side goal, differing from the first only in the last step. *)
+      remember
+        (StringMap.map2 T.link_fun (StringMap.map C.comp_fexpr par_funs) ctx_funs)
+        as map.
+      apply StringMap.find_2, StringMap.elements_1 in H.
+      pose proof @StringMapFacts.elements_in_iff (turn * T.fexpr) map k as Hlemma.
+      assert
+        (Hex : exists e : turn * T.fexpr,
+            InA (StringMap.eq_key_elt (elt:=turn * T.fexpr)) (k, e) (StringMap.elements map))
+        by eauto.
+      apply Hlemma in Hex.
+      subst map.
+      apply StringMap.map2_2 in Hex as [Hpar | Hctx].
+      + left. now apply StringMapFacts.map_in_iff in Hpar.
+      + right. now apply StringMapFacts.map_in_iff.
+  Qed.
 
   Lemma eval_fun_clean (arg res : nat) (e : T.fexpr) (t : T.trace) :
     T.eval_fun arg e (res, t) ->
