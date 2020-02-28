@@ -96,6 +96,23 @@ Lemma not_sem : forall C P t,
   ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
 Admitted.
 
+(* CA: this is stronger than semantics_safety_like src and is equivalent to 
+
+      "H = forall W, forall t, (forall m ≤ t -> psem W m) -> sem W t".
+
+       It is stronger than semantics_safety_like as t is arbitrary,
+       and then H should also hold on silently diverging traces, that
+       is not the case for semantics_safety_like.
+
+       Assume sem W t for t being an infinite and non silently
+       diverging trace, then psem W m for every m ≤ t.
+
+       If we assume H, then sem W (silent m) for every m ≤ t, that
+       means "W after producing every m can choose to silently diverge
+       or to produce an other event e, such that m::e ≤ t" i.e. there
+       is some internal non-determinism.  *)
+
+
 Lemma recomposition_fats : recomposition -> fats.
 Proof.
   (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
