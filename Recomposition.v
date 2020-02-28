@@ -7,6 +7,7 @@ Axiom src : language.
 Definition psemp (P:par src) (m : finpref) := exists C, psem (C[P]) m.
 Definition psemc (C:ctx src) (m : finpref) := exists P, psem (C[P]) m.
 
+(* Currently this defined only for finite trace prefixes, is that correct? *)
 Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
 
 Definition obs_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
@@ -51,7 +52,7 @@ Proof.
   intros Hrecomp C P m [C' H1] [P' H2]. eapply Hrecomp; eassumption.
 Qed.
 
-(* Recomposition follows from composition *)
+(* Recomposition also follows from composition *)
 
 Lemma composition_recomposition : composition -> recomposition.
 Proof.
@@ -64,7 +65,49 @@ Qed.
 
 Lemma recomposition_fats : recomposition -> fats.
 Proof.
-  unfold recomposition, fats, trace_equiv, obs_equiv.
-  intros Hrecomp P1 P2. split; [| now apply fats_rtl]. intros Htequiv C t.
+  unfold recomposition, fats, trace_equiv, obs_equiv, psemp, psem.
+  intros Hrecomp P1 P2. split; [| now apply fats_rtl].
+  intros Htequiv C t. split; intro Hsem.
+Abort.
+
+(* This is easier if we restrict obs_equiv to finite prefixes *)
+
+Lemma recomposition_weak_fats : recomposition ->
+  forall P1 P2, trace_equiv P1 P2 ->
+  forall C m, psem (C[P1]) m <-> psem (C[P2]) m. (* <-- weaker obs_equiv *)
+Proof.
+  unfold recomposition, fats, trace_equiv, obs_equiv, psemp.
+  intros Hrecomp P1 P2. intros H C m.
   split; intro Hsem.
+  - assert (Hprem: exists C : ctx src, psem (C [P1]) m) by eauto.
+    rewrite -> H in Hprem. destruct Hprem as [C' Hdone].
+    eapply Hrecomp; eassumption.
+  - assert (Hprem: exists C : ctx src, psem (C [P2]) m) by eauto.
+    rewrite <- H in Hprem. destruct Hprem as [C' Hdone].
+    eapply Hrecomp; eassumption.
+Qed.
+
+(* Now back to the more difficult proof, so let's go to classical logic *)
+
+Require Import ClassicalExtras.
+
+(* Very strong assumption *)
+Lemma not_sem : forall C P t,
+  ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
 Admitted.
+
+Lemma recomposition_fats : recomposition -> fats.
+Proof.
+  (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
+  intros Hrecomp P1 P2. split; [| now apply fats_rtl].
+  intros Htequiv. rewrite dne. intro Hc.
+  do 2 setoid_rewrite not_forall_ex_not in Hc.
+  destruct Hc as [C [t Hc]]. rewrite not_iff in Hc.
+  destruct Hc as [[H1 H2] | [H2 H1]].
+  - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+    rewrite <- recomposition_weak_fats;
+      [ exists t; now eauto | assumption | assumption ].
+  - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+    rewrite -> recomposition_weak_fats;
+      [ exists t; now eauto | assumption | assumption ].
+Qed.
