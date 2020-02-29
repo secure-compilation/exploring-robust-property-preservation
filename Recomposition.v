@@ -7,14 +7,20 @@ Axiom src : language.
 Definition psemp (P:par src) (m : finpref) := exists C, psem (C[P]) m.
 Definition psemc (C:ctx src) (m : finpref) := exists P, psem (C[P]) m.
 
-(* Currently this defined only for finite trace prefixes, is that correct? *)
+(* CH: Currently this defined only for finite trace prefixes, is that correct? *)
 Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
 
+(* CH: This is exactly how we defined the premise and conclusion of RTEP,
+       yet usually FATs is more related to FA than to RTEP -- are we still
+       convinced that the two agree in a determinate setting? [TOOD: read] *)
 Definition obs_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
 Definition fats := forall P1 P2, trace_equiv P1 P2 <-> obs_equiv P1 P2.
 
 (* In this model fats_rtl and decomposition are trivial *)
+
+(* CH: Isn't it already quite worrisome that one FATs direction holds no matter
+       how informative or uninformative our traces are? *)
 
 Lemma fats_rtl : forall P1 P2, obs_equiv P1 P2 -> trace_equiv P1 P2.
 Proof.
