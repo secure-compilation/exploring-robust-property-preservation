@@ -97,40 +97,55 @@ Qed.
 
 Require Import ClassicalExtras.
 
-(* Very strong assumption *)
-Lemma not_sem : forall C P t,
-  ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
-Admitted.
+Module VeryStrongAssumption.
+  (* Very strong assumption *)
+  Axiom not_sem : forall C P t,
+    ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
 
-(* CA: this is stronger than semantics_safety_like src and is equivalent to 
+  Axiom exists_silent_div : exists C P, ~ sem src (C [P]) (tsilent nil). (* quite weak assumption *)
 
-      "H = forall W, forall t, (forall m ≤ t -> psem W m) -> sem W t".
+  Lemma false : False.
+  Proof.
+    pose proof exists_silent_div as [C [P H]].
+    destruct (not_sem _ _ _ H) as [m [H1 H2]].
+    assert (m = ftbd nil) by now destruct m as [|[]].
+    subst.
+    apply H2.
+    destruct (non_empty_sem _ (C[P])) as [t Hsem].
+    exists t; split; destruct t; now auto.
+  Qed.
 
-       It is stronger than semantics_safety_like as t is arbitrary,
-       and then H should also hold on silently diverging traces, that
-       is not the case for semantics_safety_like.
+  (* CA: this is stronger than semantics_safety_like src and is equivalent to
 
-       Assume sem W t for t being an infinite and non silently
-       diverging trace, then psem W m for every m ≤ t.
+     "H = forall W, forall t, (forall m ≤ t -> psem W m) -> sem W t".
 
-       If we assume H, then sem W (silent m) for every m ≤ t, that
-       means "W after producing every m can choose to silently diverge
-       or to produce an other event e, such that m::e ≤ t" i.e. there
-       is some internal non-determinism.  *)
+     It is stronger than semantics_safety_like as t is arbitrary,
+     and then H should also hold on silently diverging traces, that
+     is not the case for semantics_safety_like.
+
+     Assume sem W t for t being an infinite and non silently
+     diverging trace, then psem W m for every m ≤ t.
+
+     If we assume H, then sem W (silent m) for every m ≤ t, that
+     means "W after producing every m can choose to silently diverge
+     or to produce an other event e, such that m::e ≤ t" i.e. there
+     is some internal non-determinism.  *)
 
 
-Lemma recomposition_fats : recomposition -> fats.
-Proof.
-  (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
-  intros Hrecomp P1 P2. split; [| now apply fats_rtl].
-  intros Htequiv. rewrite dne. intro Hc.
-  do 2 setoid_rewrite not_forall_ex_not in Hc.
-  destruct Hc as [C [t Hc]]. rewrite not_iff in Hc.
-  destruct Hc as [[H1 H2] | [H2 H1]].
-  - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
-    rewrite <- recomposition_weak_fats;
-      [ exists t; now eauto | assumption | assumption ].
-  - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
-    rewrite -> recomposition_weak_fats;
-      [ exists t; now eauto | assumption | assumption ].
-Qed.
+  Lemma recomposition_fats : recomposition -> fats.
+  Proof.
+    (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
+    intros Hrecomp P1 P2. split; [| now apply fats_rtl].
+    intros Htequiv. rewrite dne. intro Hc.
+    do 2 setoid_rewrite not_forall_ex_not in Hc.
+    destruct Hc as [C [t Hc]]. rewrite not_iff in Hc.
+    destruct Hc as [[H1 H2] | [H2 H1]].
+    - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+      rewrite <- recomposition_weak_fats;
+        [ exists t; now eauto | assumption | assumption ].
+    - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+      rewrite -> recomposition_weak_fats;
+        [ exists t; now eauto | assumption | assumption ].
+  Qed.
+
+End VeryStrongAssumption.
