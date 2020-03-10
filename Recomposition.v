@@ -4,30 +4,37 @@ Require Import CommonST.
 
 Axiom src : language.
 
+(* Defining partial semantics for programs and contexts in terms of the
+   whole-program semantics; here only for finite prefixes as we currently do in
+   our CCS'18 recomposition proof *)
 Definition psemp (P:par src) (m : finpref) := exists C, psem (C[P]) m.
 Definition psemc (C:ctx src) (m : finpref) := exists P, psem (C[P]) m.
 
-(* CH: Currently this defined only for finite trace prefixes, is that correct? *)
+(* Trace equivalence defined over partial semantics and only for
+   finite trace prefixes, as usually the case in the literature *)
 Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
 
 (* CH: This is exactly how we defined the premise and conclusion of RTEP,
        yet usually FATs is more related to FA than to RTEP -- are we still
        convinced that the two agree in a determinate setting? [TOOD: read] *)
-Definition obs_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
+(* CH: After 2020-03-10 discussion, this definition has little to do with
+       observational equivalence, which means that the thing below should not
+       be called FATs either *)
+Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
-Definition fats := forall P1 P2, trace_equiv P1 P2 <-> obs_equiv P1 P2.
+Definition not_really_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
 
-(* In this model fats_rtl and decomposition are trivial *)
+(* In this model not_really_fats_rtl and decomposition are trivial *)
+(* CH: Isn't the former already quite worrisome that one FATs direction holds no
+       matter how informative or uninformative our traces are? Not if the above
+       is not really FATs though ... *)
 
-(* CH: Isn't it already quite worrisome that one FATs direction holds no matter
-       how informative or uninformative our traces are? *)
-
-Lemma fats_rtl : forall P1 P2, obs_equiv P1 P2 -> trace_equiv P1 P2.
+Lemma beh_equiv_trace_equiv : forall P1 P2, beh_equiv P1 P2 -> trace_equiv P1 P2.
 Proof.
-  unfold obs_equiv, trace_equiv, psemp, psem. intros P1 P2 Hobs m.
+  unfold beh_equiv, trace_equiv, psemp, psem. intros P1 P2 Hbe m.
   split; intros [C [t [Hpref Hpsem]]]; exists C, t.
-  - rewrite -> Hobs in Hpsem. tauto.
-  - rewrite <- Hobs in Hpsem. tauto.
+  - rewrite -> Hbe in Hpsem. tauto.
+  - rewrite <- Hbe in Hpsem. tauto.
 Qed.
 
 Lemma decomposition : forall C P m, psem (C[P]) m -> (psemp P m /\ psemc C m).
@@ -67,22 +74,22 @@ Proof.
   apply Hcomp; eexists; eassumption.
 Qed.
 
-(* FATs follows from recomposition *)
+(* not_really_fats follows from recomposition *)
 
-Lemma recomposition_fats : recomposition -> fats.
+Lemma recomposition_fats : recomposition -> not_really_fats.
 Proof.
-  unfold recomposition, fats, trace_equiv, obs_equiv, psemp, psem.
-  intros Hrecomp P1 P2. split; [| now apply fats_rtl].
+  unfold recomposition, not_really_fats, trace_equiv, beh_equiv, psemp, psem.
+  intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
   intros Htequiv C t. split; intro Hsem.
 Abort.
 
-(* This is easier if we restrict obs_equiv to finite prefixes *)
+(* This is easier if we restrict beh_equiv to finite prefixes *)
 
-Lemma recomposition_weak_fats : recomposition ->
+Lemma recomposition_trace_equiv_weak_beh_equiv : recomposition ->
   forall P1 P2, trace_equiv P1 P2 ->
-  forall C m, psem (C[P1]) m <-> psem (C[P2]) m. (* <-- weaker obs_equiv *)
+  forall C m, psem (C[P1]) m <-> psem (C[P2]) m. (* <-- weaker beh_equiv *)
 Proof.
-  unfold recomposition, fats, trace_equiv, obs_equiv, psemp.
+  unfold recomposition, trace_equiv, psemp.
   intros Hrecomp P1 P2. intros H C m.
   split; intro Hsem.
   - assert (Hprem: exists C : ctx src, psem (C [P1]) m) by eauto.
@@ -93,27 +100,16 @@ Proof.
     eapply Hrecomp; eassumption.
 Qed.
 
-(* Now back to the more difficult proof, so let's go to classical logic *)
+(* Now back to the more difficult proof (and broken), so let's go to classical logic *)
 
 Require Import ClassicalExtras.
 
 Module VeryStrongAssumption.
-  (* Very strong assumption *)
+  (* Too strong assumption made silently in Deepak's proof
+     - Jeremy proved false from it below
+       (using the presence of silent divergence in the traces) *)
   Axiom not_sem : forall C P t,
     ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
-
-  Axiom exists_silent_div : exists C P, ~ sem src (C [P]) (tsilent nil). (* quite weak assumption *)
-
-  Lemma false : False.
-  Proof.
-    pose proof exists_silent_div as [C [P H]].
-    destruct (not_sem _ _ _ H) as [m [H1 H2]].
-    assert (m = ftbd nil) by now destruct m as [|[]].
-    subst.
-    apply H2.
-    destruct (non_empty_sem _ (C[P])) as [t Hsem].
-    exists t; split; destruct t; now auto.
-  Qed.
 
   (* CA: this is stronger than semantics_safety_like src and is equivalent to
 
@@ -131,21 +127,72 @@ Module VeryStrongAssumption.
      or to produce an other event e, such that m::e ≤ t" i.e. there
      is some internal non-determinism.  *)
 
+  Axiom exists_silent_div : exists C P, ~ sem src (C [P]) (tsilent nil). (* weak assumption *)
 
-  Lemma recomposition_fats : recomposition -> fats.
+  Lemma false : False.
+  Proof.
+    pose proof exists_silent_div as [C [P H]].
+    destruct (not_sem _ _ _ H) as [m [H1 H2]].
+    assert (m = ftbd nil) by now destruct m as [|[]].
+    subst.
+    apply H2.
+    destruct (non_empty_sem _ (C[P])) as [t Hsem].
+    exists t; split; destruct t; now auto.
+  Qed.
+
+  Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
   Proof.
     (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
-    intros Hrecomp P1 P2. split; [| now apply fats_rtl].
+    intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
     intros Htequiv. rewrite dne. intro Hc.
     do 2 setoid_rewrite not_forall_ex_not in Hc.
     destruct Hc as [C [t Hc]]. rewrite not_iff in Hc.
     destruct Hc as [[H1 H2] | [H2 H1]].
     - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
-      rewrite <- recomposition_weak_fats;
+      rewrite <- recomposition_trace_equiv_weak_beh_equiv;
         [ exists t; now eauto | assumption | assumption ].
     - apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
-      rewrite -> recomposition_weak_fats;
+      rewrite -> recomposition_trace_equiv_weak_beh_equiv;
         [ exists t; now eauto | assumption | assumption ].
   Qed.
 
 End VeryStrongAssumption.
+
+Module WeakerAssumption.
+  (* should follow from `semantics_safety_like src` *)
+  Axiom not_sem : forall C P t,
+    ~sem src (C [P]) t -> ~diverges t -> exists m, prefix m t /\ ~psem (C[P]) m.
+
+  Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+  Proof.
+    intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
+    intros Htequiv. intros C t.
+    destruct t as [ m es | m | s ].
+    - eapply (recomposition_trace_equiv_weak_beh_equiv Hrecomp)
+        with (m := fstop m es) (C := C) in Htequiv. unfold psem in Htequiv.
+      (* the rest is just a lot of boilerplate to prove something obvious *)
+      destruct Htequiv as [Htequiv1 Htequiv2]. split; intro H.
+      + assert (H' : exists t, prefix (fstop m es) t /\ sem src (C [P1]) t).
+          { exists (tstop m es). simpl. tauto. }
+        destruct (Htequiv1 H') as [t' [Hprefix Hsem]]. destruct t'; simpl in Hprefix.
+        * destruct Hprefix as [H1 H2]. subst. assumption.
+        * contradiction.
+        * contradiction.
+      + assert (H' : exists t, prefix (fstop m es) t /\ sem src (C [P2]) t).
+          { exists (tstop m es). simpl. tauto. }
+        destruct (Htequiv2 H') as [t' [Hprefix Hsem]]. destruct t'; simpl in Hprefix.
+        * destruct Hprefix as [H1 H2]. subst. assumption.
+        * contradiction.
+        * contradiction.
+    - unfold trace_equiv, psemp, psem in Htequiv. admit. (* <-- this case doesn't work *)
+    - rewrite dne. intro Hc. rewrite not_iff in Hc.
+      destruct Hc as [[H1 H2] | [H2 H1]].
+      + apply not_sem in H2. simpl in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+        rewrite <- recomposition_trace_equiv_weak_beh_equiv;
+          [ exists (tstream s); now eauto | assumption | assumption ]. tauto.
+      + apply not_sem in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
+        rewrite -> recomposition_trace_equiv_weak_beh_equiv;
+          [ exists (tstream s); now eauto | assumption | assumption ]. tauto.
+  Abort.
+
+End WeakerAssumption.
