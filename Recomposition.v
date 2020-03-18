@@ -5,8 +5,16 @@ Require Import CommonST.
 Axiom src : language.
 
 (* Defining partial semantics for programs and contexts in terms of the
-   whole-program semantics; here only for finite prefixes as we currently do in
-   our CCS'18 recomposition proof *)
+   whole-program semantics; here we only look at finite prefixes as we currently
+   do in our CCS'18 recomposition proof *)
+(* CH: An important assumption here is that the whole-program traces already
+       include enough information to define a "proper" partial-program semantics
+   CH: This might be related to our previous conjecture that adding the
+       information needed to achieve "FATs" to the trace does not prevent any
+       extra optimizations?
+   CH: And anyway, composition / recomposition / FATs(?) should be strong
+       enough conditions to enforce this assumption? So "proper" above could
+       well mean satisfying composition / recomposition / FATs *)
 Definition psemp (P:par src) (m : finpref) := exists C, psem (C[P]) m.
 Definition psemc (C:ctx src) (m : finpref) := exists P, psem (C[P]) m.
 
@@ -184,7 +192,8 @@ Module WeakerAssumption.
         * destruct Hprefix as [H1 H2]. subst. assumption.
         * contradiction.
         * contradiction.
-    - unfold trace_equiv, psemp, psem in Htequiv. admit. (* <-- this case doesn't work *)
+    - unfold trace_equiv, psemp, psem in Htequiv. specialize (Htequiv (ftbd m)).
+      admit. (* <-- this case doesn't work *)
     - rewrite dne. intro Hc. rewrite not_iff in Hc.
       destruct Hc as [[H1 H2] | [H2 H1]].
       + apply not_sem in H2. simpl in H2. destruct H2 as [m [Hpref H2]]. apply H2. clear H2.
