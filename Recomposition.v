@@ -4,7 +4,7 @@ Require Import CommonST.
 
 Axiom src : language.
 
-(* Defining partial semantics for programs and contexts in terms of the
+(* Defining partial/trace semantics for programs and contexts in terms of the
    whole-program semantics; here we only look at finite prefixes as we currently
    do in our CCS'18 recomposition proof *)
 (* CH: An important assumption here is that the whole-program traces already
@@ -27,7 +27,8 @@ Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
        convinced that the two agree in a determinate setting? [TOOD: read] *)
 (* CH: After 2020-03-10 discussion, this definition has little to do with
        observational equivalence, which means that the thing below should not
-       be called FATs either *)
+       be called FATs either -- in particular this definition is not the right
+       one for FATs in the presence of internal nondeterminism *)
 Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
 Definition not_really_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
@@ -55,7 +56,7 @@ Qed.
 (* Composition is not trivial though *)
 
 Definition composition := forall C P m, psemp P m -> psemc C m -> psem (C[P]) m.
- 
+
 Lemma composition_trivial : composition.
 Proof.
   unfold composition, psemp, psemc.
@@ -63,7 +64,10 @@ Proof.
 Abort. (* what we are left with looks like recomposition *)
 
 (* Composition follows from recomposition *)
-
+(* This definition matches the CCS'18 one. This bakes in a few things:
+   - we are only looking at prefixes (artifact of just looking at RSC)
+   - whole-program semantics defined in terms of traces (prefixes) of events,
+     which for us are pretty informative (this definition is agnostic to that) *)
 Definition recomposition := forall C1 P1 C2 P2 m,
     @psem src (C1[P1]) m -> @psem src (C2[P2]) m -> @psem src (C1[P2]) m.
 
@@ -82,9 +86,9 @@ Proof.
   apply Hcomp; eexists; eassumption.
 Qed.
 
-(* not_really_fats follows from recomposition *)
+(* Our original conjecture: not_really_fats follows from recomposition??? *)
 
-Lemma recomposition_fats : recomposition -> not_really_fats.
+Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
 Proof.
   unfold recomposition, not_really_fats, trace_equiv, beh_equiv, psemp, psem.
   intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
@@ -205,3 +209,9 @@ Module WeakerAssumption.
   Abort.
 
 End WeakerAssumption.
+
+(* One way to fix this last conjecture is to strengthen recomposition to work
+   with full traces or at least with xprefixes, which include the silent divergence event.
+   Q: Would we then need to do the same strengthening for trace equivalence / composition?
+      Can we switch to xsem everywhere? *)
+
