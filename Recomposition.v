@@ -31,9 +31,9 @@ Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
        one for FATs in the presence of internal nondeterminism *)
 Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
-Definition not_really_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
+Definition det_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
 
-(* In this model not_really_fats_rtl and decomposition are trivial *)
+(* In this model det_fats_rtl and decomposition are trivial *)
 (* CH: Isn't the former already quite worrisome that one FATs direction holds no
        matter how informative or uninformative our traces are? Not if the above
        is not really FATs though ... *)
@@ -86,11 +86,11 @@ Proof.
   apply Hcomp; eexists; eassumption.
 Qed.
 
-(* Our original conjecture: not_really_fats follows from recomposition??? *)
+(* Our original conjecture: det_fats follows from recomposition??? *)
 
-Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+Lemma recomposition_det_fats : recomposition -> det_fats.
 Proof.
-  unfold recomposition, not_really_fats, trace_equiv, beh_equiv, psemp, psem.
+  unfold recomposition, det_fats, trace_equiv, beh_equiv, psemp, psem.
   intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
   intros Htequiv C t. split; intro Hsem.
 Abort.
@@ -152,7 +152,7 @@ Module WrongAssumption.
     exists t; split; destruct t; now auto.
   Qed.
 
-  Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+  Lemma recomposition_det_fats : recomposition -> det_fats.
   Proof.
     (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
     intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
@@ -175,7 +175,7 @@ Module WeakerAssumption.
   Axiom not_sem : forall C P t,
     ~sem src (C [P]) t -> ~diverges t -> exists m, prefix m t /\ ~psem (C[P]) m.
 
-  Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+  Lemma recomposition_det_fats : recomposition -> det_fats.
   Proof.
     intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
     intros Htequiv. intros C t.
@@ -211,7 +211,5 @@ Module WeakerAssumption.
 End WeakerAssumption.
 
 (* One way to fix this last conjecture is to strengthen recomposition to work
-   with full traces or at least with xprefixes, which include the silent divergence event.
-   Q: Would we then need to do the same strengthening for trace equivalence / composition?
-      Can we switch to xsem everywhere? *)
-
+   with xprefixes, which include the silent divergence event. In fact we had to
+   change from psem to xsem everywhere; see RecompositionXPrefix.v *)

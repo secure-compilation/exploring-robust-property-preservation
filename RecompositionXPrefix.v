@@ -5,39 +5,56 @@ Require Import XPrefix.
 
 Axiom src : language.
 
-(* Defining partial/trace semantics for programs and contexts in terms of the
-   whole-program semantics; here we only look at finite prefixes as we currently
-   do in our CCS'18 recomposition proof *)
-(* CH: An important assumption here is that the whole-program traces already
-       include enough information to define a "proper" partial-program semantics
-   CH: This might be related to our previous conjecture that adding the
-       information needed to achieve "FATs" to the trace does not prevent any
-       extra optimizations?
-   CH: And anyway, composition / recomposition / FATs(?) should be strong
-       enough conditions to enforce this assumption? So "proper" above could
-       well mean satisfying composition / recomposition / FATs *)
+(* Generically defining partial/trace (big-step) semantics for programs (xsemp)
+   and contexts (xsemc) in terms of the whole-program (big-step) semantics
+   (xsem); here we only look at finitely representable prefixes, a small
+   extension over what we currently do in our CCS'18 recomposition proof.
+
+   One big difference wrt our previous composition/decomposition proofs, is that
+   we are looking only at big-step semantics, while at at CCS'18 we were
+   originally defining partial small-step(!) semantics that were
+   nondeterministically changing the context in every step, which was a huge
+   pain to work with.
+
+   An important assumption here is that the whole-program traces already include
+   enough information to define a "proper" partial-program semantics This seems
+   in part related to our 2nd conjecture that adding the information needed to
+   achieve FATs to the trace does not prevent any extra optimizations?  And
+   anyway, composition / recomposition / [det-]FATs should be strong enough
+   conditions to enforce this assumption? So "proper" above could well mean
+   satisfying composition / recomposition / [det-]FATs. *)
+
 Definition xsemp (P:par src) (m : xpref) := exists C, xsem (C[P]) m.
 Definition xsemc (C:ctx src) (m : xpref) := exists P, xsem (C[P]) m.
 
-(* Trace equivalence defined over partial semantics and only for
-   finite trace prefixes, as usually the case in the literature *)
+(* Trace equivalence defined over partial semantics and only for finitely
+   representable trace prefixes.
+
+   CH: TODO: still unclear to me whether in the literature they explicitly mark
+             silent divergence as a final event in these prefixes. *)
+
 Definition trace_equiv P1 P2 := forall m, xsemp P1 m <-> xsemp P2 m.
 
-(* CH: This is exactly how we defined the premise and conclusion of RTEP,
-       yet usually FATs is more related to FA than to RTEP -- are we still
-       convinced that the two agree in a determinate setting? [TOOD: read] *)
-(* CH: After 2020-03-10 discussion, this definition has little to do with
-       observational equivalence, which means that the thing below should not
-       be called FATs either -- in particular this definition is not the right
-       one for FATs in the presence of internal nondeterminism *)
+(* As a the "golden equivalence" we use beh_equiv, which corresponds exactly to
+   the premise and conclusion of RTEP (which should really be called RBEP).
+
+   In the determinate setting this definition seems fine to use as the "golden
+   equivalence" in FATs, but with internal nondeterminism we would instead need
+   to use some barbed bisimulation, which is defined coinductively and is very
+   specific to the language at hand, thus hardly suited for this kind of
+   language-generic generic proofs.
+
+   So for now let's assume a determinate setting, even if the precise role of
+   determinacy in making beh_equiv suitable is still to be formally investigated
+   (we are not in the same setting as Engelfriet [TCS, 1985] for instance). *)
+
 Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
-Definition not_really_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
+Definition det_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
 
-(* In this model not_really_fats_rtl and decomposition are trivial *)
-(* CH: Isn't the former already quite worrisome that one FATs direction holds no
-       matter how informative or uninformative our traces are? Not if the above
-       is not really FATs though ... *)
+(* In this model det_fats_rtl (completeness) and decomposition are trivial *)
+(* The fact that the completeness direction of FATs holds unconditionally
+   is a specificity of our setup (i.e. the way we defined xsemp) *)
 
 Lemma beh_equiv_trace_equiv : forall P1 P2, beh_equiv P1 P2 -> trace_equiv P1 P2.
 Proof.
@@ -54,19 +71,21 @@ Proof.
   - exists P, t. tauto.
 Qed.
 
-(* Composition is not trivial though *)
+(* Composition is not trivial, but equivalent to recomposition *)
 
 Definition composition := forall C P m, xsemp P m -> xsemc C m -> xsem (C[P]) m.
 
-Lemma composition_trivial : composition.
+Lemma composition_not_trivial : composition.
 Proof.
   unfold composition, xsemp, xsemc.
   intros C P m [C' H1] [P' H2].
 Abort. (* what we are left with looks like recomposition *)
 
 (* Composition follows from recomposition *)
-(* This definition matches the CCS'18 one. This bakes in a few things:
-   - we are only looking at prefixes (artifact of just looking at RSC)
+(* This definition of recomposition is a slight generalization of the CCS'18 one.
+   This bakes in a few things:
+   - we are only looking at finitely representable prefixes
+     (artifact of looking at RXP or RFrXP for back-translation reasons)
    - whole-program semantics defined in terms of traces (prefixes) of events,
      which for us are pretty informative (this definition is agnostic to that) *)
 Definition recomposition := forall C1 P1 C2 P2 m,
@@ -87,16 +106,17 @@ Proof.
   apply Hcomp; eexists; eassumption.
 Qed.
 
-(* Our original conjecture: not_really_fats follows from recomposition *)
+(* Our conjecture: det_fats follows from recomposition *)
 
-Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+Lemma recomposition_det_fats : recomposition -> det_fats.
 Proof.
-  unfold recomposition, not_really_fats, trace_equiv, beh_equiv, xsemp, xsem.
+  unfold recomposition, det_fats, trace_equiv, beh_equiv, xsemp, xsem.
   intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
   intros Htequiv C t. split; intro Hsem.
 Abort.
 
-(* This is easier if we restrict beh_equiv to finitely representable prefixes *)
+(* This is easier if we first restrict beh_equiv to finitely representable
+   prefixes. This is used in the more general theorem below. *)
 
 Lemma recomposition_trace_equiv_weak_beh_equiv : recomposition ->
   forall P1 P2, trace_equiv P1 P2 ->
@@ -113,19 +133,19 @@ Proof.
     eapply Hrecomp; eassumption.
 Qed.
 
-(* Now back to the more difficult proof (and broken), so let's go to classical logic *)
+(* Now back to the more difficult proof, so let's go to classical logic *)
 
 Require Import ClassicalExtras.
 
 Module NewAssumption.
   (* Assumption made silently in Deepak's proof *)
-  (* should follow from `semantics_safety_like src` ? *)
+  (* should follow from `semantics_safety_like src`, right? *)
   Axiom not_sem : forall C P t,
     ~sem src (C [P]) t -> exists m, xprefix m t /\ ~xsem (C[P]) m.
 
-  Lemma recomposition_not_really_fats : recomposition -> not_really_fats.
+  Theorem recomposition_det_fats : recomposition -> det_fats.
   Proof.
-    (* unfold fats, trace_equiv, obs_equiv, psemp, psem. *)
+    (* unfold fats, trace_equiv, obs_equiv, xsemp, xsem. *)
     intros Hrecomp P1 P2. split; [| now apply beh_equiv_trace_equiv].
     intros Htequiv. rewrite dne. intro Hc.
     do 2 setoid_rewrite not_forall_ex_not in Hc.
