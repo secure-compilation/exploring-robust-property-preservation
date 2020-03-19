@@ -46,7 +46,10 @@ Definition trace_equiv P1 P2 := forall m, xsemp P1 m <-> xsemp P2 m.
 
    So for now let's assume a determinate setting, even if the precise role of
    determinacy in making beh_equiv suitable is still to be formally investigated
-   (we are not in the same setting as Engelfriet [TCS, 1985] for instance). *)
+   (we are not in the same setting as Engelfriet [TCS, 1985] for instance).
+
+   Here t does capture the internal interaction between C and P1/P2, but
+   that's not always standard. *)
 
 Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
