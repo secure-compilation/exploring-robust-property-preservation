@@ -11,47 +11,49 @@ Set Implicit Arguments.
 
 Record language :=
   {
-    par  : Set;  (* partial programs *)
+    int  : Set;
+    par  : int -> Set;  (* partial programs *)
+    ctx  : int -> Set;  (* context *)
     prg  : Set;  (* whole programs *)
-    ctx  : Set;  (* context *)
-    plug : par -> ctx -> prg;
+    plug : forall {i:int}, par i -> ctx i -> prg;
     sem  : prg -> prop;
     non_empty_sem : forall W, exists t, sem W t
   }.
 
-
 Axiom src : language.
 Axiom tgt : language.
-Axiom compile_par : (par src) -> (par tgt).
-Axiom compile_ctx : (ctx src) -> (ctx tgt).
-Axiom compile_prg : (prg src) -> (ctx tgt).
+
+Axiom cint : int src -> int tgt.
+
+Axiom compile_par : forall {i}, (par src i) -> (par tgt (cint i)).
+Axiom compile_ctx : forall {i}, (ctx src i) -> (ctx tgt (cint i)).
+
+Axiom i : int src.
 
 Notation "C [ P ]" := (plug _ P C) (at level 50).
 Notation "P ↓" := (compile_par P) (at level 50).
 
+Section Ki.
 
-Definition psem {K : language}
-                (P : prg K)
+Context {K : language} {i : int K}.
+
+Definition psem (P : prg K)
                 (m : finpref) : Prop :=
   exists t, prefix m t /\ (sem K) P t.
 
-Definition xsem {K : language}
-                (P : prg K)
+Definition xsem (P : prg K)
                 (x : xpref) : Prop :=
   exists t, xprefix x t /\ (sem K) P t.
 
-Definition sat {K : language}
-               (P : prg K)
+Definition sat (P : prg K)
                (π : prop) : Prop :=
   forall t, sem K P t -> π t.
 
-Definition rsat {K : language}
-                (P : par K)
+Definition rsat (P : par K i)
                 (π : prop) : Prop :=
   forall C, sat (C [ P ] ) π.
 
-
-Lemma neg_rsat {K : language} :
+Lemma neg_rsat :
     forall P π, (~ rsat P π <->
            (exists C t, sem K (C [ P ]) t /\ ~ π t)).
 Proof.
@@ -66,30 +68,28 @@ Proof.
 Qed.
 
 
-Definition beh {K : language} (P : prg K) : prop :=
+Definition beh (P : prg K) : prop :=
   fun b => sem K P b.
 
-Definition hsat {K : language}
-                (P : prg K)
+Definition hsat (P : prg K)
                 (H : hprop) : Prop :=
   H (beh P).
 
-Definition rhsat {K : language}
-                 (P : par K)
+Definition rhsat (P : par K i)
                  (H : hprop) : Prop :=
   forall C, hsat ( C [ P ] ) H.
 
-Lemma neg_rhsat {K : language} :
-  forall P H,  (~ rhsat P H <-> ( exists (C : ctx K), ~ H (beh ( C [ P ] )))).
+Lemma neg_rhsat : forall (P:par K i) H,
+  (~ rhsat P H <-> ( exists (C : ctx K i), ~ H (beh ( C [ P ] )))).
 Proof.
   intros P H. split; unfold rhsat; intro H0;
   [now rewrite <- not_forall_ex_not | now rewrite not_forall_ex_not].
 Qed.
 
-Definition sat2 {K : language} (P1 P2 : @prg K) (r : rel_prop) : Prop :=
+Definition sat2 (P1 P2 : @prg K) (r : rel_prop) : Prop :=
   forall t1 t2, sem K P1 t1 -> sem K P2 t2 -> r t1 t2.
 
-Lemma neg_sat2 {K : language} : forall P1 P2 r,
+Lemma neg_sat2 : forall P1 P2 r,
     ~ sat2 P1 P2 r <-> (exists t1 t2, sem K P1 t1 /\ sem K P2 t2 /\ ~ r t1 t2).
 Proof.
   unfold sat2. intros P1 P2 r. split.
@@ -106,19 +106,18 @@ Proof.
 Qed.
 
 
-Definition rsat2 {K : language} (P1 P2 : @par K) (r : rel_prop) : Prop :=
+Definition rsat2 (P1 P2 : par K i) (r : rel_prop) : Prop :=
   forall C, sat2 (C [ P1 ]) (C [ P2 ]) r.
 
-
-Definition hsat2 {K : language} (P1 P2 : @prg K) (r : rel_hprop) : Prop :=
+Definition hsat2 (P1 P2 : prg K) (r : rel_hprop) : Prop :=
    r (sem K P1) (sem K P2).
 
-Definition hrsat2 {K : language} (P1 P2 : @par K) (r : rel_hprop) : Prop :=
+Definition hrsat2 (P1 P2 : par K i) (r : rel_hprop) : Prop :=
   forall C, r (sem K (C [P1])) (sem K (C [P2])).
 
 (**************************************************************************)
 
-Definition input_totality (K : language) : Prop :=
+Definition input_totality : Prop :=
   forall (P : prg K) l e1 e2,
     is_input e1  -> is_input e2 -> psem P (ftbd (snoc l e1)) -> psem P (ftbd (snoc l e2)).
 
@@ -128,11 +127,13 @@ Definition traces_match (t1 t2 : trace) : Prop :=
    is_input e1 /\ is_input e2 /\  e1 <> e2 /\
    prefix (ftbd (snoc l e1)) t1 /\ prefix (ftbd (snoc l e2)) t2).
 
-Definition determinacy (K : language) : Prop :=
+Definition determinacy : Prop :=
   forall (P : prg K) t1 t2,
     sem K P t1 -> sem K P t2 -> traces_match t1 t2.
 
-Definition semantics_safety_like (K : language) : Prop :=
+Definition semantics_safety_like : Prop :=
   forall t P,
     ~ sem K P t -> inf t -> ~ diverges t ->
     (exists l ebad, psem P (ftbd l) /\ prefix (ftbd (snoc l ebad)) t /\ ~ psem P (ftbd (snoc l ebad))).
+
+End Ki.

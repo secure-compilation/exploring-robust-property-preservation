@@ -17,7 +17,7 @@ Require Import XPrefix.
 
 (** *Trace Properties *)
 Definition RTC : Prop :=
-  forall P C' t, exists C,
+  forall (P:par src i) C' t, exists C,
       sem tgt  (C' [ P ↓ ] ) t ->
       sem src  (C  [ P  ] ) t.
 
@@ -26,9 +26,9 @@ Definition RTC : Prop :=
    classical logic we can move the existential in RC
    after the implication.
  *)
-Axiom some_ctx_src : ctx src.
+Axiom some_ctx_src : ctx src i.
 
-Lemma RTC' : RTC <-> (forall P C' t, sem tgt  (C' [ P ↓ ] ) t ->
+Lemma RTC' : RTC <-> (forall (P:par src i) C' t, sem tgt  (C' [ P ↓ ] ) t ->
                          exists C, sem src  (C  [ P  ] ) t).
 Proof.
   unfold RTC. split.
@@ -71,7 +71,7 @@ Qed.
 (** *Safety Properties *)
 
 Definition RSC : Prop :=
-  forall P C' t, sem tgt (C' [ P ↓ ] ) t ->
+  forall (P:par src i) C' t, sem tgt (C' [ P ↓ ] ) t ->
     forall m, (prefix m t -> exists C t', sem src (C [ P ] ) t' /\ prefix m t').
 
 (*
@@ -97,7 +97,7 @@ Proof.
 Qed.
 
 (** ** Stronger variant of Robustly Safe Compilation *)
-Lemma stronger_rsc (es : endstate) : (forall P C' t, sem tgt ( C' [ P ↓ ]) t  ->
+Lemma stronger_rsc (es : endstate) : (forall (P:par src i) C' t, sem tgt ( C' [ P ↓ ]) t  ->
   forall m, prefix m t -> exists C, sem src ( C [ P ] ) (embedding es m))
   -> RSC.
 Proof.
@@ -113,12 +113,12 @@ Qed.
 (** *Dense Properties *)
 
 Definition RDC : Prop :=
-  forall P C' t, inf t ->
+  forall (P:par src i) C' t, inf t ->
      (exists C, sem tgt ( C' [ P ↓ ]) t ->
            sem src ( C [ P ]) t).
 
 (* the same as for RC *)
-Lemma RDC' : RDC <-> (forall P C' t, inf t -> sem tgt ( C' [ P ↓ ]) t ->
+Lemma RDC' : RDC <-> (forall (P:par src i) C' t, inf t -> sem tgt ( C' [ P ↓ ]) t ->
                                   exists C,  sem src ( C [ P ]) t).
 Proof.
    unfold RDC. split.
@@ -195,7 +195,7 @@ Require Import FunctionalExtensionality.
 
 (** *HyperProperties *)
 Definition RHC : Prop :=
-  forall P C',
+  forall (P:par src i) C',
     (exists C, (forall t,  sem tgt ( C' [ P ↓ ]) t  <->  sem src ( C [ P ]) t)).
 
 Lemma Hequiv_lemma : forall (π1 π2 : prop) (H : hprop),
@@ -227,7 +227,7 @@ Qed.
 (** *Subset-Closed Hyperproperties*)
 
 Definition RSCHC : Prop :=
-  forall P C',
+  forall (P:par src i) C',
   exists C, forall b,  sem tgt ( C' [ P ↓ ]) b ->  sem src ( C [ P ]) b.
 
 
@@ -251,7 +251,7 @@ Qed.
 
 (** *2Subset-Closed Hyperproperties*)
 Definition R2SCHC :=
-  forall P Ct t1 t2,
+  forall (P:par src i) Ct t1 t2,
       (sem tgt (Ct [P ↓]) t1 /\ sem tgt (Ct [P ↓]) t2)
       -> exists Cs, (sem src (Cs [P ]) t1 /\ sem src (Cs [P ]) t2).
 
@@ -292,7 +292,7 @@ Qed.
 
 (** *HyperSafety *)
 Definition RHSC : Prop :=
-  forall P C' M, Observations M ->
+  forall (P:par src i) C' M, Observations M ->
             spref M (sem tgt ( C' [ P ↓ ]))  ->
             exists C, spref M (sem src ( C [ P])).
 
@@ -312,7 +312,7 @@ Proof.
 Qed.
 
 (** *2HyperSafety *)
-Definition R2HSC := forall P Ct, forall m1 m2,
+Definition R2HSC := forall (P:par src i) Ct, forall m1 m2,
         (spref (fun m => m = m1 \/ m = m2) (sem tgt ( Ct [ P ↓]))
          -> exists Cs, spref (fun m => m = m1 \/ m = m2) (sem src ( Cs [ P]))).
 
@@ -359,7 +359,7 @@ Qed.
    all Hyperproperties Preservation                      *)
 (*********************************************************)
 
-Lemma bad_HyperLiv : forall C' P,
+Lemma bad_HyperLiv : forall C' (P:par src i),
     HLiv (fun π : prop => π <> (sem tgt ( C' [ P ↓ ] ))).
 Proof.
   unfold HLiv. intros C' P M obsM.
@@ -404,7 +404,7 @@ Proof. now rewrite <- (RHC_RHP), (RHC_RHLP). Qed.
 
 (** *2Relational Trace Properties *)
 
-Definition R2rTC := forall Ct P1 P2 t1 t2,
+Definition R2rTC := forall Ct (P1 P2:par src i) t1 t2,
   sem tgt (Ct [P1 ↓]) t1 ->  sem tgt (Ct [P2 ↓]) t2 ->
   exists Cs, sem src (Cs [P1]) t1 /\ sem src (Cs [P2]) t2.
 
@@ -453,7 +453,7 @@ End source_determinism.
 (** *Arbitrary Relational Trace Properties *)
 
 Definition RrTC :=
-  forall (f : par src -> trace) Ct,
+  forall (f : par src i -> trace) Ct,
     (forall P, sem tgt (Ct [P↓]) (f P)) ->
     exists Cs, (forall P, sem src (Cs [P]) (f P)).
 
@@ -479,7 +479,7 @@ Qed.
 
 (** *2Relational Safety Properties *)
 
-Definition R2rSC := forall Ct P1 P2 m1 m2,
+Definition R2rSC := forall Ct (P1 P2:par src i) m1 m2,
     psem (Ct [P1↓]) m1 -> psem (Ct [P2↓]) m2 ->
     exists Cs, psem (Cs [P1]) m1 /\ psem (Cs [P2]) m2.
 
@@ -523,7 +523,7 @@ Qed.
 
 (* the following is another characterization of R2rSC *)
 Definition R2rSC' : Prop :=
-  forall P1 P2 (r : finpref -> finpref -> Prop),
+  forall (P1 P2:par src i) (r : finpref -> finpref -> Prop),
     ((forall Cs m1 m2, psem (Cs [P1]) m1 -> psem (Cs [P2]) m2 -> r m1 m2) ->
      (forall Ct m1 m2, psem (Ct [P1 ↓]) m1 -> psem (Ct [P2 ↓]) m2 -> r m1 m2)).
 
@@ -553,7 +553,7 @@ Qed.
 (** *Arbitrary Relational Safety Properties *)
 
 Definition RrSC : Prop :=
-  forall Ct (f : par src -> (finpref -> Prop)),
+  forall Ct (f : par src i -> (finpref -> Prop)),
     (forall P, spref (f P) (sem tgt (Ct [P↓]))) ->
     exists Cs,  (forall P, spref (f P) (sem src (Cs [P]))).
 
@@ -566,10 +566,10 @@ Proof.
     rewrite not_ex_forall_not in ff.
     specialize (h (fun g => exists Cs, forall P, spref (g P) (sem src (Cs [P])))).
     simpl in *.
-    assert(hh :  (forall (Cs : ctx src) (f : par src -> fprop),
-       (forall P : par src, spref (f P) (sem src (Cs [P]))) ->
-       exists Cs0 : ctx src,
-         forall P : par src, spref (f P) (sem src (Cs0 [P])))).
+    assert(hh :  (forall (Cs : ctx src i) (f : par src i -> fprop),
+       (forall P : par src i, spref (f P) (sem src (Cs [P]))) ->
+       exists Cs0 : ctx src i,
+         forall P : par src i, spref (f P) (sem src (Cs0 [P])))).
     { intros Cs f0 hhh. now exists Cs. }
     destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
     specialize (ff Cs). now auto.
@@ -578,7 +578,7 @@ Qed.
 
 (** *2Relational XSafety Properties *)
 
-Definition R2rXC := forall Ct P1 P2 x1 x2,
+Definition R2rXC := forall Ct (P1 P2:par src i) x1 x2,
    xsem (Ct [P1↓]) x1 -> xsem (Ct [P2↓]) x2 ->
   exists Cs, xsem (Cs[P1]) x1 /\ xsem (Cs[P2]) x2.
 
@@ -622,7 +622,7 @@ Proof.
 Qed.
 
 Definition  R2rXC' : Prop :=
-  forall (r : xpref -> xpref -> Prop) P1 P2 ,
+  forall (r : xpref -> xpref -> Prop) (P1 P2:par src i),
     ((forall Cs x1 x2, xsem (Cs [P1]) x1 ->
                   xsem (Cs [P2]) x2 ->
                    r x1 x2) ->
@@ -668,7 +668,7 @@ Qed.
 (** *Arbitrary Relational XSafety Properties *)
 
 Definition RrXC : Prop :=
-  forall Ct (f : par src -> (xpref -> Prop)),
+  forall Ct (f : par src i -> (xpref -> Prop)),
     (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) ->
     exists Cs,  (forall P, spref_x (f P) (sem src (Cs [P]))).
 
@@ -681,10 +681,10 @@ Proof.
     rewrite not_ex_forall_not in ff.
     specialize (h (fun g => exists Cs, forall P, spref_x (g P) (sem src (Cs [P])))).
     simpl in *.
-    assert(hh :  (forall (Cs : ctx src) (f : par src -> (xpref -> Prop)),
-       (forall P : par src, spref_x (f P) (sem src (Cs [P]))) ->
-       exists Cs0 : ctx src,
-         forall P : par src, spref_x (f P) (sem src (Cs0 [P])))).
+    assert(hh :  (forall (Cs : ctx src i) (f : par src i -> (xpref -> Prop)),
+       (forall P : par src i, spref_x (f P) (sem src (Cs [P]))) ->
+       exists Cs0 : ctx src i,
+         forall P : par src i, spref_x (f P) (sem src (Cs0 [P])))).
     { intros Cs f0 hhh. now exists Cs. }
     destruct (h hh Ct f h0) as [Cs hhh]. clear hh h.
     specialize (ff Cs). now auto.
@@ -694,7 +694,7 @@ Qed.
 (** *2Relational HyperProperties *)
 
 Definition R2rHC : Prop :=
-  forall P1 P2 Ct, exists Cs, (sem src (Cs [P1]) = sem tgt (Ct [P1 ↓]))
+  forall (P1 P2:par src i) Ct, exists Cs, (sem src (Cs [P1]) = sem tgt (Ct [P1 ↓]))
                     /\ (sem src (Cs [P2]) = sem tgt (Ct [P2 ↓])).
 
 
@@ -712,7 +712,7 @@ Proof.
     simpl in *.
     assert (hh : hrsat2 P1 P2
             (fun f1 f2 : prop =>
-             exists Cs : ctx src,
+             exists Cs : ctx src i,
                forall t : trace, f1 t = sem src (Cs [P1]) t /\ f2 t = sem src (Cs [P2]) t)).
     { clear. unfold hrsat2. intros. exists C. intros. split; now auto. }
     specialize (H2hrp hh Ct); clear hh.
@@ -730,15 +730,17 @@ Qed.
 
 (** *Arbitrary Relational HyperProperties *)
 Definition RrHC : Prop :=
-  forall Ct, exists Cs,  (forall P, sem src (Cs [P]) = sem tgt (Ct [P ↓])).
+  forall (Ct:ctx tgt (cint i)),
+  exists (Cs:ctx src i),
+  forall (P:par src i), sem src (Cs [P]) = sem tgt (Ct [P ↓]).
 
 Theorem RrHC_RrHP' : RrHC <-> RrHP'.
 Proof.
   unfold RrHP', RrHC. split.
   - intros h R hcs Ct. destruct (h Ct) as [Cs h0]; clear h.
     specialize (hcs Cs).
-    assert (hh :  (fun P : par src => sem src (Cs [P])) =
-                  (fun P : par src => sem tgt (Ct [P ↓])) ).
+    assert (hh :  (fun P => sem src (Cs [P])) =
+                  (fun P => sem tgt (Ct [P ↓])) ).
     { apply functional_extensionality.
       intros P. specialize (h0 P). now auto. }
     now rewrite <- hh.
@@ -746,7 +748,9 @@ Proof.
     rewrite not_ex_forall_not in ff.
     specialize (hrrhp (fun f => exists Cs, forall P, f P = sem src (Cs [ P ]) )).
     simpl in *.
-    assert (hh : (forall Cs, exists Cs0, forall P, sem src (Cs [P]) = sem src (Cs0 [ P ]))).
+    assert (hh : forall (Cs:ctx src i),
+                 exists (Cs0:ctx src i),
+                 forall (P:par src i), sem src (Cs [P]) = sem src (Cs0 [ P ])).
     { intros Cs. now exists Cs. }
     specialize (hrrhp hh); clear hh.
     destruct (hrrhp Ct) as [Cs h].
@@ -756,7 +760,7 @@ Qed.
 
  
 (** *2Relational SubsetClosed HyperProperties *)
-Definition R2rSCHC:=  (forall (P1 P2 : par src) Ct, exists Cs,
+Definition R2rSCHC:=  (forall (P1 P2 : par src i) Ct, exists Cs,
                             (beh (Ct [P1↓])) ⊆  (beh (Cs [P1])) /\
                             (beh (Ct [P2↓])) ⊆  (beh (Cs [P2]))).
 
@@ -779,4 +783,3 @@ Theorem R2rSCHC_R2rSCHP : R2rSCHC <-> R2rSCHP.
     rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs). 
     now exists Cs.
 Qed.     
-

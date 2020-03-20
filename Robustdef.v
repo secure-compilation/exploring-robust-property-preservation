@@ -13,12 +13,12 @@ Require Import XPrefix.
 (* PROPERTIES                                            *)
 (*********************************************************)
 
-Definition RP (P : par src) (π : prop) :=
-  rsat P π -> rsat (P↓) π. 
+Definition RP (P : par src i) (π : prop) :=
+  rsat P π -> rsat (P↓) π.
 
 
 (** *Robust Preservation of Trace Properties *)
-Definition RTP := forall (P : par src) (π : prop), RP P π.
+Definition RTP := forall (P : par src i) (π : prop), RP P π.
 
 Lemma contra_RP : forall P π,
      RP P π <->
@@ -32,7 +32,7 @@ Proof.
 Qed.
 
 (** *RObust Preservation of a class of properties*)
-Definition RclassP (class : prop -> Prop) (P : par src) (π : prop) : Prop :=
+Definition RclassP (class : prop -> Prop) (P : par src i) (π : prop) : Prop :=
   class π -> RP P π.
 
 (* RP can be regarded as a monotonic function *)
@@ -88,15 +88,15 @@ Definition RDP := forall P π, Dense π -> RP P π.
 
 (** *Robust Preservation of H: hprop *)
 
-Definition RhP (P : par src) (H : hprop) :=
+Definition RhP (P : par src i) (H : hprop) :=
   rhsat P H -> rhsat (P ↓) H.
 
 Definition RHP := forall P H, RhP P H.  
 
-Lemma contra_RHP (P : par src) (H : hprop) :
+Lemma contra_RHP (P : par src i) (H : hprop) :
       RhP P H <->
-      ((exists C' : ctx tgt, ~ H (beh (C' [ P ↓ ]))) ->
-       (exists C  : ctx src, ~ H (beh (C [ P ])))).
+      ((exists C' : ctx tgt (cint i), ~ H (beh (C' [ P ↓ ]))) ->
+       (exists C  : ctx src i, ~ H (beh (C [ P ])))).
 Proof.
   unfold RhP, rhsat, hsat. split.
   + intros Hr [C' Hc']. rewrite contra in Hr.
@@ -107,7 +107,7 @@ Proof.
 Qed.
 
 (** *Robust Preservation of a class of HyperProperties*)
-Definition RHclassP (class : hprop -> Prop) (P : par src) (H : hprop) : Prop :=
+Definition RHclassP (class : hprop -> Prop) (P : par src i) (H : hprop) : Prop :=
   class H -> RhP P H.
 
 Lemma RHP_monotonic : forall (X Y : hprop -> Prop),
@@ -190,12 +190,12 @@ Definition RHLP := forall P H, HLiv H -> RhP P H.
 
 (** *Robust Preservation of 2-Relational Properties *)
 
-Definition R2rTP : Prop :=  forall P1 P2 (r : rel_prop),
+Definition R2rTP : Prop :=  forall (P1 P2 : par src i) (r : rel_prop),
     rsat2 P1 P2 r -> rsat2 (P1 ↓) (P2 ↓) r .
 
 Lemma R2rTP' :
   R2rTP <->
-  (forall P1 P2 r,
+  (forall (P1 P2 : par src i) r,
   forall Ct t1 t2, sem tgt ( Ct [P1 ↓] )  t1 ->
               sem tgt ( Ct [P2 ↓] )  t2 ->
                ~ (r t1 t2) ->
@@ -234,7 +234,7 @@ Qed.
 
 
 Definition RrTP' : Prop :=
-  forall R : (par src  ->  trace) -> Prop,
+  forall R : (par src i  ->  trace) -> Prop,
     (forall Cs f,  (forall P, sem src (Cs [P]) (f P)) -> R f) ->
     (forall Ct f,  (forall P, sem tgt (Ct [P↓]) (f P)) -> R f). 
 
@@ -242,13 +242,13 @@ Definition RrTP' : Prop :=
 
 (** *Robust Preservation of 2-Relational Safety Properties *)
 
-Definition R2rSP := forall P1 P2 r,
+Definition R2rSP := forall (P1 P2 : par src i) r,
     safety2 r ->
     rsat2 P1 P2 r ->
     rsat2 (P1 ↓) (P2 ↓) r.
 
 
-Lemma R2rSP' : R2rSP <-> (forall P1 P2 r,
+Lemma R2rSP' : R2rSP <-> (forall (P1 P2 : par src i) r,
                            safety2 r ->
                            forall Ct t1 t2, sem _ (plug _ (P1 ↓) Ct) t1 ->
                                        sem _ (plug _ (P2 ↓) Ct) t2 -> ~(r t1 t2) ->
@@ -275,19 +275,19 @@ Qed.
 (** *Robust Preservation of arbitrary Relational Safety Properties*)
 
 Definition RrSP' : Prop :=
-  forall R : (par src -> (finpref -> Prop)) -> Prop,
+  forall R : (par src i -> (finpref -> Prop)) -> Prop,
      (forall Cs f, (forall P, spref (f P) (sem src (Cs [P]))) -> R f) ->
      (forall Ct f, (forall P, spref (f P) (sem tgt (Ct [P↓]))) -> R f).
 
 
 (** *Robust Preservation of 2-Relational Xafety Properties*)
 
-Definition R2rXP := forall P1 P2 r,
+Definition R2rXP := forall (P1 P2 : par src i) r,
     xafety2 r ->
     rsat2 P1 P2 r ->
     rsat2 (P1 ↓) (P2 ↓) r.
 
-Lemma R2rXP' : R2rXP <-> (forall P1 P2 r,
+Lemma R2rXP' : R2rXP <-> (forall (P1 P2 : par src i) r,
                            xafety2 r ->
                            forall Ct t1 t2, sem _ (plug _ (P1 ↓) Ct) t1 ->
                                        sem _ (plug _ (P2 ↓) Ct) t2 -> ~(r t1 t2) ->
@@ -312,7 +312,7 @@ Qed.
 (** *Robust Preservation of arbitrary Relational XSafety Properties*)
 
 Definition RrXP' : Prop :=
-  forall R : (par src -> (xpref -> Prop)) -> Prop,
+  forall R : (par src i -> (xpref -> Prop)) -> Prop,
      (forall Cs f, (forall P, spref_x (f P) (sem src (Cs [P]))) -> R f) ->
      (forall Ct f, (forall P, spref_x (f P) (sem tgt (Ct [P↓]))) -> R f).
 
@@ -320,26 +320,27 @@ Definition RrXP' : Prop :=
 (** *Robust Preservation of 2-Relational  HyperProperties *)
 
 Definition R2rHP : Prop :=
-  forall P1 P2 r, (hrsat2 P1 P2 r) -> (hrsat2 (P1 ↓) (P2 ↓) r).
+  forall (P1 P2 : par src i) r, (hrsat2 P1 P2 r) -> (hrsat2 (P1 ↓) (P2 ↓) r).
 
 
 (** *Robust Preservation of arbitrary Relational HyperProperties*)
 
 Definition RrHP' : Prop :=
-  forall R : (par src  ->  prop) -> Prop,
+  forall R : (par src i  ->  prop) -> Prop,
     (forall Cs, R (fun P  => sem src (Cs [ P] ) )) ->
     (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )).
 
 
 (** *Robust Preservation of 2-subsetclosed Relational HyperProperties*)
 
-Definition R2rSCHP := forall P1 P2 r,
+Definition R2rSCHP := forall (P1 P2 : par src i) r,
     ssc2 r ->
     (hrsat2 P1 P2 r) -> (hrsat2 (P1↓) (P2↓) r).                         
 
 Lemma R2rSCHP' :
   R2rSCHP <->
-  (forall P1 P2 r, ssc2 r -> ((exists Ct, ~ r (beh (Ct [P1↓])) (beh (Ct [P2↓]))) ->
+  (forall (P1 P2 : par src i) r, ssc2 r ->
+                            ((exists Ct, ~ r (beh (Ct [P1↓])) (beh (Ct [P2↓]))) ->
                             (exists Cs, ~ r (beh (Cs [P1])) (beh (Cs [P2]))))).
 Proof.
   split.
@@ -356,10 +357,11 @@ Qed.
 
 (** *Robust Trace Equivalence Preservation *)
 Definition RTEP : Prop :=
-  forall P1 P2, (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
+  forall (P1 P2: par src i),
+           (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->
            (forall Ct t, sem tgt (Ct [P1 ↓]) t <-> sem tgt (Ct [P2 ↓]) t).
 
-Lemma RTEP' : RTEP <-> (forall P1 P2,
+Lemma RTEP' : RTEP <-> (forall (P1 P2:par src i),
  (exists Ct t, ~ (sem tgt (Ct [P1 ↓]) t  <-> sem tgt (Ct [P2 ↓]) t)) ->
  (exists Cs t', ~ (sem src (Cs [P1]) t'  <-> sem src (Cs [P2]) t'))).
 Proof.
@@ -385,7 +387,8 @@ Qed.
 
 (** *Robust Trace Inclusion Preservation *)
 Definition RTIP : Prop :=
-  forall P1 P2, (forall Cs t, sem src (Cs [P1]) t -> sem src (Cs [P2]) t) ->
+  forall (P1 P2:par src i),
+           (forall Cs t, sem src (Cs [P1]) t -> sem src (Cs [P2]) t) ->
            (forall Ct t, sem tgt (Ct [P1 ↓]) t -> sem tgt (Ct [P2 ↓]) t).
 
 Lemma RTIP_RTEP : RTIP -> RTEP.
@@ -394,9 +397,3 @@ Proof.
   intros rtip P1 P2 Hsrc Ct t.
   split; [apply (rtip P1 P2) | apply (rtip P2 P1)]; firstorder. 
 Qed. 
-
-
-
-
-
-
