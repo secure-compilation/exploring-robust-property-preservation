@@ -4,6 +4,7 @@ Require Import CommonST.
 Require Import XPrefix.
 
 Axiom src : language.
+Axiom i : int src.
 
 (* Generically defining partial/trace (big-step) semantics for programs (xsemp)
    and contexts (xsemc) in terms of the whole-program (big-step) semantics
@@ -24,8 +25,8 @@ Axiom src : language.
    conditions to enforce this assumption? So "proper" above could well mean
    satisfying composition / recomposition / [det-]FATs. *)
 
-Definition xsemp (P:par src) (m : xpref) := exists C, xsem (C[P]) m.
-Definition xsemc (C:ctx src) (m : xpref) := exists P, xsem (C[P]) m.
+Definition xsemp (P:par src i) (m : xpref) := exists C, xsem (C[P]) m.
+Definition xsemc (C:ctx src i) (m : xpref) := exists P, xsem (C[P]) m.
 
 (* Trace equivalence defined over partial semantics and only for finitely
    representable trace prefixes.
@@ -51,9 +52,9 @@ Definition trace_equiv P1 P2 := forall m, xsemp P1 m <-> xsemp P2 m.
    Here t does capture the internal interaction between C and P1/P2, but
    that's not always standard. *)
 
-Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
+Definition beh_equiv (P1 P2 : par src i) := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
-Definition det_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
+Definition det_fats := forall (P1 P2 : par src i), trace_equiv P1 P2 <-> beh_equiv P1 P2.
 
 (* In this model det_fats_rtl (completeness) and decomposition are trivial *)
 (* The fact that the completeness direction of FATs holds unconditionally
@@ -91,7 +92,7 @@ Abort. (* what we are left with looks like recomposition *)
      (artifact of looking at RXP or RFrXP for back-translation reasons)
    - whole-program semantics defined in terms of traces (prefixes) of events,
      which for us are pretty informative (this definition is agnostic to that) *)
-Definition recomposition := forall C1 P1 C2 P2 m,
+Definition recomposition := forall C1 (P1 : par src i) C2 P2 m,
     @xsem src (C1[P1]) m -> @xsem src (C2[P2]) m -> @xsem src (C1[P2]) m.
 
 Lemma recomposition_composition : recomposition -> composition.
@@ -128,10 +129,10 @@ Proof.
   unfold recomposition, trace_equiv, xsemp.
   intros Hrecomp P1 P2. intros H C m.
   split; intro Hsem.
-  - assert (Hprem: exists C : ctx src, xsem (C [P1]) m) by eauto.
+  - assert (Hprem: exists C, xsem (C [P1]) m) by eauto.
     rewrite -> H in Hprem. destruct Hprem as [C' Hdone].
     eapply Hrecomp; eassumption.
-  - assert (Hprem: exists C : ctx src, xsem (C [P2]) m) by eauto.
+  - assert (Hprem: exists C, xsem (C [P2]) m) by eauto.
     rewrite <- H in Hprem. destruct Hprem as [C' Hdone].
     eapply Hrecomp; eassumption.
 Qed.
@@ -143,7 +144,7 @@ Require Import ClassicalExtras.
 Module NewAssumption.
   (* Assumption made silently in Deepak's proof *)
   (* should follow from `semantics_safety_like src`, right? *)
-  Axiom not_sem : forall C P t,
+  Axiom not_sem : forall C (P : par src i) t,
     ~sem src (C [P]) t -> exists m, xprefix m t /\ ~xsem (C[P]) m.
 
   Theorem recomposition_det_fats : recomposition -> det_fats.

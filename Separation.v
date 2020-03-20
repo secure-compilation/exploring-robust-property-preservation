@@ -13,8 +13,8 @@ Axiom L : language.
 
 Definition ϕ_par := par L.
 Definition ϕ_prg := prod nat (prg L).
-Definition ϕ_ctx  := prod nat (ctx L).
-Definition ϕ_plug : ϕ_par -> ϕ_ctx -> ϕ_prg :=
+Definition ϕ_ctx i := prod nat (ctx L i).
+Definition ϕ_plug i : ϕ_par i -> ϕ_ctx i -> ϕ_prg :=
   fun P C =>  (fst C , plug L P (snd C)).
 
 Lemma omega_fact : forall n m, n <= m -> (S n) <= (S m).
@@ -99,6 +99,9 @@ Definition ϕ_sem : ϕ_prg -> prop :=
   (fun t : trace =>
      exists l es, t = tstop l es  /\ psem (snd P) (ftbd l) /\ length l <= (fst P)).
 
+Section Itf.
+  Context {i : int L}.
+
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
 Proof.
   intros [n Pl].
@@ -115,7 +118,7 @@ Proof. intros n1 n2 n3 h1 h2. omega. Qed.
 
 (* intuition there in t in sem longer than m *)
 Lemma psem_consequence : forall C P t l,
-    ϕ_sem (ϕ_plug P C) t ->
+    ϕ_sem (ϕ_plug i P C) t ->
     prefix (ftbd l) t ->
     length l <= fst C.
 Proof.
@@ -124,19 +127,19 @@ Proof.
   now apply list_list_prefix_shorter.   
 Qed.
 
-Definition ϕ := Build_language ϕ_plug
-                            ϕ_sem
-                            non_empty_ϕ.
+Definition ϕ := Build_language ϕ_par ϕ_ctx ϕ_plug
+                               ϕ_sem
+                               non_empty_ϕ.
 
 
 (**********************************************************)
 (* RSP =/=> RTP                                           *)
 (**********************************************************)
 
-Definition c : par ϕ -> par L :=
+Definition c : par ϕ i -> par L i :=
   fun P => P.
 
-Definition c_RPP (P : par ϕ) (π : prop) : Prop :=
+Definition c_RPP (P : par ϕ i) (π : prop) : Prop :=
   rsat P π -> rsat (c P) π.
 
 Lemma C_robustly_safety : forall P S, Safety S -> c_RPP P S.
@@ -169,8 +172,8 @@ Qed.
 Definition an_omega := constant_stream (an_event).
 Definition another_omega := constant_stream (another_event).
 
-Hypothesis an_omega_produced : exists P, forall C, sem L (plug L P C) (tstream an_omega).
-Hypothesis another_omega_produced : exists P, forall C, sem L (plug L P C) (tstream another_omega).
+Hypothesis an_omega_produced : exists P, forall C, sem L (@plug L i P C) (tstream an_omega).
+Hypothesis another_omega_produced : exists P, forall C, sem L (@plug L i P C) (tstream another_omega).
 
 Lemma not_equal: ~ stream_eq an_omega another_omega.
 Proof.   
@@ -197,14 +200,14 @@ Proof.
  simpl. intros H.  apply stream_eq_sym in H. now apply not_equal. 
 Qed.
 
-Lemma cut_lemma : forall C P t, sem ϕ (plug ϕ P C) t -> fin t.
+Lemma cut_lemma : forall C P t, sem ϕ (@plug ϕ i P C) t -> fin t.
 Proof.
   intros C P t H. simpl in*.
   unfold ϕ_sem, ϕ_plug in *. destruct H as [m [es [hp H]]].
   now rewrite hp. 
 Qed.
 
-Axiom some_ctx_L : ctx L.
+Axiom some_ctx_L : ctx L i.
 
 Theorem separation_RSP_RDP :
   (forall P π, Safety π -> c_RPP P π) /\
@@ -215,7 +218,7 @@ Proof.
   + intros ff. destruct another_omega_produced as [P H].
     specialize (ff P my_pi). unfold c_RPP, rsat, sat in ff.
     simpl in ff.
-    assert (hh :  (forall (C : ctx ϕ) (t : trace), sem ϕ (ϕ_plug P C) t -> my_pi t)).
+    assert (hh :  (forall (C : ctx ϕ i) (t : trace), sem ϕ (ϕ_plug i P C) t -> my_pi t)).
     { intros C t H0. simpl in H0. unfold ϕ_sem, ϕ_plug in H0.
       destruct H0 as [m [e [hm H0]]]. now rewrite hm. }
     specialize (ff my_pi_dense hh).  specialize (ff some_ctx_L (tstream another_omega)).
@@ -238,14 +241,14 @@ Qed.
 
 Hypothesis only_an_omega_produced : exists P, forall C,
       (sem L (plug L P C) (tstream an_omega) /\
-       (forall t, sem L (plug L P C) t ->
+       (forall t, sem L (@plug L i P C) t ->
          (exists s, t = tstream s /\ stream_eq s an_omega))).   
 
 
-Definition c2 : par L -> par ϕ :=
+Definition c2 : par L i -> par ϕ i :=
   fun P => P.
 
-Definition c2_RPP (P : par L) (π : prop) : Prop :=
+Definition c2_RPP (P : par L i) (π : prop) : Prop :=
   rsat P π -> rsat (c2 P) π.
 
 Lemma c2_robustly_dense: forall P π, Dense π -> c2_RPP P π.
@@ -276,7 +279,7 @@ Proof.
   + intros ff. destruct only_an_omega_produced as [P h].
     specialize (ff P my_pi2).
     unfold c2_RPP, rsat, sat in ff. 
-    assert (H : forall (C : ctx L) (t : trace), sem L (C [P]) t -> my_pi2 t).
+    assert (H : forall (C : ctx L i) (t : trace), sem L (C [P]) t -> my_pi2 t).
     { intros C t hsem. specialize (h C). destruct h as [h1 h2].
       destruct (h2 t hsem) as [s [H1 H2]]; now subst. }
     specialize (ff H (0, some_ctx_L) (tstop nil an_endstate)).
@@ -314,5 +317,7 @@ Proof.
   + intros ff.
     assert (forall P π, c2_RPP P π).
     { apply RDP_plus_RSP_RTP. now apply c2_robustly_dense. auto. }
-    destruct separation_RDP_RTP as [K1 K2]. now auto.
+    destruct separation_RDP_RTP; now auto.
 Qed.
+
+End Itf.

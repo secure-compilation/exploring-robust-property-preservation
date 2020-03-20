@@ -29,7 +29,7 @@ Proof.
              now apply (Hmaxll l').
 Qed.
 
-Lemma  longest_in_psem (tgt_sem : semantics_safety_like tgt) :
+Lemma  longest_in_psem (tgt_sem : @semantics_safety_like tgt) :
   forall W t, ~ sem tgt W t ->
     exists m, prefix m t /\ psem W m /\
      (forall m', prefix m' t -> psem W m' -> fpr m' m).
