@@ -20,3 +20,5 @@ FullReflection.v
 InternalNondet.v
 Alternative2FR.v
 SemanticsSafetyLike.v
+Recomposition.v
+RecompositionXPrefix.v

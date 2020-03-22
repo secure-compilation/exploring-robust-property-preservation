@@ -3,6 +3,7 @@ Require Import TraceModel.
 Require Import CommonST.
 
 Axiom src : language.
+Axiom i : int src.
 
 (* Defining partial/trace semantics for programs and contexts in terms of the
    whole-program semantics; here we only look at finite prefixes as we currently
@@ -15,8 +16,8 @@ Axiom src : language.
    CH: And anyway, composition / recomposition / FATs(?) should be strong
        enough conditions to enforce this assumption? So "proper" above could
        well mean satisfying composition / recomposition / FATs *)
-Definition psemp (P:par src) (m : finpref) := exists C, psem (C[P]) m.
-Definition psemc (C:ctx src) (m : finpref) := exists P, psem (C[P]) m.
+Definition psemp (P:par src i) (m : finpref) := exists C, psem (C[P]) m.
+Definition psemc (C:ctx src i) (m : finpref) := exists P, psem (C[P]) m.
 
 (* Trace equivalence defined over partial semantics and only for
    finite trace prefixes, as usually the case in the literature *)
@@ -29,7 +30,7 @@ Definition trace_equiv P1 P2 := forall m, psemp P1 m <-> psemp P2 m.
        observational equivalence, which means that the thing below should not
        be called FATs either -- in particular this definition is not the right
        one for FATs in the presence of internal nondeterminism *)
-Definition beh_equiv P1 P2 := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
+Definition beh_equiv (P1 P2 : par src i) := forall C t, sem src (C[P1]) t <-> sem src (C[P2]) t.
 
 Definition det_fats := forall P1 P2, trace_equiv P1 P2 <-> beh_equiv P1 P2.
 
@@ -68,7 +69,7 @@ Abort. (* what we are left with looks like recomposition *)
    - we are only looking at prefixes (artifact of just looking at RSC)
    - whole-program semantics defined in terms of traces (prefixes) of events,
      which for us are pretty informative (this definition is agnostic to that) *)
-Definition recomposition := forall C1 P1 C2 P2 m,
+Definition recomposition := forall C1 (P1 : par src i) C2 P2 m,
     @psem src (C1[P1]) m -> @psem src (C2[P2]) m -> @psem src (C1[P2]) m.
 
 Lemma recomposition_composition : recomposition -> composition.
@@ -104,10 +105,10 @@ Proof.
   unfold recomposition, trace_equiv, psemp.
   intros Hrecomp P1 P2. intros H C m.
   split; intro Hsem.
-  - assert (Hprem: exists C : ctx src, psem (C [P1]) m) by eauto.
+  - assert (Hprem: exists C, psem (C [P1]) m) by eauto.
     rewrite -> H in Hprem. destruct Hprem as [C' Hdone].
     eapply Hrecomp; eassumption.
-  - assert (Hprem: exists C : ctx src, psem (C [P2]) m) by eauto.
+  - assert (Hprem: exists C, psem (C [P2]) m) by eauto.
     rewrite <- H in Hprem. destruct Hprem as [C' Hdone].
     eapply Hrecomp; eassumption.
 Qed.
@@ -120,7 +121,7 @@ Module WrongAssumption.
   (* Too strong assumption made silently in Deepak's proof
      - Jeremy proved false from it below
        (using the presence of silent divergence in the traces) *)
-  Axiom not_sem : forall C P t,
+  Axiom not_sem : forall C (P : par src i) t,
     ~sem src (C [P]) t -> exists m, prefix m t /\ ~psem (C[P]) m.
 
   (* CA: this is stronger than semantics_safety_like src and is equivalent to
@@ -139,7 +140,7 @@ Module WrongAssumption.
      or to produce an other event e, such that m::e ≤ t" i.e. there
      is some internal non-determinism.  *)
 
-  Axiom exists_silent_div : exists C P, ~ sem src (C [P]) (tsilent nil). (* weak assumption *)
+  Axiom exists_silent_div : exists C (P : par src i), ~ sem src (C [P]) (tsilent nil). (* weak assumption *)
 
   Lemma false : False.
   Proof.
@@ -172,7 +173,7 @@ End WrongAssumption.
 
 Module WeakerAssumption.
   (* should follow from `semantics_safety_like src` *)
-  Axiom not_sem : forall C P t,
+  Axiom not_sem : forall C (P : par src i) t,
     ~sem src (C [P]) t -> ~diverges t -> exists m, prefix m t /\ ~psem (C[P]) m.
 
   Lemma recomposition_det_fats : recomposition -> det_fats.

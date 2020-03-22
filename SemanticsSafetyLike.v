@@ -20,10 +20,11 @@ Axiom indefinite_description : forall (A : Type) (P : A->Prop),
 *)
 Section SmallSteps.
 
-Variable partial : Set.
+Variable interface : Set.
+Variable partial : interface -> Set.
 Variable program : Set.
-Variable context : Set.
-Variable plug : partial -> context -> program.
+Variable context : interface -> Set.
+Variable plug : forall i, partial i -> context i -> program.
 
 Variable cfg : Set.
 Variable init : program -> cfg.
@@ -651,9 +652,9 @@ Proof. intro W. apply (trace_of (init W)).
 Qed.
 
 (** Definition of the language *)
-Definition lang : language := @Build_language partial
-                                        program
+Definition lang : language := @Build_language interface partial
                                         context
+                                        program
                                         plug
                                         sem
                                         non_empty_sem.
@@ -1091,7 +1092,7 @@ Proof.
     now inversion H.
 Qed.
 
-Lemma tgt_sem (det : weak_determinacy) : semantics_safety_like lang.
+Lemma tgt_sem (det : weak_determinacy) : @semantics_safety_like lang.
   (* Basic idea: if t is not in sem P, there is a prefix of t, m (here
      signified with a dependent type for the sake of simplicity), that
      does not belong to psem P. The argument can be that if every prefix
