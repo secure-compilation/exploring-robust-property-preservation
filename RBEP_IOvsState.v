@@ -130,11 +130,11 @@ CoInductive steval_n : (stream bool) -> bexp -> (trace output) -> nat -> Prop :=
          steval_n s (OForever be) (snoc_trace t oforever) n.
 
 (* Stateful evaluation: output the remaining stream *)
-(* TODO: we might try to use dependent types to capture the relation between the
-         input and the output stream (look at Danel's update monads paper), but
-         I'm not sure that will be so pleasant in Coq *)
-(* TODO: especially without tracking this relation,
-         I'm not yet fully convinced that this is much better than steval_n *)
+(* CH: we might try to use dependent types to capture the relation between the
+       input and the output stream (look at Danel's update monads paper), but
+       I'm not sure that will be so pleasant in Coq *)
+(* CH: especially without tracking this relation,
+       I'm not yet fully convinced that this is much better than steval_n *)
 CoInductive seval : (stream bool) -> bexp -> (trace output) -> (stream bool) -> Prop :=
 | SEvalVal : forall s b,
          seval s (Val b) (Done b) s
@@ -262,7 +262,13 @@ Definition EE := forall be t,
 
 Conjecture lang_is_EE : EE.
 
+(* CH: inp_no_stutter relies on an invariant of our semantics (that we consume only
+   finite input) that's not true in general and it's anyway not exposed in the
+   type of traces. This doesn't seem so hard to fix though, could return a lazy
+   list and appending to lazy lists is just fine ... if it's already infinite it
+   does nothing. *)
 Axiom inp_no_stutter : trace event -> list bool.
+
 Fixpoint sapp {a : Type} (l : list a) (s : stream a) : stream a :=
   match l with
   | nil => s
