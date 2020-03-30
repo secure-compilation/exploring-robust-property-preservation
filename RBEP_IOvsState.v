@@ -356,3 +356,57 @@ Proof.
     rewrite -> 2!conjecture2.
     now apply H.
 Qed.
+
+Axiom bexp' : Type.
+Axiom ndeval' : bexp' -> (trace event) -> Prop.
+Axiom steval' : stream bool -> bexp' -> trace output -> Prop.
+Axiom compile : bexp -> bexp'.
+
+Axiom conjecture1' : forall be1 be2,
+    (forall t, ndeval' be1 t <-> ndeval' be2 t) <->
+    (forall t,
+        (exists ti1 to1, t = merge ti1 to1 /\ steval' ti1 be1 to1) <->
+        (exists ti2 to2, t = merge ti2 to2 /\ steval' ti2 be2 to2)).
+
+Definition EE' := forall be t,
+    ndeval' be t <-> steval' (proj_input t) be (proj_output t).
+Conjecture lang_is_EE' : EE'.
+
+Definition REP_IO :=
+  forall be1 be2,
+    (forall t, ndeval be1 t <-> ndeval be2 t) ->
+    (forall t, ndeval' (compile be1) t <-> ndeval' (compile be2) t).
+
+Definition REP_State :=
+  forall be1 be2 is1 is2,
+    (* Input stream quantified at highest level, as if it were part of the program *)
+    (forall os, steval is1 be1 os <-> steval is2 be2 os) ->
+    (forall os, steval' is1 (compile be1) os <-> steval' is2 (compile be2) os).
+
+Lemma conjecture4 : REP_State -> REP_IO.
+Proof.
+  unfold REP_State, REP_IO.
+  intros H be1 be2 H0.
+  assert (H' : forall (be1 be2 : bexp) (is1 : stream bool),
+             (forall os : trace output,
+                 steval is1 be1 os <-> steval is1 be2 os) ->
+             forall os : trace output,
+               steval' is1 (compile be1) os <->
+               steval' is1 (compile be2) os)
+    by now auto.
+  (* Key step: (∀s. (A(s) => B(s)))
+                =>  (∀s. A(s)) => (∀s. B(s)) *)
+  assert (H'' : forall (be1 be2 : bexp),
+             (forall os is1,
+                 steval is1 be1 os <-> steval is1 be2 os) ->
+             forall os is1,
+               steval' is1 (compile be1) os <->
+               steval' is1 (compile be2) os)
+    by now auto.
+  clear H H'.
+  intros t.
+  setoid_rewrite (lang_is_EE' (compile be1) t).
+  setoid_rewrite (lang_is_EE' (compile be2) t).
+  apply H''. intros os1 is1.
+  (* need something a bit stronger, it seems *)
+Admitted.
