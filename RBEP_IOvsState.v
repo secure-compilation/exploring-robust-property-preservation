@@ -91,6 +91,7 @@ Inductive output :=
 (*    end *)
 (* end. *)
 
+(* Was originally used by steval_n, but then we baked it in *)
 Inductive input_number : trace output -> nat -> Prop :=
 | LoDone : forall b, input_number (Done b) 0
 | LoMoreOutput : forall b xs n , input_number xs n -> input_number (More (OOutput b) xs) n
@@ -106,31 +107,54 @@ Definition oout (a:Type) (b:bool) := More (OOutput b) (Done b).
 
 CoFixpoint oforever (b:bool) : trace output := More (OOutput b) (oforever b).
 
-CoInductive steval : (stream bool) -> bexp -> (trace output) -> Prop :=
-| StEvalVal : forall s b, steval s (Val b) (Done b)
-| StEvalNot : forall s be t, steval s be t -> steval s (Not be) (map_trace negb t)
-| StEvalAnd : forall s be1 t1 be2 t2 n,
-         steval s be1 t1 -> input_number t1 n ->
-         steval (drop n s) be2 t2 ->
-         steval s (And be1 be2) (append_traces andb t1 t2)
-| StEvalAndLoop : forall s be1 t1 be2,
-         steval s be1 t1 -> (forall n, ~input_number t1 n) ->
-         steval s (And be1 be2) t1
-| StEvalInput : forall b s, steval (SCons b s) Input (More OInput (Done b))
-| StEvalOutput : forall s be t, steval s be t -> steval s (Output be) (snoc_trace t (oout event))
-| StEvalOForever : forall s be t, steval s be t -> steval s (OForever be) (snoc_trace t oforever).
+(* The nat index is the number of inputs consumed from the input stream; this
+   relies on the fact that in this language one can't consume infinitely many
+   inputs (otherwise we would need an `option nat` and a None rule for And) *)
+CoInductive steval_n : (stream bool) -> bexp -> (trace output) -> nat -> Prop :=
+| StEvalNVal : forall s b,
+         steval_n s (Val b) (Done b) 0
+| StEvalNNot : forall s be t n,
+         steval_n s be t n ->
+         steval_n s (Not be) (map_trace negb t) n
+| StEvalNAnd : forall s be1 t1 be2 t2 n m,
+         steval_n s be1 t1 n ->
+         steval_n (drop n s) be2 t2 m ->
+         steval_n s (And be1 be2) (append_traces andb t1 t2) (n+m)
+| StEvalNInput : forall b s,
+         steval_n (SCons b s) Input (More OInput (Done b)) 1
+| StEvalNOutput : forall s be t n,
+         steval_n s be t n ->
+         steval_n s (Output be) (snoc_trace t (oout event)) n
+| StEvalNOForever : forall s be t n,
+         steval_n s be t n ->
+         steval_n s (OForever be) (snoc_trace t oforever) n.
 
+(* Stateful evaluation: output the remaining stream *)
+(* TODO: we might try to use dependent types to capture the relation between the
+         input and the output stream (look at Danel's update monads paper), but
+         I'm not sure that will be so pleasant in Coq *)
+(* TODO: especially without tracking this relation,
+         I'm not yet fully convinced that this is much better than steval_n *)
 CoInductive seval : (stream bool) -> bexp -> (trace output) -> (stream bool) -> Prop :=
-| SEvalVal : forall s b, seval s (Val b) (Done b) s
-| SEvalNot : forall s be t s', seval s be t s' -> seval s (Not be) (map_trace negb t) s'
+| SEvalVal : forall s b,
+         seval s (Val b) (Done b) s
+| SEvalNot : forall s be t s',
+         seval s be t s' ->
+         seval s (Not be) (map_trace negb t) s'
 | SEvalAnd : forall s be1 t1 s1 be2 t2 s2,
-         seval s be1 t1 s1 -> seval s1 be2 t2 s2 ->
+         seval s be1 t1 s1 ->
+         seval s1 be2 t2 s2 ->
          seval s (And be1 be2) (append_traces andb t1 t2) s2
-| SEvalInput : forall b s, seval (SCons b s) Input (More OInput (Done b)) s
-| SEvalOutput : forall s be t s', seval s be t s' -> seval s (Output be) (snoc_trace t (oout event)) s'
-| SEvalOForever : forall s be t s', seval s be t s' -> seval s (OForever be) (snoc_trace t oforever) s'.
+| SEvalInput : forall b s,
+         seval (SCons b s) Input (More OInput (Done b)) s
+| SEvalOutput : forall s be t s',
+         seval s be t s' ->
+         seval s (Output be) (snoc_trace t (oout event)) s'
+| SEvalOForever : forall s be t s',
+         seval s be t s' ->
+         seval s (OForever be) (snoc_trace t oforever) s'.
 
-Definition steval' (s:stream bool) (b:bexp) (t:trace output) := exists s', seval s b t s'.
+Definition steval (s:stream bool) (b:bexp) (t:trace output) := exists s', seval s b t s'.
 
 (* TODO: can we prove that seval/seval' is a function / deterministic?
          can paco solve this? not syntactically guarded *)
@@ -164,7 +188,7 @@ Proof.
   admit.
 Admitted.
 
-Lemma steval_deterministic : forall s be t1 t2, steval' s be t1 -> steval' s be t2 -> equal_traces t1 t2.
+Lemma steval_deterministic : forall s be t1 t2, steval s be t1 -> steval s be t2 -> equal_traces t1 t2.
   cofix H. intros s be t1 t2 [s1 H1] [s2 H2]. inversion H1; inversion H2; subst.
   - inversion H7; subst. apply EqDone.
 (* will get stuck for Not case *)
@@ -195,17 +219,19 @@ Admitted.
 (*     edestruct IHbe with (t1 := t) (t2 := t0); eauto. *)
 (*   - edestruct (IHbe1 _ _ _ _ _ H4 H11) as [Heqt1 Heqs1]. *)
 
-Lemma steval_deterministic : forall be s t1 t2, steval' s be t1 -> steval' s be t2 -> equal_traces t1 t2.
+Lemma steval_deterministic : forall be s t1 t2, steval s be t1 -> steval s be t2 -> equal_traces t1 t2.
 Proof.
   intros be s t1 t2 [s1 H1] [s2 H2].
   destruct (seval_deterministic H1 H2).
   assumption.
 Qed.
 
-Lemma steval_defined : forall be s, exists t, steval' s be t.
+Lemma steval_defined : forall be s, exists t, steval s be t.
 Admitted.
 
-(* TODO: should we able to get this from some unique choice
+(* TODO:
+   - should be able to get a function from some unique choice
+     https://coq.github.io/doc/master/stdlib/Coq.Logic.ClassicalUniqueChoice.html
    - functional choice can do it only from steval_defined
      https://coq.github.io/doc/master/stdlib/Coq.Logic.IndefiniteDescription.html
 *)
