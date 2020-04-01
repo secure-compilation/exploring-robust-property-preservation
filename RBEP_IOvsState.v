@@ -316,8 +316,6 @@ Proof.
       now rewrite input_no_stutter_proj_input.
 Qed.
 
-(* CH: Not sure it's very useful to change to this merging view, is it? *)
-
 CoFixpoint merge ti to :=
   match to with
   | Done b => Done b
@@ -348,6 +346,9 @@ Admitted.
 Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti.
 
 Conjecture merge_proj : forall t, merge (proj_input t) (proj_output t) = t.
+
+(* CH: Not sure about how useful conjecture1 and conjecture2 are,
+       what's more useful is ndeval_merge at the end *)
 
 Lemma conjecture2 : forall be t,
     ndeval be t <-> (exists ti to, t = merge ti to /\ steval ti be to).
@@ -410,6 +411,15 @@ Definition REP_State :=
     (forall os, steval is1 be1 os <-> steval is2 be2 os) ->
     (forall os, steval' is1 (compile be1) os <-> steval' is2 (compile be2) os).
 
+Lemma ndeval_merge : forall be is1 os1,
+  ndeval be (merge is1 os1) <-> steval is1 be os1.
+Proof.
+  intros be is1 os1. rewrite (lang_is_EE _ _).
+  rewrite proj_input_merge.
+  rewrite proj_output_merge.
+  tauto.
+Qed.
+
 Lemma conjecture4 : REP_State -> REP_IO.
 Proof.
   unfold REP_State, REP_IO.
@@ -432,8 +442,8 @@ Proof.
     by now auto.
   clear H H'.
   intros t.
-  setoid_rewrite (lang_is_EE' (compile be1) t).
-  setoid_rewrite (lang_is_EE' (compile be2) t).
+  do 2 rewrite (lang_is_EE' _ _).
   apply H''. intros os1 is1.
-  (* need something a bit stronger, it seems *)
-Admitted.
+  specialize (H0 (merge is1 os1)).
+  now do 2 rewrite ndeval_merge in H0.
+Qed.
