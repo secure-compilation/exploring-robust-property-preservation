@@ -316,6 +316,8 @@ Proof.
       now rewrite input_no_stutter_proj_input.
 Qed.
 
+(* CH: Not sure it's very useful to change to this merging view, is it? *)
+
 CoFixpoint merge ti to :=
   match to with
   | Done b => Done b
@@ -326,20 +328,45 @@ CoFixpoint merge ti to :=
   | More (OOutput o) to' => More (EOutput o) (merge ti to')
   end.
 
+(* CH: The conjectures below don't really hold with equality.
+       For expedience we can use a trace extensionality axiom. *)
+
+Axiom traces_extensional : forall a (t1 t2 : trace a),
+  equal_traces t1 t2 -> t1 = t2.
+
+Lemma proj_output_merge : forall ti to, proj_output (merge ti to) = to.
+Proof.
+  intros ti to. apply traces_extensional.
+  generalize dependent ti. generalize dependent to.
+  cofix IH. intros to ti.
+  destruct to as [b | [|o] to'].
+  - admit. (* make it compute *)
+  - admit. (* make it compute *)
+  - admit. (* make it compute *)
+Admitted.
+
+Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti.
+
+Conjecture merge_proj : forall t, merge (proj_input t) (proj_output t) = t.
+
 Lemma conjecture2 : forall be t,
     ndeval be t <-> (exists ti to, t = merge ti to /\ steval ti be to).
 Proof.
   intros.
   split.
   - intros H.
-    exists (sapp (inp_no_stutter t) (stutter true)).
+    exists (proj_input t).
     exists (proj_output t).
     split.
-    + admit. (* This should be a property of the definition *)
-    + rewrite input_no_stutter_proj_input.
-      (* use EE now *)
-      now apply lang_is_EE.
-Admitted.
+    + rewrite merge_proj. reflexivity.
+    + now apply lang_is_EE.
+  - intros [ti [to [H1 H2]]]. subst t.
+    pose proof lang_is_EE as H. unfold EE in H.
+    setoid_rewrite -> H.
+    rewrite proj_input_merge.
+    rewrite proj_output_merge.
+    now apply H2.
+Qed.
 
 Lemma conjecture1 : forall be1 be2,
     (forall t, ndeval be1 t <-> ndeval be2 t) <->
