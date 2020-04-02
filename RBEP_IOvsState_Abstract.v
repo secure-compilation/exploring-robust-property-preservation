@@ -144,7 +144,7 @@ Axiom merge : input_stream -> output_trace -> trace.
    prove, I believe proj_input_merge do not hold in most cases. Indeed, if not all
    inputs are consumed, then one need to ignore the junk inputs at the end *)
 Conjecture proj_output_merge : forall ti to, proj_output (merge ti to) = to.
-Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti.
+Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti. (* <-- TODO: this is false as stated *)
 
 (****** START OF THE INTERESTING STUFF ******)
 
@@ -166,12 +166,12 @@ Definition EE' := forall be t,
 
 
 
-Definition REP_IO :=
+Definition BEP_IO :=
   forall be1 be2,
     (forall t, ndeval be1 t <-> ndeval be2 t) ->
     (forall t, ndeval' (compile be1) t <-> ndeval' (compile be2) t).
 
-Definition REP_State :=
+Definition BEP_State :=
   forall be1 be2 is1 is2,
     (* Input stream quantified at highest level, as if it were part of the program *)
     (forall os, steval is1 be1 os <-> steval is2 be2 os) ->
@@ -187,9 +187,9 @@ Proof.
   tauto.
 Qed.
 
-Lemma REP_State_to_IO {lang_is_EE : EE} {lang_is_EE' : EE'} : REP_State -> REP_IO.
+Lemma BEP_State_to_IO {lang_is_EE : EE} {lang_is_EE' : EE'} : BEP_State -> BEP_IO.
 Proof.
-  unfold REP_State, REP_IO.
+  unfold BEP_State, BEP_IO.
   intros H be1 be2 H0.
   assert (H' : forall (be1 be2 : bexp) (is1 : input_stream),
              (forall os : output_trace,
