@@ -144,7 +144,7 @@ Axiom merge : input_stream -> output_trace -> trace.
    prove, I believe proj_input_merge do not hold in most cases. Indeed, if not all
    inputs are consumed, then one need to ignore the junk inputs at the end *)
 Conjecture proj_output_merge : forall ti to, proj_output (merge ti to) = to.
-Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti. (* <-- TODO: this is false as stated *)
+(* Conjecture proj_input_merge : forall ti to, proj_input (merge ti to) = ti. (* <-- TODO: this is false as stated *) *)
 
 (****** START OF THE INTERESTING STUFF ******)
 
@@ -165,6 +165,12 @@ Definition EE' := forall be t,
     ndeval' be t <-> steval' (proj_input t) be (proj_output t).
 
 
+Conjecture proj_input_merge : forall be ti ti' to,
+    proj_input (merge ti to) = ti' ->
+    (steval ti be to <-> steval ti' be to).
+Conjecture proj_input_merge' : forall be' ti ti' to,
+    proj_input (merge ti to) = ti' ->
+    (steval' ti be' to <-> steval' ti' be' to).
 
 Definition BEP_IO :=
   forall be1 be2,
@@ -182,9 +188,9 @@ Lemma ndeval_merge : forall be is1 os1,
     ndeval be (merge is1 os1) <-> steval is1 be os1.
 Proof.
   intros be is1 os1 HEE. rewrite (HEE _ _).
-  rewrite proj_input_merge.
   rewrite proj_output_merge.
-  tauto.
+  symmetry.
+  now apply proj_input_merge.
 Qed.
 
 Lemma BEP_State_to_IO {lang_is_EE : EE} {lang_is_EE' : EE'} : BEP_State -> BEP_IO.
@@ -279,11 +285,10 @@ Proof.
     + rewrite merge_proj. reflexivity.
     + now apply lang_is_EE.
   - intros [ti [to [H1 H2]]]. subst t.
-    pose proof lang_is_EE as H. unfold EE in H.
-    setoid_rewrite -> H.
-    rewrite proj_input_merge.
+    unfold EE in lang_is_EE; setoid_rewrite -> lang_is_EE.
     rewrite proj_output_merge.
-    now apply H2.
+    pose proof (@proj_input_merge be ti (proj_input (merge ti to)) to eq_refl) as [H _].
+    now apply H.
 Qed.
 
 Lemma conjecture1 (lang_is_EE:EE) : forall be1 be2,
