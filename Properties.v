@@ -1,9 +1,9 @@
 Require Import Events.
 Require Import TraceModel.
-Require Import XPrefix. 
+Require Import XPrefix.
 Require Import ClassicalExtras.
 
- 
+
 (** This file defines properties, hyperproperties, relational properties
     and the main subclasses of these *)
 
@@ -25,7 +25,7 @@ Definition Safety (π : prop) : Prop :=
 
 
 Definition Dense (π : prop) : Prop :=
-  forall t, fin t -> π t. 
+  forall t, fin t -> π t.
 
 
 Definition Liveness (π : prop) : Prop :=
@@ -62,12 +62,12 @@ Lemma all_fin_in_all_liv :
   forall π, Liveness π <-> Dense π.
 Proof.
   unfold Liveness. intros π. split.
-  - intros Hl [] Hfin; try contradiction.  
+  - intros Hl [] Hfin; try contradiction.
     destruct (Hl (fstop l e)) as [t' [Hpref πt']].
-    destruct t'; inversion Hpref; now subst. 
+    destruct t'; inversion Hpref; now subst.
   - intros H []; [exists (tstop l es) | exists (tstop l an_endstate)];
       split; simpl; try now auto; now apply H.
-      now apply list_list_prefix_ref.       
+      now apply list_list_prefix_ref.
 Qed.
 
 (* or equivalently if it excludes only infinite traces *)
@@ -79,9 +79,9 @@ Proof.
   - intros Hl t nt Hfin. apply nt.
     now apply all_fin_in_all_liv.
   - intros H m. exists (embedding an_endstate m). split.
-    + now apply embed_pref. 
-    + apply NNPP. intros ff. specialize (H (embedding an_endstate m) ff). 
-      apply H. now case m. 
+    + now apply embed_pref.
+    + apply NNPP. intros ff. specialize (H (embedding an_endstate m) ff).
+      apply H. now case m.
 Qed.
 
 (* an example: the property excluding one single infinite trace
@@ -128,7 +128,7 @@ Proof.
 Qed.
 
 Definition spref_x (X : xpref -> Prop) (T : prop) : Prop :=
-  forall x, X x -> (exists t, T t /\ xprefix x t). 
+  forall x, X x -> (exists t, T t /\ xprefix x t).
 
 
 (** *SubsetClosed Hyperproperties *)
@@ -208,7 +208,7 @@ Proof.
     + unfold lifting in *. now apply (subset_trans k h π).
 Qed.
 
-(* definition by "Verifying Bounded Subset-Closed Hyperproperties" 
+(* definition by "Verifying Bounded Subset-Closed Hyperproperties"
    - Mastroeni, Pasqua *)
 Definition twoSC (H : hprop) : Prop :=
   forall b, ~ (H b) <-> (exists t1 t2, (b t1 /\ b t2 /\ ~ H (fun t => t = t1 \/ t = t2))).
@@ -220,49 +220,49 @@ Proof.
   rewrite (twosc b') in not_H_b'. destruct not_H_b' as [t1 [t2 [b_t1 [b_t2 H_t1_t2]]]].
   rewrite dne in H_b. apply H_b.
   rewrite (twosc _). exists t1, t2. split; auto.
-Qed. 
+Qed.
 
 (* 2SC Hyperproperties *)
 
-(* CA : according to the old definition 
+(* CA : according to the old definition
 
          H ∈ twoSC iff ∃ t1 t2. ∀ b. ~ (H b) <->  (b t1 /\ b t2).
 
          hence
 
-         H ∈ k-SC iff 
+         H ∈ k-SC iff
          ∃ t1 .. tk, H = lifting (true \ t1) ∪ .. ∪ lifting (true \ tk)
 
    notice that
 
    (1) H ∈ 2-SC -> H ∈ k-SC ∀ k >= 2   (just take t3 = .. = tk = t2)
-   
-   (2) H ∈ 2-SC -> H ∈ SC 
+
+   (2) H ∈ 2-SC -> H ∈ SC
        by a previous characterization of SC hyperproperties.
 
    ------------------------------------------------------------------------------
 
-   for k -> ∞ 
+   for k -> ∞
 
     H ∈ lim_{k -> ∞ } k -SC iff
     H = ∪_{t : trace} lifting (true \ t) = prop \ {t | t : trace}
 
-   Consequences : 
+   Consequences :
    ---------------
 
    (i)   such a limit is not the class SSC (and it contains only one hyperproperty)
 
-   (ii)  H ∈ 2-SC does not imply H ∈ lim_{k -> ∞ } k -SC   
+   (ii)  H ∈ 2-SC does not imply H ∈ lim_{k -> ∞ } k -SC
 
          e.g. lifting (true \ t) for a fixed t is in 2-SC (as ∃ t, t ..)
-              
-               but it is different from 
+
+               but it is different from
                prop \ {t | t : trace} (the only inhabitant of lim_{k -> ∞ } k -SC)
 
 
- CA: anycase nothing changes in the diagram, 
-     see theorem  R2SCHP_R2HSP 
-     
+ CA: anycase nothing changes in the diagram,
+     see theorem  R2SCHP_R2HSP
+
  *)
 
 
@@ -305,10 +305,10 @@ Lemma twoSC_H2Safe (H : hprop) : H2Safe H -> twoSC H.
 Proof.
   intros hsafe_H b. split.
   + intros not_H_b. destruct (hsafe_H b not_H_b) as [m1 [m2 [spref_b wit]]].
-    destruct (spref_b m1) as [t1 [b_t1 m1_t1]]; auto.     
-    destruct (spref_b m2) as [t2 [b_t2 m2_t2]]; auto. 
+    destruct (spref_b m1) as [t1 [b_t1 m1_t1]]; auto.
+    destruct (spref_b m2) as [t2 [b_t2 m2_t2]]; auto.
     exists t1, t2. repeat (split; auto). apply wit.
-    intros m [M1 | M2]; subst; [exists t1 | exists t2]; auto. 
+    intros m [M1 | M2]; subst; [exists t1 | exists t2]; auto.
   + intros [t1 [t2 [b_t1 [b_t2 not_H]]]].
     destruct (hsafe_H _ not_H) as [m1 [m2 [spref_b wit]]].
     apply wit.
@@ -317,8 +317,8 @@ Proof.
        destruct b_t; subst; [now exists t1 | now exists t2].
     ++ destruct (spref_b m2) as [t [b_t pref_t]]; auto.
        destruct b_t; subst; [now exists t1 | now exists t2].
-Qed.    
-    
+Qed.
+
 (** *HyperLiveness *)
 Definition HLiv (H : hprop) : Prop :=
   forall M, Observations M ->
@@ -331,7 +331,7 @@ Definition Embedding (M : finpref -> Prop) : prop :=
 Lemma infinite_trace_not_in_embed : forall M, ~ (Embedding M) (tstream (constant_stream an_event)).
 Proof.
   intros M hf. inversion hf. destruct H as [es [h1 h2]].
-  unfold embedding in h2. destruct x; inversion h2.  
+  unfold embedding in h2. destruct x; inversion h2.
 Qed.
 
 

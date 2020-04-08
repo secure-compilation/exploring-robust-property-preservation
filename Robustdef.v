@@ -27,7 +27,7 @@ Lemma contra_RP : forall P π,
 Proof.
   intros P π. unfold RP. split; intros H.
   - rewrite contra in H.
-    repeat rewrite neg_rsat in H. auto.   
+    repeat rewrite neg_rsat in H. auto.
   - rewrite contra. repeat rewrite neg_rsat. auto.
 Qed.
 
@@ -79,7 +79,7 @@ Definition RSP := forall P π, Safety π -> RP P π.
 
 (** *Robust Preservation of Liveness Properties *)
 
-Definition RDP := forall P π, Dense π -> RP P π. 
+Definition RDP := forall P π, Dense π -> RP P π.
 
 
 (*********************************************************)
@@ -91,7 +91,7 @@ Definition RDP := forall P π, Dense π -> RP P π.
 Definition RhP (P : par src i) (H : hprop) :=
   rhsat P H -> rhsat (P ↓) H.
 
-Definition RHP := forall P H, RhP P H.  
+Definition RHP := forall P H, RhP P H.
 
 Lemma contra_RHP (P : par src i) (H : hprop) :
       RhP P H <->
@@ -150,7 +150,7 @@ Qed.
 (** *Robust Preservation of Subset Closed HyperProperties *)
 
 
-Definition RSCHP := forall P H, SSC H -> RhP P H. 
+Definition RSCHP := forall P H, SSC H -> RhP P H.
 
 (* Robust Preservation of SSC => RPP *)
 Lemma RSSCP_RPP : RSCHP -> RTP.
@@ -170,16 +170,16 @@ Definition R2SCHP := forall P H, twoSC H -> RhP P H.
 
 (** *Robust Preservation of HyperSafety  *)
 
-Definition RHSP := forall P H, HSafe H -> RhP P H. 
+Definition RHSP := forall P H, HSafe H -> RhP P H.
 
 
 (** *Robust Preservation of 2-HyperSafety *)
 
-Definition R2HSP := forall P H, H2Safe H -> RhP P H. 
+Definition R2HSP := forall P H, H2Safe H -> RhP P H.
 
 (** *Robust Preservation of HyperLiveness  *)
 
-Definition RHLP := forall P H, HLiv H -> RhP P H. 
+Definition RHLP := forall P H, HLiv H -> RhP P H.
 
 
 
@@ -236,7 +236,7 @@ Qed.
 Definition RrTP' : Prop :=
   forall R : (par src i  ->  trace) -> Prop,
     (forall Cs f,  (forall P, sem src (Cs [P]) (f P)) -> R f) ->
-    (forall Ct f,  (forall P, sem tgt (Ct [P↓]) (f P)) -> R f). 
+    (forall Ct f,  (forall P, sem tgt (Ct [P↓]) (f P)) -> R f).
 
 
 
@@ -335,7 +335,7 @@ Definition RrHP' : Prop :=
 
 Definition R2rSCHP := forall (P1 P2 : par src i) r,
     ssc2 r ->
-    (hrsat2 P1 P2 r) -> (hrsat2 (P1↓) (P2↓) r).                         
+    (hrsat2 P1 P2 r) -> (hrsat2 (P1↓) (P2↓) r).
 
 Lemma R2rSCHP' :
   R2rSCHP <->
@@ -346,12 +346,12 @@ Proof.
   split.
   + intros r2p P1 P2 r Hr [Ct nr].
     rewrite <- not_forall_ex_not.
-    intros H. specialize (r2p P1 P2 r Hr H). now apply nr. 
-  + intros r2pc P1 P2 r Hr H. unfold hrsat2.  
+    intros H. specialize (r2p P1 P2 r Hr H). now apply nr.
+  + intros r2pc P1 P2 r Hr H. unfold hrsat2.
     intros Ct. rewrite dne. intros Hf.
     destruct (r2pc P1 P2 r Hr) as [Cs Hc].
     now exists Ct. now apply Hc.
-Qed.     
+Qed.
 
 
 
@@ -395,5 +395,5 @@ Lemma RTIP_RTEP : RTIP -> RTEP.
 Proof.
   unfold RTIP, RTEP.
   intros rtip P1 P2 Hsrc Ct t.
-  split; [apply (rtip P1 P2) | apply (rtip P2 P1)]; firstorder. 
-Qed. 
+  split; [apply (rtip P1 P2) | apply (rtip P2 P1)]; firstorder.
+Qed.

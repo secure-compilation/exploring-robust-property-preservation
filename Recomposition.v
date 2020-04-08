@@ -1,4 +1,3 @@
-
 Require Import TraceModel.
 Require Import CommonST.
 

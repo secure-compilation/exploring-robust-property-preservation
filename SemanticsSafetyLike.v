@@ -16,7 +16,7 @@ Axiom indefinite_description : forall (A : Type) (P : A->Prop),
     *determinacy* of configurations, these semantics satisfy the
     particular property that we call "Safety-Like". This property,
     along with determinacy, can be used to prove that R2rSP => RTEP
-    (file r2RSC_teq.v) 
+    (file r2RSC_teq.v)
 *)
 Section SmallSteps.
 
@@ -168,7 +168,7 @@ Qed.
 Definition does_event_or_goes_wrong (c:cfg) :=
   (* (exists e c', steps' c (cons e nil) c') \/ (exists c', steps' c nil c' /\ stuck c'). *)
   {exists e c', steps' c [e] c'} + {exists c', steps' c [] c' /\ stuck c'}.
-  
+
 Lemma not_can_loop_silent : forall c, ~(can_loop_silent c) -> does_event_or_goes_wrong c.
 Proof.
   intros c Hc.
@@ -186,7 +186,7 @@ Proof.
 Qed.
 
 (** Semantics: the semantics produce full traces, not finite prefixes. *)
-(* A definition of the semantics, using a well-founded order 
+(* A definition of the semantics, using a well-founded order
    and based on Compcert, module Smallstep *)
 Variable A: Type.
 Variable order: A -> A -> Prop.
@@ -233,7 +233,7 @@ Qed.
 Hint Resolve sem'_inv.
 
 
-(* Another definition of the semantics, based on the reflexive transitive closrure of the step 
+(* Another definition of the semantics, based on the reflexive transitive closrure of the step
    relation but without restrictions on appplying the silent event only finitely many times *)
 CoInductive sem'' : cfg -> trace -> Prop :=
 | SStop : forall c (H : stuck c), sem'' c (tstop nil (es_of_cfg c H))
@@ -670,7 +670,7 @@ Proof.
   inversion H0; subst; eauto.
   destruct (order_inf a) as [a' Ha'].
   apply sem'_cons with (a := a').
-  econstructor; eauto.  
+  econstructor; eauto.
 Qed.
 Hint Resolve steps'_sem'_single.
 
@@ -958,7 +958,7 @@ Lemma sem'_pref_to_steps' : forall c m t,
     prefix (ftbd m) t -> sem' c t -> exists c', steps' c m c'.
 Proof.
   intros c m t H H0.
-  inversion H0; subst. 
+  inversion H0; subst.
   eauto using sem'_N_pref_to_steps'.
 Qed.
 
@@ -1068,7 +1068,7 @@ Qed.
 
 (* The original semantics_safety_like_right can only be obtained if we assume determinacy *)
 Lemma semantics_safety_like_right (det : weak_determinacy): forall t P,
-  ~ diverges t -> ~ stopped t -> 
+  ~ diverges t -> ~ stopped t ->
   (forall m, prefix m t -> @psem lang P m) -> sem P t.
 Proof.
   intros t P Hndiv Hnstopped H.

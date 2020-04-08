@@ -1,4 +1,4 @@
-Require Import ClassicalExtras. 
+Require Import ClassicalExtras.
 Require Import Events.
 Require Import TraceModel.
 Require Import Properties.
@@ -14,7 +14,7 @@ Lemma full_observable : Observable  (fun t => True).
 Proof.
   unfold Observable. intros t ff.
   exists (ftbd nil); firstorder.
-  now case t.  
+  now case t.
 Qed.
 
 Lemma union_observable : forall H : hprop,
@@ -24,7 +24,7 @@ Proof.
   unfold Observable. intros H h t [A [ha At]].
   destruct (h A ha t At) as [m [h1 h2]].
   exists m. split; try now auto.
-  intros t' pmt'. specialize (h2 t' pmt'). now exists A. 
+  intros t' pmt'. specialize (h2 t' pmt'). now exists A.
 Qed.
 
 Lemma intersection_observable : forall A1 A2,
@@ -63,7 +63,7 @@ Proof.
 Qed.
 
 Lemma Dense_dense : forall π, Dense π <-> (dense trace_topology) π.
-Proof. intros π. now rewrite <- all_fin_in_all_liv, liveness_dense. Qed. 
+Proof. intros π. now rewrite <- all_fin_in_all_liv, liveness_dense. Qed.
 
 Theorem safety_dense_only_true :
   forall π, (Safety π /\ Dense π) <-> (forall t, π t).
@@ -101,19 +101,19 @@ Proof.
     { rewrite <- not_forall_ex_not. now apply classic. }
     destruct K as [K | [t Ht]].
     ++ assert (kk : π = x).
-       { apply functional_extensionality. 
+       { apply functional_extensionality.
          intros t. specialize K with t.
          specialize Hmeet with t.
-         apply prop_ext. now firstorder. } 
+         apply prop_ext. now firstorder. }
        now rewrite kk.
-    ++ destruct (HL (fun t => ~ S t)) as [t' [St' pit']]. 
+    ++ destruct (HL (fun t => ~ S t)) as [t' [St' pit']].
        { now apply safety_closed. }
        { now exists t. }
        destruct (Hmeet t') as [contra foo].
        destruct (contra pit') as [contra' foo']. contradiction.
-  + intros HX. 
+  + intros HX.
     apply (dense_closure_true).
-    intros t C HC H. apply (dec_triv π C π); auto. 
+    intros t C HC H. apply (dec_triv π C π); auto.
     firstorder.
 Qed.
 
@@ -130,4 +130,4 @@ Theorem X_Dense_class
   forall π, Dense π <-> X π.
 Proof. intros π. rewrite <- (X_dense_class X); try now auto; try now rewrite Dense_dense;
                    auto.
-Qed.        
+Qed.

@@ -1,5 +1,5 @@
-Require Import Events. 
-Require Import TraceModel. 
+Require Import Events.
+Require Import TraceModel.
 Require Import Properties.
 Require Import CommonST.
 Require Import Robustdef.
@@ -24,22 +24,22 @@ Fixpoint take_n_of_stream {A: Type} (s : stream) (n : nat) : list A :=
   match n, s with
   | 0, _  => nil
   | S m, scons a s' => cons a (take_n_of_stream s' m)
-  end. 
+  end.
 
 Lemma take_n_of_stream_prefix {A : Type} (s : stream) (n: nat) :
-  @list_stream_prefix A (take_n_of_stream s n) s.  
+  @list_stream_prefix A (take_n_of_stream s n) s.
 Proof.
-  generalize dependent s. induction n; try now auto. 
-  intros []; simpl. now auto.  
+  generalize dependent s. induction n; try now auto.
+  intros []; simpl. now auto.
 Qed.
 
 Lemma take_n_of_stream_length {A : Type} (s: stream) (n: nat) :
-  @length A (take_n_of_stream s n) <= n. 
+  @length A (take_n_of_stream s n) <= n.
 Proof.
   generalize dependent s. induction n; try now auto.
   intros []; simpl; auto. apply omega_fact. now apply IHn.
-Qed. 
-  
+Qed.
+
 Fixpoint take_n_of_list {A : Type} (l : list A) (n : nat) : list A :=
   match n, l with
   | 0, _ | _, nil => nil
@@ -50,7 +50,7 @@ Lemma take_n_of_list_prefix {A : Type} (l : list A) (n : nat) :
   list_list_prefix (take_n_of_list l n) l.
 Proof.
   generalize dependent l. induction n; try now auto;
-  intros []; simpl; try now auto. 
+  intros []; simpl; try now auto.
 Qed.
 
 Lemma take_n_of_list_length {A : Type} (l : list A) (n : nat) :
@@ -58,23 +58,23 @@ Lemma take_n_of_list_length {A : Type} (l : list A) (n : nat) :
 Proof.
   generalize dependent l. induction n; try now auto.
   intros []; simpl; auto.
-  intros []; simpl; auto. 
+  intros []; simpl; auto.
   omega. apply omega_fact. now apply IHn.
-Qed.   
-             
+Qed.
+
 Definition take_n (t : trace) (n : nat) : list event :=
   match t with
-  | tstop l _ | tsilent l => take_n_of_list l n 
+  | tstop l _ | tsilent l => take_n_of_list l n
   | tstream s             => take_n_of_stream s n
   end.
 
 Lemma take_n_prefix (t : trace) (n: nat) :
   prefix (ftbd (take_n t n)) t.
 Proof.
-  destruct t; 
+  destruct t;
     [ now apply take_n_of_list_prefix
     | now apply take_n_of_list_prefix
-    | now apply take_n_of_stream_prefix].       
+    | now apply take_n_of_stream_prefix].
 Qed.
 
 Lemma take_n_lenght (t : trace) (n : nat): length (take_n t n) <= n.
@@ -84,7 +84,7 @@ Proof.
     | now apply take_n_of_list_length
     | now apply take_n_of_stream_length].
 Qed.
-  
+
 Lemma list_list_prefix_shorter {A : Type} : forall l1 l2 : list A,
   list_list_prefix l1 l2 -> length l1 <= length l2.
 Proof.
@@ -92,7 +92,7 @@ Proof.
   + simpl. omega.
   + destruct l2; inversion Hpref; subst. simpl.
     apply omega_fact. now apply IHl1.
-Qed. 
+Qed.
 
 Definition ϕ_sem : ϕ_prg -> prop :=
   fun P =>
@@ -105,12 +105,12 @@ Section Itf.
 Lemma non_empty_ϕ : forall P, exists t, ϕ_sem P t.
 Proof.
   intros [n Pl].
-  destruct (non_empty_sem L Pl) as [t HsemL]. 
+  destruct (non_empty_sem L Pl) as [t HsemL].
   exists (tstop (take_n t n) an_endstate). unfold ϕ_sem.
   exists (take_n t n), an_endstate. simpl. repeat (split; try now auto).
-  exists t. split; try now auto.   
+  exists t. split; try now auto.
   + now apply take_n_prefix.
-  + now apply take_n_lenght. 
+  + now apply take_n_lenght.
 Qed.
 
 Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
@@ -122,9 +122,9 @@ Lemma psem_consequence : forall C P t l,
     prefix (ftbd l) t ->
     length l <= fst C.
 Proof.
-  intros [n C] P t m [mm [es [hem [h1 h2]]]] hpref. subst. 
-  simpl in *. apply (leq_trans (length m) (length mm) n); auto.   
-  now apply list_list_prefix_shorter.   
+  intros [n C] P t m [mm [es [hem [h1 h2]]]] hpref. subst.
+  simpl in *. apply (leq_trans (length m) (length mm) n); auto.
+  now apply list_list_prefix_shorter.
 Qed.
 
 Definition ϕ := Build_language ϕ_par ϕ_ctx ϕ_plug
@@ -148,20 +148,20 @@ Proof.
   unfold rsat. repeat rewrite not_forall_ex_not.
   intros [C hC]. unfold sat in *. rewrite not_forall_ex_not in *.
   destruct hC as [t hh]. rewrite not_imp in hh.
-  destruct hh as [h1 h2]. destruct (Hsafety t h2) as [m [hpref hwit]]. 
+  destruct hh as [h1 h2]. destruct (Hsafety t h2) as [m [hpref hwit]].
   destruct m.
   + exists (length l, C). intros ff. simpl in ff.
     destruct t; inversion hpref; subst.
     apply (hwit (tstop l0 e)); auto.
-    apply ff. unfold ϕ_sem, ϕ_plug; simpl. 
+    apply ff. unfold ϕ_sem, ϕ_plug; simpl.
     exists l0, e. repeat (split; try now auto).
-    exists (tstop l0 e). split; auto. simpl. now apply list_list_prefix_ref. 
+    exists (tstop l0 e). split; auto. simpl. now apply list_list_prefix_ref.
   + exists (length l, C). intros ff. simpl in ff.
     apply (hwit (tstop l an_endstate)); auto.
-    simpl. now apply list_list_prefix_ref.   
+    simpl. now apply list_list_prefix_ref.
     apply ff. unfold ϕ_sem, ϕ_plug; simpl.
     exists l, an_endstate. repeat (split; try now auto).
-    now exists t. 
+    now exists t.
 Qed.
 
 (*
@@ -176,9 +176,9 @@ Hypothesis an_omega_produced : exists P, forall C, sem L (@plug L i P C) (tstrea
 Hypothesis another_omega_produced : exists P, forall C, sem L (@plug L i P C) (tstream another_omega).
 
 Lemma not_equal: ~ stream_eq an_omega another_omega.
-Proof.   
-  rewrite stream_eq_finetely_refutable. 
-  exists nil, an_event, another_event. 
+Proof.
+  rewrite stream_eq_finetely_refutable.
+  exists nil, an_event, another_event.
   repeat (split; try now auto).
   now apply different_events.
 Qed.
@@ -188,23 +188,23 @@ Definition my_pi :=
     match t with
     | tstream s  => stream_eq s an_omega
     | _ => True
-    end. 
+    end.
 
 Lemma my_pi_dense : Dense my_pi.
 Proof.
-  intros t Hfin. destruct t; now inversion Hfin. 
+  intros t Hfin. destruct t; now inversion Hfin.
 Qed.
 
 Lemma another_omega_not_in_my_pi : ~ my_pi (tstream another_omega).
 Proof.
- simpl. intros H.  apply stream_eq_sym in H. now apply not_equal. 
+ simpl. intros H.  apply stream_eq_sym in H. now apply not_equal.
 Qed.
 
 Lemma cut_lemma : forall C P t, sem ϕ (@plug ϕ i P C) t -> fin t.
 Proof.
   intros C P t H. simpl in*.
   unfold ϕ_sem, ϕ_plug in *. destruct H as [m [es [hp H]]].
-  now rewrite hp. 
+  now rewrite hp.
 Qed.
 
 Axiom some_ctx_L : ctx L i.
@@ -242,7 +242,7 @@ Qed.
 Hypothesis only_an_omega_produced : exists P, forall C,
       (sem L (plug L P C) (tstream an_omega) /\
        (forall t, sem L (@plug L i P C) t ->
-         (exists s, t = tstream s /\ stream_eq s an_omega))).   
+         (exists s, t = tstream s /\ stream_eq s an_omega))).
 
 
 Definition c2 : par L i -> par ϕ i :=
@@ -258,7 +258,7 @@ Proof.
   simpl in hsem.
   unfold ϕ_sem, ϕ_plug in hsem.
   destruct hsem as [l [es [hembed [hpsem hlen]]]].
-  subst. now apply hl.  
+  subst. now apply hl.
 Qed.
 
 
@@ -267,7 +267,7 @@ Definition my_pi2 : prop :=
     match t with
     | tstream s => stream_eq s an_omega
     | _ => False
-    end. 
+    end.
 
 
 Theorem separation_RDP_RTP :
@@ -278,17 +278,17 @@ Proof.
   + now apply c2_robustly_dense.
   + intros ff. destruct only_an_omega_produced as [P h].
     specialize (ff P my_pi2).
-    unfold c2_RPP, rsat, sat in ff. 
+    unfold c2_RPP, rsat, sat in ff.
     assert (H : forall (C : ctx L i) (t : trace), sem L (C [P]) t -> my_pi2 t).
     { intros C t hsem. specialize (h C). destruct h as [h1 h2].
       destruct (h2 t hsem) as [s [H1 H2]]; now subst. }
     specialize (ff H (0, some_ctx_L) (tstop nil an_endstate)).
     assert  (sem ϕ ((0, some_ctx_L) [c2 P]) (tstop nil an_endstate)).
-    { simpl. unfold ϕ_sem, ϕ_plug. exists nil, an_endstate. 
-      repeat (split; try now auto). simpl. 
-      exists (tstream an_omega).  
-      split; try now auto. now apply (h some_ctx_L). } 
-    specialize (ff H0). inversion ff.    
+    { simpl. unfold ϕ_sem, ϕ_plug. exists nil, an_endstate.
+      repeat (split; try now auto). simpl.
+      exists (tstream an_omega).
+      split; try now auto. now apply (h some_ctx_L). }
+    specialize (ff H0). inversion ff.
 Qed.
 
 Require Import TopologyTrace.

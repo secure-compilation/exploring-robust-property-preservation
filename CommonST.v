@@ -1,6 +1,6 @@
 Require Import TraceModel.
 Require Import XPrefix.
-Require Import Properties. 
+Require Import Properties.
 Require Import ClassicalExtras.
 Require Import Events.
 

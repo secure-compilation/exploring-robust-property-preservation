@@ -1,11 +1,11 @@
-Require Import Events. 
+Require Import Events.
 Require Import ClassicalExtras.
 Require Import TraceModel.
 Require Import Properties.
 Require Import FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalFacts.
 
-(** This file describes the topology of the classes of 
+(** This file describes the topology of the classes of
     properties *)
 
 Axiom prop_ext : prop_extensionality.
@@ -213,16 +213,16 @@ Lemma dense_closure_true (X : Set)
   (forall x : X, (closure D τ) x) -> dense τ D.
 Proof.
   intros H_closure A HA [a Aa].
-  apply NNPP. intros Hf. rewrite not_ex_forall_not in Hf. 
+  apply NNPP. intros Hf. rewrite not_ex_forall_not in Hf.
   assert (H_meet : forall t, D t -> (fun t => ~ A t) t).
   { intros t. specialize (Hf t). rewrite de_morgan1 in Hf.
-    intros Hdt. now destruct Hf. }  
+    intros Hdt. now destruct Hf. }
   assert (HC : closed τ (fun t0 => ~ A t0)).
   { unfold closed. assert ((fun x : X => ~ ~ A x) = A).
     apply functional_extensionality. intros x.
-    apply prop_ext. symmetry. now apply dne. 
-    now rewrite H. }    
+    apply prop_ext. symmetry. now apply dne.
+    now rewrite H. }
   specialize (closure_smallest D τ (fun t0 => ~ A t0) HC H_meet).
   intros ff. specialize (H_closure a). specialize (ff a H_closure).
-  now simpl in ff. 
-Qed.   
+  now simpl in ff.
+Qed.

@@ -4,12 +4,12 @@ Require Import Events.
 Require Import CommonST.
 Require Import TraceModel.
 Require Import Robustdef.
-Require Import Properties. 
+Require Import Properties.
 Require Import Topology.
 Require Import XPrefix.
 
 (** This file proves the alternative, property-free criteria
-    for the robust preservation of classes of properties *) 
+    for the robust preservation of classes of properties *)
 
 (*********************************************************)
 (* PROPERTIES                                            *)
@@ -138,12 +138,12 @@ Proof.
   rewrite RDC'. split.
   - intros rlc P π Hl. rewrite contra_RP. intros [C' [t [H0 H1]]].
     assert(Hi : inf t).
-    { unfold inf. intros Hf. apply H1. now apply Hl. } 
+    { unfold inf. intros Hf. apply H1. now apply Hl. }
     destruct (rlc P C' t Hi H0) as [C K0]. clear rlc.
     now exists C,t.
   - intros rlp P C' t Hi H0.
     assert (HD : Dense (fun b => b <> t)).
-    { rewrite <- all_fin_in_all_liv. exact (inf_excluded_is_liv t Hi). }  
+    { rewrite <- all_fin_in_all_liv. exact (inf_excluded_is_liv t Hi). }
     specialize (rlp P (fun b => b <> t) HD).
     rewrite contra_RP in rlp. destruct rlp as [C [t' [K0 K1]]].
     now exists C', t. apply NNPP in K1. subst t'.
@@ -152,15 +152,15 @@ Qed.
 
 (*********************************************************)
 (* Criterium for Observable Properties Preservation
-            
-(* 
 
-Without the constructor tsilent for traces 
+(*
+
+Without the constructor tsilent for traces
 (or equivalently when silent divergence is observable)
-it is possible to show that the robsust preservation of 
-all observable properties implies the robust preservation 
-of all arbitrary properties. 
-When silent divergence is not observable this is no more true 
+it is possible to show that the robsust preservation of
+all observable properties implies the robust preservation
+of all arbitrary properties.
+When silent divergence is not observable this is no more true
 
 Theorem RobsP_RPP : (forall P π, Observable π -> RP P π) <->
                     (forall P π, RP P π).
@@ -170,12 +170,12 @@ Proof.
   intros [C' [t [hsem ht]]].
   specialize (hr P (fun b => ~ t_eq t b)).
   assert (Observable (fun b => ~ t_eq t b)).
-    (* This is False!! 
-       e.g. when t = tstop 
-       then the trace tsilent is in the property 
-       but its only prefix, (ftbd nil) is also a prefix of tstop 
-    *) 
-     
+    (* This is False!!
+       e.g. when t = tstop
+       then the trace tsilent is in the property
+       but its only prefix, (ftbd nil) is also a prefix of tstop
+    *)
+
 
 Theorem RobsP_RTC : (forall P π, Observable π -> RP P π) <-> RTC.
 Proof. now rewrite RobsP_RPP, RTC_RTP. Qed.
@@ -245,7 +245,7 @@ Proof.
      rewrite contra_RHP in h0.
      destruct h0 as [C h1]. exists C'.
      now rewrite <- dne. rewrite <- dne in h1.
-     now exists C.          
+     now exists C.
 Qed.
 
 
@@ -260,24 +260,24 @@ Proof.
   split.
     - intros ssc P H HH. rewrite contra_RHP. intros [C' H0].
       specialize (ssc P C'). rewrite (HH (beh (C' [P ↓]))) in H0.
-      destruct H0 as [t1 [t2 [b_t1 [b_t2 H_t1_t2]]]]. 
+      destruct H0 as [t1 [t2 [b_t1 [b_t2 H_t1_t2]]]].
       destruct (ssc t1 t2) as [Cs [bs_t1 bs_t2]]. auto.
-      exists Cs. rewrite (HH _). exists t1, t2. split; auto. 
-  - unfold R2SCHC. intros h0 P C' t1 t2 [H1 H2]. 
+      exists Cs. rewrite (HH _). exists t1, t2. split; auto.
+  - unfold R2SCHC. intros h0 P C' t1 t2 [H1 H2].
     specialize (h0 P).
     assert (s : twoSC (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/
                               (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
     { unfold twoSC. intros. split.
       + intros h.
         exists t1, t2. rewrite de_morgan2 in h. destruct h as [h1 h2].
-        rewrite <- dne in h1, h2. 
-        repeat (split; auto). 
-        intros [k | k]; apply k; [ now left | now right ]. 
+        rewrite <- dne in h1, h2.
+        repeat (split; auto).
+        intros [k | k]; apply k; [ now left | now right ].
       +  intros [t3 [t4 [b_t3 [b_t4 K]]]].
          rewrite de_morgan2. rewrite <- dne. rewrite <- dne.
          rewrite de_morgan2 in K. destruct K as [k1 k2]. rewrite <- dne in k1,k2.
          specialize (k1 H1). specialize (k2 H2).
-         destruct k1, k2; now subst.     
+         destruct k1, k2; now subst.
     }
     specialize (h0 (fun π => (~(sem tgt ( C' [ P ↓ ]) t1 -> π t1)) \/ (~(sem tgt ( C' [ P ↓ ]) t2 -> π t2)))).
     specialize (h0 s).
@@ -334,7 +334,7 @@ Proof.
     now exists Ct. exists C. now apply NNPP.
 Qed.
 
-Lemma R2HSC_RSC : R2HSC -> RSC. 
+Lemma R2HSC_RSC : R2HSC -> RSC.
 Proof.
   intros H P Ct t Ht m Hpref.
   destruct (H P Ct m m) as [Cs Hspref].
@@ -464,8 +464,8 @@ Proof.
     intros Htgt. rewrite not_forall_ex_not in Htgt.
     destruct Htgt as [Ct Htgt]. rewrite not_forall_ex_not in Htgt.
     destruct Htgt as [f Htgt]. rewrite not_forall_ex_not in Htgt.
-    destruct Htgt as [Htgt H]. destruct (HRrTC f Ct Htgt) as [Cs HCs].   
-    intro Hsrc. apply H. now apply (Hsrc Cs).     
+    destruct Htgt as [Htgt H]. destruct (HRrTC f Ct Htgt) as [Cs HCs].
+    intro Hsrc. apply H. now apply (Hsrc Cs).
   - intros HRrTP f Ct Htgt. specialize (HRrTP (fun g => g <> f)).
     rewrite contra in HRrTP. repeat rewrite not_forall_ex_not in HRrTP.
     destruct HRrTP as [Cs H1].
@@ -473,8 +473,8 @@ Proof.
       rewrite not_forall_ex_not.  exists Htgt. now rewrite <- dne. }
     exists Cs. rewrite not_forall_ex_not in H1. destruct H1 as [f' H1].
     rewrite not_forall_ex_not in H1. destruct H1 as [H1 HH1].
-    rewrite <- dne in HH1. now subst. 
-Qed.      
+    rewrite <- dne in HH1. now subst.
+Qed.
 
 
 (** *2Relational Safety Properties *)
@@ -639,11 +639,11 @@ Proof.
     specialize (H' Cs m1 m2 Hsem1' Hsem2'). now assumption.
   - intros H Ct P1 P2 m1 m2 Hsem1 Hsem2.
     specialize (H (fun m1 m2 => exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)); simpl in H.
-    specialize (H P1 P2).    
+    specialize (H P1 P2).
     assert (H' : forall Cs m1 m2, xsem (Cs [P1]) m1 -> xsem (Cs [P2]) m2 ->
                              (exists Cs, xsem (Cs [P1]) m1 /\ xsem (Cs [P2]) m2)).
     { clear. intros Cs m1 m2 Hsem1 Hsem2. exists Cs; now auto. }
-    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption. 
+    specialize (H H' Ct m1 m2 Hsem1 Hsem2). now assumption.
 Qed.
 
 
@@ -676,7 +676,7 @@ Theorem RrXC_RrXP' : RrXC <-> RrXP'.
 Proof.
   unfold RrXP', RrXC. split.
   - intros h R h0 Ct f h1. specialize (h Ct f h1).
-    destruct h as [Cs h]. now apply (h0 Cs f h). 
+    destruct h as [Cs h]. now apply (h0 Cs f h).
   - intros h Ct f h0. apply NNPP. intros ff.
     rewrite not_ex_forall_not in ff.
     specialize (h (fun g => exists Cs, forall P, spref_x (g P) (sem src (Cs [P])))).
@@ -725,7 +725,7 @@ Proof.
     { apply functional_extensionality. intros t. specialize (h t).
       destruct h as [h1 h2]. auto. }
     apply ff. split; auto.
-Qed. 
+Qed.
 
 
 (** *Arbitrary Relational HyperProperties *)
@@ -758,28 +758,28 @@ Proof.
 Qed.
 
 
- 
+
 (** *2Relational SubsetClosed HyperProperties *)
 Definition R2rSCHC:=  (forall (P1 P2 : par src i) Ct, exists Cs,
                             (beh (Ct [P1↓])) ⊆  (beh (Cs [P1])) /\
                             (beh (Ct [P2↓])) ⊆  (beh (Cs [P2]))).
 
 
-Theorem R2rSCHC_R2rSCHP : R2rSCHC <-> R2rSCHP. 
-  rewrite R2rSCHP'. split. 
+Theorem R2rSCHC_R2rSCHP : R2rSCHC <-> R2rSCHP.
+  rewrite R2rSCHP'. split.
   + intros scC P1 P2 r r2ssc [Ct nr]. destruct (scC P1 P2 Ct) as [Cs [K1 K2]].
     exists Cs. intros Hf. apply nr. unfold ssc2 in r2ssc. eapply r2ssc; eassumption.
   + intros r2sscP P1 P2 Ct.
     destruct (r2sscP P1 P2
                 (fun π1 π2 => ~ subset (beh (Ct [P1 ↓])) π1 \/ ~ subset (beh (Ct [P2 ↓])) π2)) as [Cs Hcs].
-    { intros b1 b2 b1' b2' [nsup1 | nsup2] s1 s2. 
+    { intros b1 b2 b1' b2' [nsup1 | nsup2] s1 s2.
       + left. unfold "⊆" in *. rewrite not_forall_ex_not in *.
-        destruct nsup1 as [t Hn1]. exists t. 
+        destruct nsup1 as [t Hn1]. exists t.
         rewrite not_imp in *. split; firstorder.
-      + right. unfold "⊆" in *; rewrite not_forall_ex_not in *. 
-        destruct nsup2 as [t Hn2]. exists t. 
-        rewrite not_imp in *. split; firstorder. }  
-    exists Ct. rewrite de_morgan2. split; now rewrite <- dne. 
-    rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs). 
+      + right. unfold "⊆" in *; rewrite not_forall_ex_not in *.
+        destruct nsup2 as [t Hn2]. exists t.
+        rewrite not_imp in *. split; firstorder. }
+    exists Ct. rewrite de_morgan2. split; now rewrite <- dne.
+    rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs).
     now exists Cs.
-Qed.     
+Qed.
