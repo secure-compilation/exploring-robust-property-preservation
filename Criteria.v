@@ -783,3 +783,48 @@ Theorem R2rSCHC_R2rSCHP : R2rSCHC <-> R2rSCHP.
     rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs).
     now exists Cs.
 Qed.
+
+(* This criteria is a variant of RHC and RSP, where the quantification is over
+   prefixes like RSP but with the alternation of RHC *)
+(* Intuitively it should be close to RSCHC *)
+Definition RSCHC_variant : Prop :=
+  forall (P: par src i) C', exists C, forall m,
+      (exists t', prefix m t' /\ sem tgt (C' [P ↓ ] ) t') ->
+      (exists t, prefix m t /\ sem src (C [P] ) t).
+
+
+Section RSCHC_variant_eq.
+  (* In this section, we prove that RSCHC <-> RSCHC_variant under a simple
+     assumption *)
+
+  Hypothesis safe_src: forall P t, (forall m, prefix m t -> psem P m) -> sem src P t.
+
+  Lemma RHC_RSCHC_variant: RSCHC -> RSCHC_variant.
+  Proof.
+    unfold RSCHC, RSCHC_variant.
+    intros H P C'.
+    specialize (H P C') as [C HC].
+    exists C.
+    intros m [t' [H1 H2]].
+    exists t'; split; auto.
+  Qed.
+
+  Lemma RSCHC_variant_RHC: RSCHC_variant -> RSCHC.
+  Proof.
+    unfold RSCHC, RSCHC_variant.
+    intros H P C'.
+    specialize (H P C') as [C HC].
+    exists C.
+    intros t Ht.
+    assert (Hallpref: forall m, prefix m t -> psem (C' [P↓]) m).
+    { unfold psem. intros m H. eexists; split; eauto. }
+    assert (forall m, prefix m t -> psem (C[P]) m).
+    { intros m H.
+      specialize (HC m (Hallpref m H)). apply HC. }
+    apply safe_src.
+    eauto.
+Qed.
+
+End RSCHC_variant_eq.
+
+
