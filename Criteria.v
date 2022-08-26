@@ -741,8 +741,7 @@ Proof.
     specialize (hcs Cs).
     assert (hh :  (fun P => sem src (Cs [P])) =
                   (fun P => sem tgt (Ct [P ↓])) ).
-    { apply functional_extensionality.
-      intros P. specialize (h0 P). now auto. }
+    { apply functional_extensionality. now apply h0. }
     now rewrite <- hh.
   - intros hrrhp Ct. apply NNPP. intros ff.
     rewrite not_ex_forall_not in ff.
