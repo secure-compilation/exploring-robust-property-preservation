@@ -19,4 +19,8 @@ The Coq development is known to work with Coq v8.7.X, v8.8.X, and v8.9.0, but it
 
 ### License ###
 
-This Coq development is licensed under the Apache License, Version 2.0 (see `LICENSE`)
+This Coq development is licensed under the Apache License, Version 2.0 (see `LICENSE`).
+
+### Main Contributors ###
+
+This Coq development's main contributors include Carmine Abate, Roberto Blanco, Catalin Hritcu, and Jérémy Thibault.
