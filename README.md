@@ -23,4 +23,4 @@ This Coq development is licensed under the Apache License, Version 2.0 (see `LIC
 
 ### Main Contributors ###
 
-This Coq development's main contributors include Carmine Abate, Roberto Blanco, Catalin Hritcu, and Jérémy Thibault.
+This Coq development's main contributors include Carmine Abate, Roberto Blanco, Deepak Garg, Catalin Hritcu, Marco Patrignani, and Jérémy Thibault.
