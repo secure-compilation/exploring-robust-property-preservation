@@ -34,7 +34,7 @@ Require Import Coq.Logic.ClassicalFacts.
 *)
 
 
-Variable code_intro : forall {P1 P2 : par src i} (h : P1 <> P2) (Cs1 Cs2 : ctx src i), ctx src i.
+Axiom code_intro : forall {P1 P2 : par src i} (h : P1 <> P2) (Cs1 Cs2 : ctx src i), ctx src i.
 
 Axiom beh_intro1 : forall P1 P2 (h : P1 <> P2)Cs1 Cs2,
     forall t,
@@ -73,7 +73,7 @@ Qed.
 
 (* as usual we need prop_extensionality *)
 
-Hypothesis prop_ext : prop_extensionality.
+Axiom prop_ext : prop_extensionality.
 
 Lemma RHP_R2rHP : RHP -> R2rHP.
 Proof.

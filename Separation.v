@@ -8,6 +8,7 @@ Require Import ClassicalExtras.
 Require Import Logic.ClassicalFacts.
 Require Import ZArith.
 Require Import List.
+Require Import Lia.
 
 Axiom L : language.
 
@@ -17,8 +18,8 @@ Definition ϕ_ctx i := prod nat (ctx L i).
 Definition ϕ_plug i : ϕ_par i -> ϕ_ctx i -> ϕ_prg :=
   fun P C =>  (fst C , plug L P (snd C)).
 
-Lemma omega_fact : forall n m, n <= m -> (S n) <= (S m).
-Proof. intros n m h. omega. Qed.
+Lemma lia_fact : forall n m, n <= m -> (S n) <= (S m).
+Proof. intros n m h. lia. Qed.
 
 Fixpoint take_n_of_stream {A: Type} (s : stream) (n : nat) : list A :=
   match n, s with
@@ -37,7 +38,7 @@ Lemma take_n_of_stream_length {A : Type} (s: stream) (n: nat) :
   @length A (take_n_of_stream s n) <= n.
 Proof.
   generalize dependent s. induction n; try now auto.
-  intros []; simpl; auto. apply omega_fact. now apply IHn.
+  intros []; simpl; auto. apply lia_fact. now apply IHn.
 Qed.
 
 Fixpoint take_n_of_list {A : Type} (l : list A) (n : nat) : list A :=
@@ -59,7 +60,7 @@ Proof.
   generalize dependent l. induction n; try now auto.
   intros []; simpl; auto.
   intros []; simpl; auto.
-  omega. apply omega_fact. now apply IHn.
+  lia. apply lia_fact. now apply IHn.
 Qed.
 
 Definition take_n (t : trace) (n : nat) : list event :=
@@ -89,9 +90,9 @@ Lemma list_list_prefix_shorter {A : Type} : forall l1 l2 : list A,
   list_list_prefix l1 l2 -> length l1 <= length l2.
 Proof.
   induction l1; intros l2 Hpref.
-  + simpl. omega.
+  + simpl. lia.
   + destruct l2; inversion Hpref; subst. simpl.
-    apply omega_fact. now apply IHl1.
+    apply lia_fact. now apply IHl1.
 Qed.
 
 Definition ϕ_sem : ϕ_prg -> prop :=
@@ -114,7 +115,7 @@ Proof.
 Qed.
 
 Lemma leq_trans : forall n1 n2 n3, n1 <= n2 -> n2 <= n3 -> n1 <= n3.
-Proof. intros n1 n2 n3 h1 h2. omega. Qed.
+Proof. intros n1 n2 n3 h1 h2. lia. Qed.
 
 (* intuition there in t in sem longer than m *)
 Lemma psem_consequence : forall C P t l,

@@ -37,7 +37,7 @@ Require Import ClassicalExtras.
 
 *)
 
-Variable nd  : ctx src i -> ctx src i -> ctx src i.
+Axiom nd  : ctx src i -> ctx src i -> ctx src i.
 
 Infix "⊕" := nd (at level 50).
 

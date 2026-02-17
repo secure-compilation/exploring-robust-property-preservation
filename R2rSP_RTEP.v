@@ -24,10 +24,10 @@ Require Import Criteria.
 
 (** *our assumptions *)
 (**********************************************************)
-Hypothesis input_totality_tgt : @input_totality tgt.
-Hypothesis determinacy_src    : @determinacy src.
-Hypothesis tgt_sem            : @semantics_safety_like tgt.
-Hypothesis no_divergence : forall P' t, sem tgt P' t -> ~ diverges t.
+Axiom input_totality_tgt : @input_totality tgt.
+Axiom determinacy_src    : @determinacy src.
+Axiom tgt_sem            : @semantics_safety_like tgt.
+Axiom no_divergence : forall P' t, sem tgt P' t -> ~ diverges t.
 (**********************************************************)
 
 Lemma three_continuations_tbd :

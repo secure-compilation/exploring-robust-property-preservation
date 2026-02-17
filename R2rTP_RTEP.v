@@ -14,9 +14,9 @@ Require Import TechnicalLemmas.
 
 (** *our assumptions *)
 (**********************************************************)
-Hypothesis input_totality_tgt : @input_totality tgt.
-Hypothesis determinacy_src    : @determinacy src.
-Hypothesis tgt_sem            : @semantics_safety_like tgt.
+Axiom input_totality_tgt : @input_totality tgt.
+Axiom determinacy_src    : @determinacy src.
+Axiom tgt_sem            : @semantics_safety_like tgt.
 (**********************************************************)
 
 
