@@ -476,6 +476,46 @@ Proof.
     rewrite <- dne in HH1. now subst.
 Qed.
 
+Definition RrTC_cezar :=
+  exists bt : ctx tgt (cint i) -> ctx src i,
+  forall Ct P t, sem tgt (Ct [P↓]) t -> sem src ((bt Ct) [P]) t.
+
+Require Import ClassicalChoice.
+(* choice : forall (A B : Type) (R : A -> B -> Prop),
+   (forall x : A, exists y : B, R x y) ->
+   exists f : A -> B, forall x : A, R x (f x) *)
+
+Axiom sem_tgt_total : forall W, exists t, sem tgt W t.
+
+Lemma RrTC_cezar_RrTC : RrTC_cezar -> RrTC.
+Proof.
+  unfold RrTC, RrTC_cezar; intro H.
+  destruct H as [bt H]. intros f Ct G. exists (bt Ct). eauto.
+Qed.
+
+Lemma RrTC_RrTC_cezar : RrTC -> RrTC_cezar.
+Proof.
+  unfold RrTC, RrTC_cezar. intro H.
+  apply choice with (A:=ctx tgt (cint i)) (B:=ctx src i)
+    (R:=fun Ct Cs => forall P t, sem tgt (Ct [P ↓]) t -> sem src (Cs [P]) t).
+  intros Ct.
+  specialize choice with (R:=fun (P : par src i) (t:trace) => sem tgt (Ct [P ↓]) t) as C.
+  simpl in C.
+  destruct C as [f C]. { intro P. apply sem_tgt_total with (W:=Ct[P ↓]). }
+  specialize (H f Ct C). destruct H as [Cs H].
+  exists Cs. intros P t G. specialize (H P). specialize (C P).
+  admit. (* not there; Cezar's variant may actually be stronger *)
+Abort.
+
+Lemma RrTC_RrTC_cezar : RrTC -> RrTC_cezar.
+Proof.
+  unfold RrTC_cezar. intro H.
+  apply choice with (A:=ctx tgt (cint i)) (B:=ctx src i)
+    (R:=fun Ct Cs => forall P t, sem tgt (Ct [P ↓]) t -> sem src (Cs [P]) t).
+  intros Ct.
+  rewrite RrTC_RrTP in H. unfold RrTP' in H.
+  admit. (* don't even know where to start *)
+Abort.
 
 (** *2Relational Safety Properties *)
 
