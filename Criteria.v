@@ -480,10 +480,24 @@ Definition RrTC_cezar :=
   exists bt : ctx tgt (cint i) -> ctx src i,
   forall Ct P t, sem tgt (Ct [P↓]) t -> sem src ((bt Ct) [P]) t.
 
+Definition RrTC_cezar_prime :=
+  forall (Ct:ctx tgt (cint i)),
+  exists (Cs:ctx src i),
+  forall P t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t.
+
 Require Import ClassicalChoice.
 (* choice : forall (A B : Type) (R : A -> B -> Prop),
    (forall x : A, exists y : B, R x y) ->
    exists f : A -> B, forall x : A, R x (f x) *)
+
+Lemma RrTC_cezar_RrTC_cezar_prime : RrTC_cezar <-> RrTC_cezar_prime.
+Proof.
+  unfold RrTC_cezar, RrTC_cezar_prime. split.
+  - intros [bt H] Ct. eauto.
+  - intro H. apply choice with
+      (R := fun Ct Cs => forall P t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t).
+    exact H.
+Qed.
 
 Axiom sem_tgt_total : forall W, exists t, sem tgt W t.
 
@@ -493,28 +507,20 @@ Proof.
   destruct H as [bt H]. intros f Ct G. exists (bt Ct). eauto.
 Qed.
 
-Lemma RrTC_RrTC_cezar : RrTC -> RrTC_cezar.
+Lemma RrTC_RrTC_cezar_prime : RrTC -> RrTC_cezar_prime.
 Proof.
-  unfold RrTC, RrTC_cezar. intro H.
-  apply choice with (A:=ctx tgt (cint i)) (B:=ctx src i)
-    (R:=fun Ct Cs => forall P t, sem tgt (Ct [P ↓]) t -> sem src (Cs [P]) t).
-  intros Ct.
+  unfold RrTC, RrTC_cezar_prime. intros H Ct.
   specialize choice with (R:=fun (P : par src i) (t:trace) => sem tgt (Ct [P ↓]) t) as C.
   simpl in C.
   destruct C as [f C]. { intro P. apply sem_tgt_total with (W:=Ct[P ↓]). }
   specialize (H f Ct C). destruct H as [Cs H].
   exists Cs. intros P t G. specialize (H P). specialize (C P).
-  admit. (* not there; Cezar's variant may actually be stronger *)
+  admit. (* RrTC only gives Cs that works for f P, not for all t; Cezar's variant may be stronger *)
 Abort.
 
 Lemma RrTC_RrTC_cezar : RrTC -> RrTC_cezar.
 Proof.
-  unfold RrTC_cezar. intro H.
-  apply choice with (A:=ctx tgt (cint i)) (B:=ctx src i)
-    (R:=fun Ct Cs => forall P t, sem tgt (Ct [P ↓]) t -> sem src (Cs [P]) t).
-  intros Ct.
-  rewrite RrTC_RrTP in H. unfold RrTP' in H.
-  admit. (* don't even know where to start *)
+  intro H. apply RrTC_cezar_RrTC_cezar_prime. exact (RrTC_RrTC_cezar_prime H).
 Abort.
 
 (** *2Relational Safety Properties *)
