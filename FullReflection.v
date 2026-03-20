@@ -96,12 +96,12 @@ Qed.
 Lemma RSCP_R2rSCP : RSCHP -> R2rSCHP.
 Proof.
   rewrite <- R2rSCHC_R2rSCHP, <- RSCHC_RSCHP.
-  intros sscr P1 P2 Ct.
+  intros Hschc P1 P2 Ct.
   destruct (classic (P1 = P2)) as [Heq | Hneq].
-  + rewrite <- Heq in *. destruct (sscr P1 Ct) as [Cs H].
+  + rewrite <- Heq in *. destruct (Hschc P1 Ct) as [Cs H].
     now exists Cs.
-  + destruct (sscr P1 Ct) as [Cs1 H1].
-    destruct (sscr P2 Ct) as [Cs2 H2].
+  + destruct (Hschc P1 Ct) as [Cs1 H1].
+    destruct (Hschc P2 Ct) as [Cs2 H2].
     exists (code_intro Hneq Cs1 Cs2).
     split; intros t H; [rewrite beh_intro1; now apply H1
                        | rewrite beh_intro2; now apply H2].

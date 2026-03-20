@@ -352,6 +352,9 @@ Definition safety2 (r : rel_prop) :=
 Definition ssc2 (r : rel_hprop) :=
   forall b1 b2 b1' b2', r b1 b2 -> subset b1' b1 -> subset b2' b2 -> r b1' b2'.
 
+Definition sscr {I : Type} (R : (I -> prop) -> Prop) :=
+  forall F G, R F -> (forall i, G i ⊆ F i) -> R G.
+
 
 Definition xafety2 r := forall (t1 t2 : trace),
   ~ (r t1 t2) ->

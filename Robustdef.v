@@ -147,7 +147,7 @@ Proof.
     now firstorder.
 Qed.
 
-(** *Robust Preservation of Subset Closed HyperProperties *)
+(** *Robust Preservation of Subset-Closed HyperProperties *)
 
 
 Definition RSCHP := forall P H, SSC H -> RhP P H.
@@ -331,7 +331,7 @@ Definition RrHP' : Prop :=
     (forall Ct, R (fun P  => sem tgt (Ct [ (P ↓)]) )).
 
 
-(** *Robust Preservation of 2-subsetclosed Relational HyperProperties*)
+(** *Robust Preservation of 2-Subset-Closed Relational HyperProperties*)
 
 Definition R2rSCHP := forall (P1 P2 : par src i) r,
     ssc2 r ->
@@ -353,9 +353,16 @@ Proof.
     now exists Ct. now apply Hc.
 Qed.
 
+(** *Robust Preservation of arbitrary Relational Subset-Closed HyperProperties*)
 
+Definition RrSCHP : Prop :=
+  forall R : (par src i -> prop) -> Prop,
+    sscr R ->
+    (forall Cs, R (fun P => sem src (Cs [P]))) ->
+    (forall Ct, R (fun P => sem tgt (Ct [P↓]))).
 
 (** *Robust Trace Equivalence Preservation *)
+
 Definition RTEP : Prop :=
   forall (P1 P2: par src i),
            (forall Cs t, sem src (Cs [P1]) t <-> sem src (Cs [P2]) t) ->

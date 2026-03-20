@@ -476,53 +476,6 @@ Proof.
     rewrite <- dne in HH1. now subst.
 Qed.
 
-Definition RrTC_cezar :=
-  exists bt : ctx tgt (cint i) -> ctx src i,
-  forall Ct P t, sem tgt (Ct [P↓]) t -> sem src ((bt Ct) [P]) t.
-
-Definition RrTC_cezar_prime :=
-  forall (Ct:ctx tgt (cint i)),
-  exists (Cs:ctx src i),
-  forall P t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t.
-
-Require Import ClassicalChoice.
-(* choice : forall (A B : Type) (R : A -> B -> Prop),
-   (forall x : A, exists y : B, R x y) ->
-   exists f : A -> B, forall x : A, R x (f x) *)
-
-Lemma RrTC_cezar_RrTC_cezar_prime : RrTC_cezar <-> RrTC_cezar_prime.
-Proof.
-  unfold RrTC_cezar, RrTC_cezar_prime. split.
-  - intros [bt H] Ct. eauto.
-  - intro H. apply choice with
-      (R := fun Ct Cs => forall P t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t).
-    exact H.
-Qed.
-
-Axiom sem_tgt_total : forall W, exists t, sem tgt W t.
-
-Lemma RrTC_cezar_RrTC : RrTC_cezar -> RrTC.
-Proof.
-  unfold RrTC, RrTC_cezar; intro H.
-  destruct H as [bt H]. intros f Ct G. exists (bt Ct). eauto.
-Qed.
-
-Lemma RrTC_RrTC_cezar_prime : RrTC -> RrTC_cezar_prime.
-Proof.
-  unfold RrTC, RrTC_cezar_prime. intros H Ct.
-  specialize choice with (R:=fun (P : par src i) (t:trace) => sem tgt (Ct [P ↓]) t) as C.
-  simpl in C.
-  destruct C as [f C]. { intro P. apply sem_tgt_total with (W:=Ct[P ↓]). }
-  specialize (H f Ct C). destruct H as [Cs H].
-  exists Cs. intros P t G. specialize (H P). specialize (C P).
-  admit. (* RrTC only gives Cs that works for f P, not for all t; Cezar's variant may be stronger *)
-Abort.
-
-Lemma RrTC_RrTC_cezar : RrTC -> RrTC_cezar.
-Proof.
-  intro H. apply RrTC_cezar_RrTC_cezar_prime. exact (RrTC_RrTC_cezar_prime H).
-Abort.
-
 (** *2Relational Safety Properties *)
 
 Definition R2rSC := forall Ct (P1 P2:par src i) m1 m2,
@@ -804,7 +757,7 @@ Qed.
 
 
 
-(** *2Relational SubsetClosed HyperProperties *)
+(** *2Relational Subset-Closed HyperProperties *)
 Definition R2rSCHC:=  (forall (P1 P2 : par src i) Ct, exists Cs,
                             (beh (Ct [P1↓])) ⊆  (beh (Cs [P1])) /\
                             (beh (Ct [P2↓])) ⊆  (beh (Cs [P2]))).
@@ -827,6 +780,51 @@ Theorem R2rSCHC_R2rSCHP : R2rSCHC <-> R2rSCHP.
     exists Ct. rewrite de_morgan2. split; now rewrite <- dne.
     rewrite de_morgan2 in Hcs. repeat (rewrite <- dne in Hcs).
     now exists Cs.
+Qed.
+
+(** *Relational Subset-Closed HyperProperties *)
+
+Definition RrSCHC : Prop :=
+  forall (Ct : ctx tgt (cint i)), exists (Cs : ctx src i),
+    forall P, beh (Ct [P↓]) ⊆ beh (Cs [P]).
+
+Theorem RrSCHC_RrSCHP : RrSCHC <-> RrSCHP.
+Proof.
+  split.
+  - intros H R Hssc Hsrc Ct.
+    destruct (H Ct) as [Cs Hcs].
+    eapply Hssc. exact (Hsrc Cs). exact Hcs.
+  - unfold RrSCHC. intros HRrSCHP Ct.
+    apply NNPP. intro Habs. rewrite not_ex_forall_not in Habs.
+    set (R := fun F : par src i -> prop => ~ (forall P, beh (Ct [P↓]) ⊆ F P)).
+    assert (HR_ssc : sscr R).
+    { unfold R, sscr. intros F G HnF Hsub HG.
+      apply HnF. intros P. eapply subset_trans; [apply HG | apply Hsub]. }
+    assert (HR_src : forall Cs, R (fun P => sem src (Cs [P]))).
+    { intro Cs. unfold R. intro H. apply (Habs Cs). intros P.
+      specialize (H P). unfold beh, subset in *. auto. }
+    (* Goal is False. HR := HRrSCHP R HR_ssc HR_src Ct gives R (fun P => sem tgt (Ct [P↓])) *)
+    pose proof (HRrSCHP R HR_ssc HR_src Ct) as Hcontra.
+    unfold R in Hcontra.
+    apply Hcontra.
+    intros P t Ht. exact Ht.
+Qed.
+
+Definition RrSCHC_Cezar :=
+  forall (Ct:ctx tgt (cint i)),
+  exists (Cs:ctx src i),
+  forall P t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t.
+
+Lemma RrSCHC_RrSCHC_Cezar : RrSCHC <-> RrSCHC_Cezar.
+Proof.
+  unfold RrSCHC, RrSCHC_Cezar, beh, "⊆". firstorder.
+Qed.
+
+Lemma RrSCHC_RrTC : RrSCHC -> RrTC.
+Proof.
+  unfold RrTC, RrSCHC; intro H.
+  intros f Ct Htgt. destruct (H Ct) as [Cs Hcs].
+  exists Cs. intros P. apply (Hcs P). exact (Htgt P).
 Qed.
 
 (* This criteria is a variant of RHC and RSP, where the quantification is over
