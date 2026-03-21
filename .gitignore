@@ -5,3 +5,7 @@
 *~
 CoqMakefile.conf
 Makefile.coq
+*.vok
+*.vos
+.lia.cache
+.vscode
