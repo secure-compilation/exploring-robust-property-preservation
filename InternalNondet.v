@@ -5,6 +5,7 @@ Require Import CommonST.
 Require Import Robustdef.
 Require Import Criteria.
 Require Import ClassicalExtras.
+From Stdlib Require Import List.
 
 (** This file proves the collapses that happens in presence of
     a non-deterministic choice operator in the source language *)
@@ -36,6 +37,8 @@ Require Import ClassicalExtras.
  RDP  RSP (<-> RFrSP) ---------
 
 *)
+
+(** ** We start with a binary non-deterministic choice operator on contexts *)
 
 Axiom nd  : ctx src i -> ctx src i -> ctx src i.
 
@@ -101,16 +104,143 @@ Proof.
     now unfold "⊆". apply nd_beh2.
 Qed.
 
-(* Lemma RTP_R2SSCP : RTC ->  (forall P1 P2 r, two_sc r -> ((hrsat2 P1 P2 r) -> hrsat2 (P1↓) (P2↓) r)).  *)
-(* Proof. *)
-(*   rewrite two_scC.  *)
-(*   intros rc P1 P2 Ct. *)
-(* Abort. *)
-(*we should apply rc for every t ∈ beh (ct[P1 ↓]) to get Cs_1 and
-                     for every t ∈ beh (ct[P2 ↓]) to get Cs_2, then
-  apply ⊕ and get the desired context.
-  When one of these two sets is infinite ⊕ should be applied infinitely many times
 
-  Assuming finitary non determinism the implication can be proved.
+(** ** More collapses when some of the sets are finite *)
 
- *)
+(** When each target program produces finitely many traces,
+    ⊕ can be applied finitely many times to collapse RTC to RSCHC,
+    and then to R2rSCHP. *)
+
+Axiom finite_trace_sets_tgt : forall (W : prg tgt),
+  exists (l : list trace), forall t, sem tgt W t <-> In t l.
+
+(** Helper: given a finite list of traces, each covered by some source
+    context, we can join them all with ⊕ into a single context. *)
+Lemma nd_cover_list : forall (P : par src i) (default : ctx src i) (l : list trace),
+  (forall t, In t l -> exists Cs, sem src (Cs [P]) t) ->
+  exists Cs, forall t, In t l -> sem src (Cs [P]) t.
+Proof.
+  intros P default l. induction l as [| t0 l' IH].
+  - intros _. exists default. intros t [].
+  - intros H.
+    destruct (H t0 (or_introl eq_refl)) as [Cs0 HCs0].
+    assert (Hl' : forall t, In t l' -> exists Cs, sem src (Cs [P]) t).
+    { intros t Hin. apply H. right. exact Hin. }
+    destruct (IH Hl') as [Cs_rest HCs_rest].
+    exists (Cs0 ⊕ Cs_rest).
+    intros t [Heq | Hin].
+    + subst. apply (nd_beh1 Cs0 Cs_rest P). exact HCs0.
+    + apply (nd_beh2 Cs0 Cs_rest P). exact (HCs_rest t Hin).
+Qed.
+
+(** Key step: RTC gives a source context per trace; we join finitely
+    many of them into one context that covers all traces of a given
+    program. *)
+Lemma RTC_RSCHC : RTC -> RSCHC.
+Proof.
+  intros rtc P C'.
+  destruct (finite_trace_sets_tgt (C' [P↓])) as [l Hl].
+  (* Get a default source context (needed for empty list base case) *)
+  destruct (rtc P C' (tsilent nil)) as [default _].
+  (* For each trace in l, RTC gives a source context *)
+  assert (Hcover : forall t, In t l -> exists Cs, sem src (Cs [P]) t).
+  { intros t Hin. destruct (rtc P C' t) as [Cs HCs].
+    exists Cs. apply HCs. apply Hl. exact Hin. }
+  destruct (nd_cover_list P default l Hcover) as [Cs HCs].
+  exists Cs. intros t Ht. apply HCs. apply Hl. exact Ht.
+Qed.
+
+(** Combined: RTC -> R2rSCHP (= R2rSCHC).
+    Previously blocked because ⊕ needed to be applied infinitely
+    many times; finite trace sets make it finite. *)
+Lemma RTC_R2rSCHP : RTC -> R2rSCHP.
+Proof.
+  intro Hrtc. apply RSCHP_R2rSCHP. rewrite <- RSCHC_RSCHP.
+  exact (RTC_RSCHC Hrtc).
+Qed.
+
+(** Finitely many source partial programs (nonempty).
+    Together with finite trace sets and ⊕, this collapses
+    RTC all the way to RrSCHC. *)
+Axiom finite_program_set_src : exists (P0 : par src i) (l : list (par src i)),
+  forall P, In P (P0 :: l).
+
+(** Helper: joining RSCHC witnesses over a finite list of programs. *)
+Lemma nd_cover_programs : forall (Ct : ctx tgt (cint i)) (default : ctx src i)
+  (l : list (par src i)),
+  (forall P, In P l -> exists Cs, forall t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t) ->
+  exists Cs, forall P, In P l -> forall t, sem tgt (Ct [P↓]) t -> sem src (Cs [P]) t.
+Proof.
+  intros Ct default l. induction l as [| P0 l' IH].
+  - intros _. exists default. intros P [].
+  - intros H.
+    destruct (H P0 (or_introl eq_refl)) as [Cs0 HCs0].
+    destruct (IH (fun P Hin => H P (or_intror Hin))) as [Cs_rest HCs_rest].
+    exists (Cs0 ⊕ Cs_rest).
+    intros P [Heq | Hin] t Ht.
+    + subst. apply (nd_beh1 Cs0 Cs_rest P). apply HCs0. exact Ht.
+    + apply (nd_beh2 Cs0 Cs_rest P). apply (HCs_rest P Hin). exact Ht.
+Qed.
+
+(** With ⊕ and finitely many programs, RSCHC implies RrSCHC:
+    join per-program witnesses into a single context for all programs. *)
+Lemma RSCHC_RrSCHC : RSCHC -> RrSCHC.
+Proof.
+  intros rschc Ct.
+  destruct finite_program_set_src as [P0 [progs Hprogs]].
+  (* Get a default source context from RSCHC applied to P0 *)
+  destruct (rschc P0 Ct) as [default _].
+  destruct (nd_cover_programs Ct default (P0 :: progs)) as [Cs HCs].
+  { intros P _. exact (rschc P Ct). }
+  exists Cs. unfold beh, "⊆". intros P t Ht.
+  exact (HCs P (Hprogs P) t Ht).
+Qed.
+
+(** Full collapse: RTC -> RrSCHC (= RrSCHP).
+    Uses finitary target ND (for traces) and finitary programs. *)
+Lemma RTC_RrSCHC : RTC -> RrSCHC.
+Proof.
+  intro Hrtc. apply RSCHC_RrSCHC. exact (RTC_RSCHC Hrtc).
+Qed.
+
+
+(** ** Same collapses with infinitary non-deterministic choice.
+
+    With an infinitary join on source contexts, the same collapses
+    hold without any finiteness assumptions (no finite_trace_sets_tgt,
+    no finite_program_set_src). The predicate-indexed formulation also
+    avoids the axiom of choice. *)
+
+Axiom nd_inf : (ctx src i -> Prop) -> ctx src i.
+
+Axiom nd_inf_beh : forall (F : ctx src i -> Prop) C P,
+  F C -> beh (C [P]) ⊆ beh (nd_inf F [P]).
+
+Lemma RTC_RSCHC_inf : RTC -> RSCHC.
+Proof.
+  intros rtc P Ct.
+  (* F collects all source contexts that correctly simulate some target trace *)
+  set (F := fun C => exists t, sem tgt (Ct [P↓]) t /\ sem src (C [P]) t).
+  exists (nd_inf F). intros t Ht.
+  destruct (rtc P Ct t) as [Cs HCs]. specialize (HCs Ht).
+  apply (nd_inf_beh F Cs P).
+  - exists t. auto.
+  - exact HCs.
+Qed.
+
+Lemma RSCHC_RrSCHC_inf : RSCHC -> RrSCHC.
+Proof.
+  intros rschc Ct.
+  (* F collects all source contexts that simulate some program *)
+  set (F := fun C => exists P, forall t, sem tgt (Ct [P↓]) t -> sem src (C [P]) t).
+  exists (nd_inf F). unfold beh, "⊆". intros P t Ht.
+  destruct (rschc P Ct) as [Cs HCs].
+  apply (nd_inf_beh F Cs P).
+  - exists P. exact HCs.
+  - exact (HCs t Ht).
+Qed.
+
+Lemma RTC_RrSCHC_inf : RTC -> RrSCHC.
+Proof.
+  intro Hrtc. apply RSCHC_RrSCHC_inf. exact (RTC_RSCHC_inf Hrtc).
+Qed.
