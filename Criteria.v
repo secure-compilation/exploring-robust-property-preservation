@@ -827,6 +827,144 @@ Proof.
   exists Cs. intros P. apply (Hcs P). exact (Htgt P).
 Qed.
 
+(***********************************************************)
+(* RrTC =/=> RrSCHC                                        *)
+(***********************************************************)
+
+(* We construct concrete determinate languages separating RrTC and RrSCHC,
+   connected by a compiler satisfying SCC (Separate Correct Compilation):
+   backward trace refinement for compiled contexts.
+
+   Source S: deterministic — contexts are traces, each whole program
+   produces exactly that trace.
+
+   Target T: contexts are either compiled (inl t = deterministic, same
+   as source) or adversarial (inr l where l is a list of events).
+   Adversarial contexts extend l with two possible input events,
+   producing two traces differing at an input event. The nondeterminism
+   lives exclusively in adversarial contexts, not in compilation.
+
+   Compilation: identity on partial programs, embedding (inl) on contexts.
+   SCC holds: for any source context Cs and partial program P,
+   (compile_ctx Cs) [compile P] has the same behavior as Cs [P].
+
+   RrTC holds: for any single trace produced by any target context, the
+   source context equal to that trace produces it (since par = unit and
+   source semantics is the identity).
+
+   RrSCHC fails: the adversarial target context inr nil produces two
+   distinct traces; no single deterministic source context can cover
+   both. *)
+
+Section Separation_RrTC_RrSCHC.
+
+  (* Two distinct input events — the only assumptions *)
+  Hypothesis an_event_is_input : is_input an_event.
+  Hypothesis another_event_is_input : is_input another_event.
+
+  (* Source language: deterministic *)
+  Definition S_lang : language := @Build_language
+    unit (fun _ => unit) (fun _ => trace) trace
+    (fun _ _ C => C) (fun W t => t = W)
+    (fun W => ex_intro _ W eq_refl).
+
+  (* Target semantics: compiled contexts (inl t) are deterministic;
+     adversarial contexts (inr l) extend the event list l with two
+     possible input events *)
+  Definition T_sem (W : (trace + list event)%type) : prop := fun t =>
+    match W with
+    | inl t0 => t = t0
+    | inr l => t = tstop (snoc l an_event) an_endstate \/
+               t = tstop (snoc l another_event) an_endstate
+    end.
+
+  Lemma T_non_empty :
+    forall W, exists t, T_sem W t.
+  Proof.
+    intros [t0 | l].
+    - exists t0. reflexivity.
+    - exists (tstop (snoc l an_event) an_endstate). left. reflexivity.
+  Qed.
+
+  Definition T_lang : language := @Build_language
+    unit (fun _ => unit)
+    (fun _ => (trace + list event)%type)
+    (trace + list event)%type
+    (fun _ _ C => C) T_sem T_non_empty.
+
+  (* Compilation *)
+  Definition compile_sep (P : par S_lang tt) : par T_lang tt := P.
+  Definition compile_ctx_sep (Cs : ctx S_lang tt) : ctx T_lang tt := inl Cs.
+
+  (* SCC: compiled contexts preserve behavior backward *)
+  Lemma SCC : forall (P : par S_lang tt) (Cs : ctx S_lang tt) t,
+    sem T_lang ((compile_ctx_sep Cs)[compile_sep P]) t ->
+    sem S_lang (Cs[P]) t.
+  Proof.
+    intros [] Cs t Ht. simpl in *. exact Ht.
+  Qed.
+
+  (* Source is deterministic, hence determinate *)
+  Lemma S_determinate : @determinacy S_lang.
+  Proof.
+    intros W t1 t2 H1 H2. simpl in *. left. congruence.
+  Qed.
+
+  (* Target is determinate: traces differ only at an input event *)
+  Lemma T_determinate : @determinacy T_lang.
+  Proof.
+    intros W t1 t2 H1 H2. destruct W as [t0 | l].
+    - simpl in *. left. congruence.
+    - simpl in *.
+      destruct H1 as [H1 | H1]; destruct H2 as [H2 | H2]; subst;
+        try (left; reflexivity).
+      + right. exists l, an_event, another_event.
+        repeat split; auto.
+        ++ exact different_events.
+        ++ simpl. apply list_list_prefix_ref.
+        ++ simpl. apply list_list_prefix_ref.
+      + right. exists l, another_event, an_event.
+        repeat split; auto.
+        ++ intro H. symmetry in H. exact (different_events H).
+        ++ simpl. apply list_list_prefix_ref.
+        ++ simpl. apply list_list_prefix_ref.
+  Qed.
+
+  (* Local RrTC for this compilation chain *)
+  Definition sep_RrTC : Prop :=
+    forall (f : par S_lang tt -> trace) (Ct : ctx T_lang tt),
+      (forall P, sem T_lang (Ct[compile_sep P]) (f P)) ->
+      exists Cs : ctx S_lang tt, forall P, sem S_lang (Cs[P]) (f P).
+
+  (* Local RrSCHC for this compilation chain *)
+  Definition sep_RrSCHC : Prop :=
+    forall (Ct : ctx T_lang tt), exists (Cs : ctx S_lang tt),
+      forall P t, sem T_lang (Ct[compile_sep P]) t ->
+                  sem S_lang (Cs[P]) t.
+
+  Theorem sep_RrTC_holds : sep_RrTC.
+  Proof.
+    intros f Ct Htgt. exists (f tt). intros []. simpl. reflexivity.
+  Qed.
+
+  Theorem sep_not_RrSCHC : ~ sep_RrSCHC.
+  Proof.
+    intro H. destruct (H (inr nil)) as [Cs Hcs].
+    assert (H1 : sem S_lang (Cs[tt : par S_lang tt])
+                            (tstop (snoc nil an_event) an_endstate)).
+    { apply (Hcs tt). simpl. left. reflexivity. }
+    assert (H2 : sem S_lang (Cs[tt : par S_lang tt])
+                            (tstop (snoc nil another_event) an_endstate)).
+    { apply (Hcs tt). simpl. right. reflexivity. }
+    simpl in H1, H2. rewrite <- H1 in H2.
+    apply different_events. congruence.
+  Qed.
+
+  Theorem separation_RrTC_RrSCHC : sep_RrTC /\ ~ sep_RrSCHC.
+  Proof. exact (conj sep_RrTC_holds sep_not_RrSCHC). Qed.
+
+End Separation_RrTC_RrSCHC.
+
 (* This criteria is a variant of RHC and RSP, where the quantification is over
    prefixes like RSP but with the alternation of RHC *)
 (* Intuitively it should be close to RSCHC *)
