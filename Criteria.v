@@ -1074,16 +1074,21 @@ Section Separation_RrTC_RrSCHC.
 
   (* --- Non-singleton program space: RrTC also fails ---
 
-     Same semantics as above, but par = bool instead of unit.
-     Programs are completely ignored — S2_sem and T2_sem just
-     delegate to S_sem and T_sem, discarding the program component.
+     The separation above uses par = unit (one program). What
+     happens with par = bool (two programs)?
 
-     Despite programs being observationally indistinguishable,
-     RrTC fails! The function f can map the two syntactically
-     distinct programs to different traces from the target's
-     nondeterministic trace set, and no single source context
-     can produce both. The RrTC proof fundamentally relies on
-     forall P collapsing to a single constraint. *)
+     Here we keep the same semantics — programs are completely
+     ignored (S2_sem and T2_sem delegate to S_sem and T_sem).
+     RrTC fails because the function f can map the two programs
+     to different traces from the same target trace set, and no
+     single source context can produce both simultaneously.
+
+     The problem is NOT that programs are ignored. The same issue
+     arises whenever the context has full control: even if the
+     context calls the program and uses its output, the context
+     still decides the trace set, and f can pick conflicting
+     traces for different programs from that set. See v3 below
+     for the fix. *)
 
   Definition S2_sem (W : option bool * bool) : prop :=
     S_sem (fst W).
@@ -1123,10 +1128,9 @@ Section Separation_RrTC_RrSCHC.
     exists Cs. intros P t Ht. exact (HCs true t Ht).
   Qed.
 
-  (* RrTC ALSO fails, even though programs are completely ignored!
-     The function f maps the two programs to different traces from
-     the target's nondeterministic set, and no single source
-     context's trace set contains both. *)
+  (* RrTC ALSO fails! The function f maps the two programs to
+     different traces from the target's nondeterministic set, and
+     no single source context's trace set contains both. *)
   Definition sep2_RrTC : Prop :=
     forall (f : par S2_lang tt -> trace) (Ct : ctx T2_lang tt),
       (forall P, sem T2_lang (Ct[compile2 P]) (f P)) ->
@@ -1159,6 +1163,219 @@ Section Separation_RrTC_RrSCHC.
         apply endstate_of_injective in Eq1. subst x1.
         apply input_event_injective in Eq2. discriminate.
   Qed.
+
+  (* --- Separation with par=bool, including SCC ---
+
+     The v2 counterexample above shows RrTC fails when the context
+     has full control (regardless of whether programs are ignored
+     or the context calls them and uses their output). The root
+     cause: the context determines the trace set, so f can pick
+     conflicting traces for different programs from that set.
+
+     The fix: give the PROGRAM initial control. Here P=false is
+     "self-sufficient" — it computes endstate = input on its own,
+     matching the target's behavior without any help from the
+     context. This means f(false) is automatically satisfied by
+     any source context. Only f(true) constrains the choice of Cs,
+     so the proof reduces to the original unit case.
+
+     Pseudocode for source whole programs (C : option bool, P : bool):
+       input b;
+       if P then                     (* P=true: delegate to context *)
+         match C with
+         | Some c => return c        (*   constant endstate *)
+         | None   => return b        (*   forwarding endstate *)
+         end
+       else return b                 (* P=false: self-sufficient *)
+
+     P=true is passive — its endstate depends on the context.
+     P=false is self-sufficient — it always forwards the input.
+
+     Source contexts are option bool (same as original).
+     Target contexts are bool * bool (same as original).
+     Compilation is identity on programs, same compile_ctx_sep
+     on contexts.
+
+     This gives SCC, determinacy, input totality, RrTC, and ~RrSCHC. *)
+
+  Definition S3_sem (W : option bool * bool) : prop := fun t =>
+    let (C, P) := W in
+    match P with
+    | true  =>
+      match C with
+      | Some b_ctx => exists b, t = mk_trace (endstate_of b_ctx) b
+      | None => exists b, t = mk_trace (endstate_of b) b
+      end
+    | false => exists b, t = mk_trace (endstate_of b) b
+    end.
+
+  Lemma S3_non_empty : forall W, exists t, S3_sem W t.
+  Proof.
+    intros [C []]; simpl.
+    - destruct C as [b_ctx |].
+      + exists (mk_trace (endstate_of b_ctx) true). exists true. reflexivity.
+      + exists (mk_trace (endstate_of true) true). exists true. reflexivity.
+    - exists (mk_trace (endstate_of true) true). exists true. reflexivity.
+  Qed.
+
+  Definition S3_lang : language := @Build_language
+    unit (fun _ => bool) (fun _ => option bool)
+    (option bool * bool)%type
+    (fun _ P C => (C, P)) S3_sem S3_non_empty.
+
+  Definition T3_sem (W : (bool * bool) * bool) : prop := fun t =>
+    let (Ct, P) := W in
+    match P with
+    | true  =>
+      let (b1, b2) := Ct in
+      exists b : bool, t = mk_trace (endstate_of (if b then b1 else b2)) b
+    | false => exists b, t = mk_trace (endstate_of b) b
+    end.
+
+  Lemma T3_non_empty : forall W, exists t, T3_sem W t.
+  Proof.
+    intros [[b1 b2] []]; simpl.
+    - exists (mk_trace (endstate_of b1) true). exists true. reflexivity.
+    - exists (mk_trace (endstate_of true) true). exists true. reflexivity.
+  Qed.
+
+  Definition T3_lang : language := @Build_language
+    unit (fun _ => bool) (fun _ => (bool * bool)%type)
+    ((bool * bool) * bool)%type
+    (fun _ P C => (C, P)) T3_sem T3_non_empty.
+
+  Definition compile3 (P : par S3_lang tt) : par T3_lang tt := P.
+
+  Definition compile_ctx3 (Cs : ctx S3_lang tt) : ctx T3_lang tt :=
+    compile_ctx_sep Cs.
+
+  (* SCC: P=true is original SCC, P=false is trivial *)
+  Lemma SCC3 : forall (P : par S3_lang tt) (Cs : ctx S3_lang tt) t,
+    sem T3_lang ((compile_ctx3 Cs)[compile3 P]) t ->
+    sem S3_lang (Cs[P]) t.
+  Proof.
+    intros P Cs t Ht. destruct P; simpl in *.
+    - destruct Cs as [b_ctx |]; simpl in *;
+        destruct Ht as [b Hb]; exists b; destruct b; exact Hb.
+    - exact Ht.
+  Qed.
+
+  Lemma S3_determinate : @determinacy S3_lang.
+  Proof.
+    intros [C []] t1 t2 H1 H2; simpl in H1, H2.
+    - destruct C as [b_ctx |]; simpl in H1, H2;
+        destruct H1 as [x1 ->]; destruct H2 as [x2 ->];
+        destruct x1; destruct x2; try (left; reflexivity);
+        apply mk_trace_match; discriminate.
+    - destruct H1 as [x1 ->]; destruct H2 as [x2 ->];
+        destruct x1; destruct x2; try (left; reflexivity);
+        apply mk_trace_match; discriminate.
+  Qed.
+
+  Lemma T3_determinate : @determinacy T3_lang.
+  Proof.
+    intros [[b1 b2] []] t1 t2 H1 H2; simpl in H1, H2;
+      destruct H1 as [x1 ->]; destruct H2 as [x2 ->];
+      destruct x1; destruct x2; try (left; reflexivity);
+      apply mk_trace_match; discriminate.
+  Qed.
+
+  Lemma S3_input_totality : @input_totality S3_lang.
+  Proof.
+    intros [C []] l e1 e2 Hi1 Hi2 [t [Hpref Hsem]]; simpl in Hsem.
+    - destruct C as [b_ctx |]; simpl in Hsem;
+        destruct Hsem as [b ->];
+        destruct l as [| a l']; simpl in Hpref.
+      + destruct Hpref as [-> _]. destruct (only_inputs e2 Hi2) as [b' ->].
+        exists (mk_trace (endstate_of b_ctx) b').
+        split; [simpl; auto | simpl; exists b'; reflexivity].
+      + exfalso. destruct Hpref as [_ Habs].
+        destruct l'; simpl in Habs; exact Habs.
+      + destruct Hpref as [-> _]. destruct (only_inputs e2 Hi2) as [b' ->].
+        exists (mk_trace (endstate_of b') b').
+        split; [simpl; auto | simpl; exists b'; reflexivity].
+      + exfalso. destruct Hpref as [_ Habs].
+        destruct l'; simpl in Habs; exact Habs.
+    - destruct Hsem as [b ->].
+      destruct l as [| a l']; simpl in Hpref.
+      + destruct Hpref as [-> _]. destruct (only_inputs e2 Hi2) as [b' ->].
+        exists (mk_trace (endstate_of b') b').
+        split; [simpl; auto | simpl; exists b'; reflexivity].
+      + exfalso. destruct Hpref as [_ Habs].
+        destruct l'; simpl in Habs; exact Habs.
+  Qed.
+
+  Lemma T3_input_totality : @input_totality T3_lang.
+  Proof.
+    intros [[b1 b2] []] l e1 e2 Hi1 Hi2 [t [Hpref Hsem]]; simpl in Hsem;
+      destruct Hsem as [b ->];
+      destruct l as [| a l']; simpl in Hpref.
+    - destruct Hpref as [-> _]. destruct (only_inputs e2 Hi2) as [b' ->].
+      exists (mk_trace (endstate_of (if b' then b1 else b2)) b').
+      split; [simpl; auto | simpl; exists b'; reflexivity].
+    - exfalso. destruct Hpref as [_ Habs].
+      destruct l'; simpl in Habs; exact Habs.
+    - destruct Hpref as [-> _]. destruct (only_inputs e2 Hi2) as [b' ->].
+      exists (mk_trace (endstate_of b') b').
+      split; [simpl; auto | simpl; exists b'; reflexivity].
+    - exfalso. destruct Hpref as [_ Habs].
+      destruct l'; simpl in Habs; exact Habs.
+  Qed.
+
+  Definition sep3_RrTC : Prop :=
+    forall (f : par S3_lang tt -> trace) (Ct : ctx T3_lang tt),
+      (forall P, sem T3_lang (Ct[compile3 P]) (f P)) ->
+      exists Cs : ctx S3_lang tt, forall P, sem S3_lang (Cs[P]) (f P).
+
+  Definition sep3_RrSCHC : Prop :=
+    forall (Ct : ctx T3_lang tt), exists (Cs : ctx S3_lang tt),
+      forall P t, sem T3_lang (Ct[compile3 P]) t ->
+                  sem S3_lang (Cs[P]) t.
+
+  (* RrTC holds: f(true) in T3(Ct, true) determines Cs
+     (same as original), and f(false) is trivially satisfied
+     since P=false has the same traces in source and target *)
+  Theorem sep3_RrTC_holds : sep3_RrTC.
+  Proof.
+    intros f [b1 b2] Htgt.
+    pose proof (Htgt true) as Ht. simpl in Ht.
+    destruct Ht as [b Hb]. destruct b.
+    - exists (Some b1). intros [].
+      + simpl. exists true. exact Hb.
+      + exact (Htgt false).
+    - exists (Some b2). intros [].
+      + simpl. exists false. exact Hb.
+      + exact (Htgt false).
+  Qed.
+
+  (* RrSCHC fails: (false, true) = negation for P=true, same
+     as original -- no source context can simulate negation *)
+  Theorem sep3_not_RrSCHC : ~ sep3_RrSCHC.
+  Proof.
+    intro H. destruct (H (false, true)) as [Cs HCs].
+    assert (H1 : sem S3_lang (Cs[true : par S3_lang tt])
+                              (mk_trace (endstate_of false) true)).
+    { apply HCs. simpl. exists true. reflexivity. }
+    assert (H2 : sem S3_lang (Cs[true : par S3_lang tt])
+                              (mk_trace (endstate_of true) false)).
+    { apply HCs. simpl. exists false. reflexivity. }
+    destruct Cs as [b_ctx |]; simpl in H1, H2.
+    - destruct H1 as [x1 H1]. destruct H2 as [x2 H2].
+      unfold mk_trace in H1, H2.
+      assert (endstate_of false = endstate_of b_ctx) as Eq1 by congruence.
+      assert (endstate_of true = endstate_of b_ctx) as Eq2 by congruence.
+      apply endstate_of_injective in Eq1.
+      apply endstate_of_injective in Eq2. congruence.
+    - destruct H1 as [x1 H1]. destruct H2 as [x2 H2].
+      unfold mk_trace in H1, H2.
+      assert (input_event true = input_event x1) as Eqi by congruence.
+      apply input_event_injective in Eqi. subst x1.
+      assert (endstate_of false = endstate_of true) as Eqe by congruence.
+      apply endstate_of_injective in Eqe. discriminate.
+  Qed.
+
+  Theorem separation3 : sep3_RrTC /\ ~ sep3_RrSCHC.
+  Proof. exact (conj sep3_RrTC_holds sep3_not_RrSCHC). Qed.
 
 End Separation_RrTC_RrSCHC.
 
