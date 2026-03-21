@@ -1072,6 +1072,94 @@ Section Separation_RrTC_RrSCHC.
   Theorem separation_RrTC_RrSCHC : sep_RrTC /\ ~ sep_RrSCHC.
   Proof. exact (conj sep_RrTC_holds sep_not_RrSCHC). Qed.
 
+  (* --- Non-singleton program space: RrTC also fails ---
+
+     Same semantics as above, but par = bool instead of unit.
+     Programs are completely ignored — S2_sem and T2_sem just
+     delegate to S_sem and T_sem, discarding the program component.
+
+     Despite programs being observationally indistinguishable,
+     RrTC fails! The function f can map the two syntactically
+     distinct programs to different traces from the target's
+     nondeterministic trace set, and no single source context
+     can produce both. The RrTC proof fundamentally relies on
+     forall P collapsing to a single constraint. *)
+
+  Definition S2_sem (W : option bool * bool) : prop :=
+    S_sem (fst W).
+
+  Lemma S2_non_empty : forall W, exists t, S2_sem W t.
+  Proof. intros [C P]. apply S_non_empty. Qed.
+
+  Definition S2_lang : language := @Build_language
+    unit (fun _ => bool) (fun _ => option bool)
+    (option bool * bool)%type
+    (fun _ P C => (C, P)) S2_sem S2_non_empty.
+
+  Definition T2_sem (W : (bool * bool) * bool) : prop :=
+    T_sem (fst W).
+
+  Lemma T2_non_empty : forall W, exists t, T2_sem W t.
+  Proof. intros [Ct P]. apply T_non_empty. Qed.
+
+  Definition T2_lang : language := @Build_language
+    unit (fun _ => bool) (fun _ => (bool * bool)%type)
+    ((bool * bool) * bool)%type
+    (fun _ P C => (C, P)) T2_sem T2_non_empty.
+
+  Definition compile2 (P : par S2_lang tt) : par T2_lang tt := P.
+
+  (* RrSCHC still fails — reduces to the unit-program case
+     since programs are ignored by the semantics *)
+  Definition sep2_RrSCHC : Prop :=
+    forall (Ct : ctx T2_lang tt), exists (Cs : ctx S2_lang tt),
+      forall P t, sem T2_lang (Ct[compile2 P]) t ->
+                  sem S2_lang (Cs[P]) t.
+
+  Theorem sep2_not_RrSCHC : ~ sep2_RrSCHC.
+  Proof.
+    intro H2. apply sep_not_RrSCHC. intros Ct.
+    destruct (H2 Ct) as [Cs HCs].
+    exists Cs. intros P t Ht. exact (HCs true t Ht).
+  Qed.
+
+  (* RrTC ALSO fails, even though programs are completely ignored!
+     The function f maps the two programs to different traces from
+     the target's nondeterministic set, and no single source
+     context's trace set contains both. *)
+  Definition sep2_RrTC : Prop :=
+    forall (f : par S2_lang tt -> trace) (Ct : ctx T2_lang tt),
+      (forall P, sem T2_lang (Ct[compile2 P]) (f P)) ->
+      exists Cs : ctx S2_lang tt, forall P, sem S2_lang (Cs[P]) (f P).
+
+  Theorem sep2_RrTC_also_fails : ~ sep2_RrTC.
+  Proof.
+    intro H.
+    destruct (H (fun P : bool =>
+                   if P then mk_trace (endstate_of false) true
+                        else mk_trace (endstate_of true) false)
+                (false, true))
+      as [Cs HCs].
+    - intros []; simpl.
+      + exists true. reflexivity.
+      + exists false. reflexivity.
+    - assert (H1 := HCs true). assert (H2 := HCs false).
+      simpl in H1, H2.
+      destruct Cs as [b_ctx |]; simpl in H1, H2.
+      + destruct H1 as [x1 H1]. destruct H2 as [x2 H2].
+        unfold mk_trace in H1, H2.
+        assert (endstate_of false = endstate_of b_ctx) as Eq1 by congruence.
+        assert (endstate_of true = endstate_of b_ctx) as Eq2 by congruence.
+        apply endstate_of_injective in Eq1.
+        apply endstate_of_injective in Eq2. congruence.
+      + destruct H1 as [x1 H1].
+        unfold mk_trace in H1.
+        assert (endstate_of false = endstate_of x1) as Eq1 by congruence.
+        assert (input_event true = input_event x1) as Eq2 by congruence.
+        apply endstate_of_injective in Eq1. subst x1.
+        apply input_event_injective in Eq2. discriminate.
+  Qed.
+
 End Separation_RrTC_RrSCHC.
 
 (* This criteria is a variant of RHC and RSP, where the quantification is over
