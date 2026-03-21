@@ -828,115 +828,206 @@ Proof.
 Qed.
 
 (***********************************************************)
-(* RrTC =/=> RrSCHC                                        *)
+(* RrTC =/=> RrSCHC (with input totality and determinacy)  *)
 (***********************************************************)
 
-(* We construct concrete determinate languages separating RrTC and RrSCHC,
-   connected by a compiler satisfying SCC (Separate Correct Compilation):
-   backward trace refinement for compiled contexts.
+(* We construct concrete determinate, input-total languages separating
+   RrTC and RrSCHC, connected by a compiler satisfying SCC and CCC.
 
-   Source S: deterministic — contexts are traces, each whole program
-   produces exactly that trace.
+   The expressiveness gap is type abstraction: input events and
+   endstates both carry data of an abstract type (modeled by bool).
+   In the source, data is abstract: contexts receive an input bool
+   but cannot branch on it. They can either ignore it (producing a
+   constant endstate) or forward it unchanged to the endstate.
+   In the target, data is concrete, so contexts can inspect the input
+   and compute an arbitrary function of it for the endstate.
 
-   Target T: contexts are either compiled (inl t = deterministic, same
-   as source) or adversarial (inr l where l is a list of events).
-   Adversarial contexts extend l with two possible input events,
-   producing two traces differing at an input event. The nondeterminism
-   lives exclusively in adversarial contexts, not in compilation.
+   Both languages produce depth-1 traces: one input event, then
+   termination with an endstate (the final output).
 
-   Compilation: identity on partial programs, embedding (inl) on contexts.
-   SCC holds: for any source context Cs and partial program P,
-   (compile_ctx Cs) [compile P] has the same behavior as Cs [P].
+   Source S: contexts are (option bool).
+   - (Some b_ctx) terminates with constant endstate_of b_ctx:
+     sem (Some b_ctx) = {tstop [in b] (endstate_of b_ctx) | b : bool}.
+   - None forwards the input to the endstate:
+     sem None = {tstop [in b] (endstate_of b) | b : bool}.
 
-   RrTC holds: for any single trace produced by any target context, the
-   source context equal to that trace produces it (since par = unit and
-   source semantics is the identity).
+   Target T: contexts are (bool * bool), representing all functions
+   bool -> bool. Context (b1, b2) varies the endstate per input:
+   sem (b1, b2) = {tstop [in b] (endstate_of (if b then b1 else b2)) | b}.
 
-   RrSCHC fails: the adversarial target context inr nil produces two
-   distinct traces; no single deterministic source context can cover
-   both. *)
+   Compiled contexts: Some b_ctx ↦ (b_ctx, b_ctx), None ↦ (true, false).
+
+   RrTC holds: any single trace has a fixed endstate, and some
+   constant source context produces that trace.
+
+   RrSCHC fails: (false, true) (negation) needs a source context
+   producing endstate_of false for input true and endstate_of true
+   for input false. No source context can do this: constant contexts
+   produce the wrong endstate for one input, and the forwarding
+   context produces the wrong endstate for both inputs. *)
 
 Section Separation_RrTC_RrSCHC.
 
-  (* Two distinct input events — the only assumptions *)
-  Hypothesis an_event_is_input : is_input an_event.
-  Hypothesis another_event_is_input : is_input another_event.
+  (* Input events parameterized by a boolean *)
+  Hypothesis input_event : bool -> event.
+  Hypothesis input_event_is_input : forall b, is_input (input_event b).
+  Hypothesis input_event_injective :
+    forall b1 b2, input_event b1 = input_event b2 -> b1 = b2.
+  Hypothesis only_inputs :
+    forall e, is_input e -> exists b, e = input_event b.
 
-  (* Source language: deterministic *)
-  Definition S_lang : language := @Build_language
-    unit (fun _ => unit) (fun _ => trace) trace
-    (fun _ _ C => C) (fun W t => t = W)
-    (fun W => ex_intro _ W eq_refl).
+  (* Endstates parameterized by a boolean *)
+  Hypothesis endstate_of : bool -> endstate.
+  Hypothesis endstate_of_injective :
+    forall b1 b2, endstate_of b1 = endstate_of b2 -> b1 = b2.
 
-  (* Target semantics: compiled contexts (inl t) are deterministic;
-     adversarial contexts (inr l) extend the event list l with two
-     possible input events *)
-  Definition T_sem (W : (trace + list event)%type) : prop := fun t =>
-    match W with
-    | inl t0 => t = t0
-    | inr l => t = tstop (snoc l an_event) an_endstate \/
-               t = tstop (snoc l another_event) an_endstate
+  (* A trace: receive input b, terminate with endstate es *)
+  Let mk_trace (es : endstate) (b : bool) : trace :=
+    tstop (cons (input_event b) nil) es.
+
+  (* Source language: contexts can't branch on input.
+     Some b_ctx = constant endstate; None = forward input to endstate *)
+  Definition S_sem (ctx : option bool) : prop := fun t =>
+    match ctx with
+    | Some b_ctx => exists b, t = mk_trace (endstate_of b_ctx) b
+    | None => exists b, t = mk_trace (endstate_of b) b
     end.
 
-  Lemma T_non_empty :
-    forall W, exists t, T_sem W t.
+  Lemma S_non_empty : forall ctx, exists t, S_sem ctx t.
   Proof.
-    intros [t0 | l].
-    - exists t0. reflexivity.
-    - exists (tstop (snoc l an_event) an_endstate). left. reflexivity.
+    intros [b_ctx |].
+    - exists (mk_trace (endstate_of b_ctx) true). exists true. reflexivity.
+    - exists (mk_trace (endstate_of true) true). exists true. reflexivity.
+  Qed.
+
+  Definition S_lang : language := @Build_language
+    unit (fun _ => unit) (fun _ => option bool) (option bool)
+    (fun _ _ C => C) S_sem S_non_empty.
+
+  (* Target language: contexts can branch on input.
+     (b1, b2) means: on input true endstate b1, on input false endstate b2 *)
+  Definition T_sem (W : (bool * bool)%type) : prop :=
+    fun t =>
+      let (b1, b2) := W in
+      exists b : bool, t = mk_trace (endstate_of (if b then b1 else b2)) b.
+
+  Lemma T_non_empty : forall W, exists t, T_sem W t.
+  Proof.
+    intros [b1 b2].
+    exists (mk_trace (endstate_of b1) true). exists true. reflexivity.
   Qed.
 
   Definition T_lang : language := @Build_language
     unit (fun _ => unit)
-    (fun _ => (trace + list event)%type)
-    (trace + list event)%type
+    (fun _ => (bool * bool)%type)
+    (bool * bool)%type
     (fun _ _ C => C) T_sem T_non_empty.
 
-  (* Compilation *)
+  (* Compilation: Some b ↦ (b, b), None ↦ (true, false) *)
   Definition compile_sep (P : par S_lang tt) : par T_lang tt := P.
-  Definition compile_ctx_sep (Cs : ctx S_lang tt) : ctx T_lang tt := inl Cs.
+  Definition compile_ctx_sep (Cs : ctx S_lang tt) : ctx T_lang tt :=
+    match Cs with
+    | Some b => (b, b)
+    | None => (true, false)
+    end.
 
   (* SCC: compiled contexts preserve behavior backward *)
   Lemma SCC : forall (P : par S_lang tt) (Cs : ctx S_lang tt) t,
     sem T_lang ((compile_ctx_sep Cs)[compile_sep P]) t ->
     sem S_lang (Cs[P]) t.
   Proof.
-    intros [] Cs t Ht. simpl in *. exact Ht.
+    intros [] Cs t Ht. destruct Cs as [b_ctx |]; simpl in *;
+      destruct Ht as [b Hb]; exists b; destruct b; exact Hb.
   Qed.
 
-  (* Source is deterministic, hence determinate *)
+  (* Cross-language context relation *)
+  Definition rel_ctx (Ct : ctx T_lang tt) (Cs : ctx S_lang tt) : Prop :=
+    Ct = compile_ctx_sep Cs.
+
+  (* CCC: related contexts preserve behavior backward *)
+  Lemma CCC : forall (P : par S_lang tt) (Ct : ctx T_lang tt) (Cs : ctx S_lang tt) t,
+    rel_ctx Ct Cs ->
+    sem T_lang (Ct[compile_sep P]) t ->
+    sem S_lang (Cs[P]) t.
+  Proof.
+    intros P Ct Cs t Hrel Ht. unfold rel_ctx in Hrel. subst Ct.
+    exact (SCC P Cs t Ht).
+  Qed.
+
+  (* Determinacy: two traces from the same program either match
+     or differ at the first event, which is always an input *)
+  Local Lemma mk_trace_match : forall es1 es2 b1 b2,
+    b1 <> b2 -> traces_match (mk_trace es1 b1) (mk_trace es2 b2).
+  Proof.
+    intros es1 es2 b1 b2 Hneq.
+    right. exists nil, (input_event b1), (input_event b2).
+    split; [exact (input_event_is_input b1) |
+    split; [exact (input_event_is_input b2) |
+    split; [intro H; apply Hneq; exact (input_event_injective _ _ H) |
+    split; simpl; auto]]].
+  Qed.
+
   Lemma S_determinate : @determinacy S_lang.
   Proof.
-    intros W t1 t2 H1 H2. simpl in *. left. congruence.
+    intros [b_ctx |] t1 t2 H1 H2; simpl in *;
+      destruct H1 as [x1 ->]; destruct H2 as [x2 ->];
+      destruct x1; destruct x2; try (left; reflexivity);
+      apply mk_trace_match; discriminate.
   Qed.
 
-  (* Target is determinate: traces differ only at an input event *)
   Lemma T_determinate : @determinacy T_lang.
   Proof.
-    intros W t1 t2 H1 H2. destruct W as [t0 | l].
-    - simpl in *. left. congruence.
-    - simpl in *.
-      destruct H1 as [H1 | H1]; destruct H2 as [H2 | H2]; subst;
-        try (left; reflexivity).
-      + right. exists l, an_event, another_event.
-        repeat split; auto.
-        ++ exact different_events.
-        ++ simpl. apply list_list_prefix_ref.
-        ++ simpl. apply list_list_prefix_ref.
-      + right. exists l, another_event, an_event.
-        repeat split; auto.
-        ++ intro H. symmetry in H. exact (different_events H).
-        ++ simpl. apply list_list_prefix_ref.
-        ++ simpl. apply list_list_prefix_ref.
+    intros [b1 b2] t1 t2 H1 H2; simpl in *;
+      destruct H1 as [x1 ->]; destruct H2 as [x2 ->];
+      destruct x1; destruct x2; try (left; reflexivity);
+      apply mk_trace_match; discriminate.
   Qed.
 
-  (* Local RrTC for this compilation chain *)
+  (* Input totality: the only input position is the first event
+     (l = nil), and both inputs are possible. Traces have length 1,
+     so longer prefixes are vacuously handled. *)
+
+  Lemma S_input_totality : @input_totality S_lang.
+  Proof.
+    intros W l e1 e2 Hi1 Hi2 [t [Hpref Hsem]].
+    destruct W as [b_ctx |]; simpl in Hsem;
+      destruct Hsem as [b ->];
+      destruct l as [| a l']; simpl in Hpref.
+    - destruct Hpref as [-> _].
+      destruct (only_inputs e2 Hi2) as [b' ->].
+      exists (mk_trace (endstate_of b_ctx) b').
+      split; [simpl; auto | simpl; exists b'; reflexivity].
+    - exfalso. destruct Hpref as [_ Habs].
+      destruct l'; simpl in Habs; exact Habs.
+    - destruct Hpref as [-> _].
+      destruct (only_inputs e2 Hi2) as [b' ->].
+      exists (mk_trace (endstate_of b') b').
+      split; [simpl; auto | simpl; exists b'; reflexivity].
+    - exfalso. destruct Hpref as [_ Habs].
+      destruct l'; simpl in Habs; exact Habs.
+  Qed.
+
+  Lemma T_input_totality : @input_totality T_lang.
+  Proof.
+    intros [b1 b2] l e1 e2 Hi1 Hi2 [t [Hpref Hsem]].
+    simpl in Hsem. destruct Hsem as [b ->].
+    destruct l as [| a l']; simpl in Hpref.
+    - destruct Hpref as [-> _].
+      destruct (only_inputs e2 Hi2) as [b' ->].
+      exists (mk_trace (endstate_of (if b' then b1 else b2)) b').
+      split; [simpl; auto | simpl; exists b'; reflexivity].
+    - exfalso. destruct Hpref as [_ Habs].
+      destruct l'; simpl in Habs; exact Habs.
+  Qed.
+
+  (* Instantiations of RrTC and RrSCHC for this compilation chain.
+     The global definitions are over axioms src/tgt from CommonST,
+     so we restate them here for our concrete languages. *)
   Definition sep_RrTC : Prop :=
     forall (f : par S_lang tt -> trace) (Ct : ctx T_lang tt),
       (forall P, sem T_lang (Ct[compile_sep P]) (f P)) ->
       exists Cs : ctx S_lang tt, forall P, sem S_lang (Cs[P]) (f P).
 
-  (* Local RrSCHC for this compilation chain *)
   Definition sep_RrSCHC : Prop :=
     forall (Ct : ctx T_lang tt), exists (Cs : ctx S_lang tt),
       forall P t, sem T_lang (Ct[compile_sep P]) t ->
@@ -944,20 +1035,38 @@ Section Separation_RrTC_RrSCHC.
 
   Theorem sep_RrTC_holds : sep_RrTC.
   Proof.
-    intros f Ct Htgt. exists (f tt). intros []. simpl. reflexivity.
+    intros f [b1 b2] Htgt. specialize (Htgt tt). simpl in Htgt.
+    destruct Htgt as [b Hb]. destruct b.
+    - exists (Some b1). intros []. simpl. exists true. exact Hb.
+    - exists (Some b2). intros []. simpl. exists false. exact Hb.
   Qed.
 
   Theorem sep_not_RrSCHC : ~ sep_RrSCHC.
   Proof.
-    intro H. destruct (H (inr nil)) as [Cs Hcs].
+    (* Adversary: (false, true) = negation, flips input to endstate *)
+    intro H. destruct (H (false, true)) as [Cs Hctx].
     assert (H1 : sem S_lang (Cs[tt : par S_lang tt])
-                            (tstop (snoc nil an_event) an_endstate)).
-    { apply (Hcs tt). simpl. left. reflexivity. }
+                            (mk_trace (endstate_of false) true)).
+    { apply (Hctx tt). simpl. exists true. reflexivity. }
     assert (H2 : sem S_lang (Cs[tt : par S_lang tt])
-                            (tstop (snoc nil another_event) an_endstate)).
-    { apply (Hcs tt). simpl. right. reflexivity. }
-    simpl in H1, H2. rewrite <- H1 in H2.
-    apply different_events. congruence.
+                            (mk_trace (endstate_of true) false)).
+    { apply (Hctx tt). simpl. exists false. reflexivity. }
+    destruct Cs as [b_ctx |]; simpl in H1, H2.
+    - (* Some b_ctx: constant endstate — can't produce both *)
+      destruct H1 as [x1 H1]. destruct H2 as [x2 H2].
+      unfold mk_trace in H1, H2.
+      assert (endstate_of false = endstate_of b_ctx) as Eq1 by congruence.
+      assert (endstate_of true = endstate_of b_ctx) as Eq2 by congruence.
+      apply endstate_of_injective in Eq1.
+      apply endstate_of_injective in Eq2.
+      congruence.
+    - (* None: forwarding — endstate matches input, but negation swaps *)
+      destruct H1 as [x1 H1]. destruct H2 as [x2 H2].
+      unfold mk_trace in H1, H2.
+      assert (input_event true = input_event x1) as Eqi by congruence.
+      apply input_event_injective in Eqi. subst x1.
+      assert (endstate_of false = endstate_of true) as Eqe by congruence.
+      apply endstate_of_injective in Eqe. discriminate.
   Qed.
 
   Theorem separation_RrTC_RrSCHC : sep_RrTC /\ ~ sep_RrSCHC.
