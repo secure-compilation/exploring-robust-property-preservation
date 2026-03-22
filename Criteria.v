@@ -810,6 +810,13 @@ Proof.
     intros P t Ht. exact Ht.
 Qed.
 
+Lemma RrSCHC_RrTC : RrSCHC -> RrTC.
+Proof.
+  unfold RrTC, RrSCHC; intro H.
+  intros f Ct Htgt. destruct (H Ct) as [Cs Hcs].
+  exists Cs. intros P. apply (Hcs P). exact (Htgt P).
+Qed.
+
 Definition RrSCHC_Cezar :=
   forall (Ct:ctx tgt (cint i)),
   exists (Cs:ctx src i),
@@ -820,12 +827,20 @@ Proof.
   unfold RrSCHC, RrSCHC_Cezar, beh, "⊆". firstorder.
 Qed.
 
-Lemma RrSCHC_RrTC : RrSCHC -> RrTC.
+Definition RrSCHC_reverse : Prop :=
+  forall (Ct : ctx tgt (cint i)), exists (Cs : ctx src i),
+    forall P, beh (Cs [P]) ⊆ beh (Ct [P↓]).
+
+Lemma RrHC_split : RrHC -> (RrSCHC /\ RrSCHC_reverse).
 Proof.
-  unfold RrTC, RrSCHC; intro H.
-  intros f Ct Htgt. destruct (H Ct) as [Cs Hcs].
-  exists Cs. intros P. apply (Hcs P). exact (Htgt P).
+  unfold RrHC, RrSCHC, RrSCHC_reverse, beh, "⊆".
+  intros H; split; intros Ct; destruct (H Ct) as [Cs HCs];
+    exists Cs; intros P t; rewrite HCs; auto.
 Qed.
+
+Lemma RrHC_merge : RrSCHC -> RrSCHC_reverse -> RrHC.
+Proof.   unfold RrHC, RrSCHC, RrSCHC_reverse, beh, "⊆".
+Abort. (* Not true! Getting 2 different contexts, not one! *)
 
 (***********************************************************)
 (* RrTC =/=> RrSCHC (with input totality and determinacy)  *)
